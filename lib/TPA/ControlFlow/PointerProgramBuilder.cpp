@@ -1,5 +1,5 @@
-#include "ControlFlow/PointerProgramBuilder.h"
-#include "DataFlow/ExternalPointerEffectTable.h"
+#include "TPA/ControlFlow/PointerProgramBuilder.h"
+#include "TPA/DataFlow/ExternalPointerEffectTable.h"
 
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/CFG.h>

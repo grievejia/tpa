@@ -1,7 +1,7 @@
 #ifndef TPA_K_LIMIT_CONTEXT_H
 #define TPA_K_LIMIT_CONTEXT_H
 
-#include "Precision/Context.h"
+#include "MemoryModel/Precision/Context.h"
 
 #include <llvm/ADT/DenseMap.h>
 

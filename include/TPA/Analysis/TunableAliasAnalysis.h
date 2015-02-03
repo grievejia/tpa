@@ -1,8 +1,8 @@
 #ifndef TPA_TUNABLE_ALIAS_ANALYSIS_H
 #define TPA_TUNABLE_ALIAS_ANALYSIS_H
 
-#include "DataFlow/Env.h"
-#include "Memory/PointerManager.h"
+#include "TPA/DataFlow/Env.h"
+#include "MemoryModel/Pointer/PointerManager.h"
 
 #include <memory>
 

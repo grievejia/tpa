@@ -1,7 +1,7 @@
 #ifndef TPA_POINTER_PROGRAM_H
 #define TPA_POINTER_PROGRAM_H
 
-#include "ControlFlow/PointerCFG.h"
+#include "TPA/ControlFlow/PointerCFG.h"
 
 #include <llvm/ADT/iterator_range.h>
 

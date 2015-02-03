@@ -1,7 +1,7 @@
 #ifndef TPA_MEMORY_OBJECT_H
 #define TPA_MEMORY_OBJECT_H
 
-#include "Precision/ProgramLocation.h"
+#include "MemoryModel/Precision/ProgramLocation.h"
 
 namespace llvm
 {

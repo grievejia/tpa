@@ -1,8 +1,8 @@
 #ifndef TPA_EVALUATION_WORKLIST_H
 #define TPA_EVALUATION_WORKLIST_H
 
-#include "ControlFlow/PointerCFG.h"
-#include "Utils/STLUtils.h"
+#include "TPA/ControlFlow/PointerCFG.h"
+#include "Utils/Hashing.h"
 #include "Utils/WorkList.h"
 
 #include <unordered_map>

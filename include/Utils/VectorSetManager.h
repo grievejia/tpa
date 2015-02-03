@@ -2,7 +2,7 @@
 #define TPA_VECTORSET_MANANGER_H
 
 #include "Utils/VectorSet.h"
-#include "Utils/STLUtils.h"
+#include "Utils/Hashing.h"
 
 #include <cassert>
 #include <unordered_set>

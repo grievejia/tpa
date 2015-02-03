@@ -1,7 +1,7 @@
 #ifndef TPA_STORE_H
 #define TPA_STORE_H
 
-#include "Memory/Memory.h"
+#include "MemoryModel/Memory/Memory.h"
 #include "Utils/VectorSetManager.h"
 
 #include <llvm/ADT/DenseMap.h>

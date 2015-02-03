@@ -1,7 +1,7 @@
 #ifndef TPA_POINTER_MANAGER_H
 #define TPA_POINTER_MANAGER_H
 
-#include "Memory/Pointer.h"
+#include "MemoryModel/Pointer/Pointer.h"
 
 #include <unordered_map>
 

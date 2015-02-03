@@ -1,5 +1,5 @@
-#include "Analysis/TunablePointerAnalysis.h"
-#include "Pass/TunablePointerAnalysisPass.h"
+#include "TPA/Analysis/TunablePointerAnalysis.h"
+#include "TPA/Pass/TunablePointerAnalysisPass.h"
 
 using namespace llvm;
 

@@ -1,8 +1,8 @@
 #ifndef TPA_POINTER_ANALYSIS_ENGINE_H
 #define TPA_POINTER_ANALYSIS_ENGINE_H
 
-#include "DataFlow/TransferFunction.h"
-#include "DataFlow/EvaluationWorkList.h"
+#include "TPA/DataFlow/TransferFunction.h"
+#include "TPA/DataFlow/EvaluationWorkList.h"
 
 namespace tpa
 {

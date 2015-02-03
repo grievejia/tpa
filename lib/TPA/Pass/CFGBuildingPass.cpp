@@ -1,6 +1,6 @@
-#include "ControlFlow/SemiSparseProgramBuilder.h"
-#include "DataFlow/ExternalPointerEffectTable.h"
-#include "Pass/CFGBuildingPass.h"
+#include "TPA/ControlFlow/SemiSparseProgramBuilder.h"
+#include "TPA/DataFlow/ExternalPointerEffectTable.h"
+#include "TPA/Pass/CFGBuildingPass.h"
 
 #include <llvm/IR/Module.h>
 

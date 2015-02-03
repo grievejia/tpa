@@ -1,7 +1,7 @@
 #ifndef TPA_CONTEXT_H
 #define TPA_CONTEXT_H
 
-#include "Utils/STLUtils.h"
+#include "Utils/Hashing.h"
 
 #include <llvm/IR/Instruction.h>
 

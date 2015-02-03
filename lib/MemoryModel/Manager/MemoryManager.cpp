@@ -1,4 +1,4 @@
-#include "Memory/MemoryManager.h"
+#include "MemoryModel/Memory/MemoryManager.h"
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>

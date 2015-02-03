@@ -1,4 +1,4 @@
-#include "ControlFlow/PointerProgram.h"
+#include "TPA/ControlFlow/PointerProgram.h"
 
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>

@@ -1,12 +1,12 @@
-#include "Analysis/GlobalPointerAnalysis.h"
-#include "Analysis/TunableAliasAnalysis.h"
-#include "ControlFlow/SemiSparseProgramBuilder.h"
-#include "DataFlow/ExternalPointerEffectTable.h"
-#include "DataFlow/Memo.h"
-#include "DataFlow/PointerAnalysisEngine.h"
-#include "DataFlow/StaticCallGraph.h"
-#include "DataFlow/StoreManager.h"
-#include "Memory/MemoryManager.h"
+#include "TPA/Analysis/GlobalPointerAnalysis.h"
+#include "TPA/Analysis/TunableAliasAnalysis.h"
+#include "TPA/ControlFlow/SemiSparseProgramBuilder.h"
+#include "TPA/DataFlow/ExternalPointerEffectTable.h"
+#include "TPA/DataFlow/Memo.h"
+#include "TPA/DataFlow/PointerAnalysisEngine.h"
+#include "TPA/DataFlow/StaticCallGraph.h"
+#include "TPA/DataFlow/StoreManager.h"
+#include "MemoryModel/Memory/MemoryManager.h"
 
 #include <llvm/IR/DataLayout.h>
 

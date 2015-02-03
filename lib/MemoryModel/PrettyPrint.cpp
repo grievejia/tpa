@@ -1,6 +1,6 @@
-#include "Precision/Context.h"
-#include "Memory/Memory.h"
-#include "Memory/Pointer.h"
+#include "MemoryModel/Precision/Context.h"
+#include "MemoryModel/Memory/Memory.h"
+#include "MemoryModel/Pointer/Pointer.h"
 
 #include <llvm/Support/raw_ostream.h>
 

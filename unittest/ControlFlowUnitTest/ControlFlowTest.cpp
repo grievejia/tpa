@@ -1,5 +1,5 @@
-#include "ControlFlow/PointerProgramBuilder.h"
-#include "DataFlow/ExternalPointerEffectTable.h"
+#include "TPA/ControlFlow/PointerProgramBuilder.h"
+#include "TPA/DataFlow/ExternalPointerEffectTable.h"
 #include "Utils/ParseLLVMAssembly.h"
 
 #include "gtest/gtest.h"

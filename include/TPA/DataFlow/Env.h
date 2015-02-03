@@ -1,8 +1,8 @@
 #ifndef TPA_ENV_H
 #define TPA_ENV_H
 
-#include "Memory/Memory.h"
-#include "Memory/Pointer.h"
+#include "MemoryModel/Memory/Memory.h"
+#include "MemoryModel/Pointer/Pointer.h"
 #include "Utils/VectorSetManager.h"
 
 #include <llvm/ADT/DenseMap.h>

@@ -1,9 +1,9 @@
-#include "Analysis/GlobalPointerAnalysis.h"
-#include "Analysis/TunablePointerAnalysis.h"
-#include "ControlFlow/SemiSparseProgramBuilder.h"
-#include "DataFlow/ExternalPointerEffectTable.h"
-#include "DataFlow/PointerAnalysisEngine.h"
-#include "Memory/MemoryManager.h"
+#include "TPA/Analysis/GlobalPointerAnalysis.h"
+#include "TPA/Analysis/TunablePointerAnalysis.h"
+#include "TPA/ControlFlow/SemiSparseProgramBuilder.h"
+#include "TPA/DataFlow/ExternalPointerEffectTable.h"
+#include "TPA/DataFlow/PointerAnalysisEngine.h"
+#include "MemoryModel/Memory/MemoryManager.h"
 
 #include <llvm/IR/DataLayout.h>
 #include <llvm/Support/raw_ostream.h>

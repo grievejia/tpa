@@ -1,7 +1,7 @@
 #ifndef TPA_TUNABLE_ALIAS_ANALYSIS_PASS_H
 #define TPA_TUNABLE_ALIAS_ANALYSIS_PASS_H
 
-#include "Analysis/TunableAliasAnalysis.h"
+#include "TPA/Analysis/TunableAliasAnalysis.h"
 
 #include <llvm/Pass.h>
 #include <llvm/Analysis/AliasAnalysis.h>

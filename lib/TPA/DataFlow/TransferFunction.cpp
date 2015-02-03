@@ -1,11 +1,11 @@
-#include "ControlFlow/PointerProgram.h"
-#include "DataFlow/Env.h"
-#include "DataFlow/ExternalPointerEffectTable.h"
-#include "DataFlow/StoreManager.h"
-#include "DataFlow/TransferFunction.h"
-#include "Memory/MemoryManager.h"
-#include "Memory/PointerManager.h"
-#include "Precision/ProgramLocation.h"
+#include "TPA/ControlFlow/PointerProgram.h"
+#include "TPA/DataFlow/Env.h"
+#include "TPA/DataFlow/ExternalPointerEffectTable.h"
+#include "TPA/DataFlow/StoreManager.h"
+#include "TPA/DataFlow/TransferFunction.h"
+#include "MemoryModel/Memory/MemoryManager.h"
+#include "MemoryModel/Pointer/PointerManager.h"
+#include "MemoryModel/Precision/ProgramLocation.h"
 
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Constants.h>

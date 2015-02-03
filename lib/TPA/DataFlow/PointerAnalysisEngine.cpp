@@ -1,13 +1,13 @@
-#include "ControlFlow/PointerCFG.h"
-#include "ControlFlow/PointerProgram.h"
-#include "DataFlow/Env.h"
-#include "DataFlow/Memo.h"
-#include "DataFlow/PointerAnalysisEngine.h"
-#include "DataFlow/StaticCallGraph.h"
-#include "DataFlow/StoreManager.h"
-#include "Memory/MemoryManager.h"
-#include "Memory/PointerManager.h"
-#include "Precision/KLimitContext.h"
+#include "TPA/ControlFlow/PointerCFG.h"
+#include "TPA/ControlFlow/PointerProgram.h"
+#include "TPA/DataFlow/Env.h"
+#include "TPA/DataFlow/Memo.h"
+#include "TPA/DataFlow/PointerAnalysisEngine.h"
+#include "TPA/DataFlow/StaticCallGraph.h"
+#include "TPA/DataFlow/StoreManager.h"
+#include "MemoryModel/Memory/MemoryManager.h"
+#include "MemoryModel/Pointer/PointerManager.h"
+#include "MemoryModel/Precision/KLimitContext.h"
 
 #include <llvm/Support/raw_ostream.h>
 

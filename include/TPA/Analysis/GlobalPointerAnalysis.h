@@ -1,8 +1,8 @@
 #ifndef TPA_GLOBAL_POINTER_ANALYSIS_H
 #define TPA_GLOBAL_POINTER_ANALYSIS_H
 
-#include "DataFlow/Env.h"
-#include "DataFlow/Store.h"
+#include "TPA/DataFlow/Env.h"
+#include "TPA/DataFlow/Store.h"
 
 namespace llvm
 {

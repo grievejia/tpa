@@ -1,8 +1,8 @@
-#include "Analysis/GlobalPointerAnalysis.h"
-#include "DataFlow/StoreManager.h"
-#include "Memory/MemoryManager.h"
-#include "Memory/PointerManager.h"
-#include "Pass/GlobalPointerAnalysisPass.h"
+#include "TPA/Analysis/GlobalPointerAnalysis.h"
+#include "TPA/DataFlow/StoreManager.h"
+#include "MemoryModel/Memory/MemoryManager.h"
+#include "MemoryModel/Pointer/PointerManager.h"
+#include "TPA/Pass/GlobalPointerAnalysisPass.h"
 
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Module.h>

@@ -1,7 +1,7 @@
 #ifndef TPA_STORE_MANAGER_H
 #define TPA_STORE_MANAGER_H
 
-#include "DataFlow/Store.h"
+#include "TPA/DataFlow/Store.h"
 
 namespace tpa
 {

@@ -1,7 +1,7 @@
 #ifndef TPA_MEMORY_MANAGER_H
 #define TPA_MEMORY_MANAGER_H
 
-#include "Memory/Memory.h"
+#include "MemoryModel/Memory/Memory.h"
 
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/DataLayout.h>
