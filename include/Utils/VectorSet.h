@@ -10,7 +10,7 @@ namespace tpa
 // Implementing set based on sorted std::vector.
 // It is used primarily for representing points-to set
 template <typename T, typename Compare = std::less<T>>
-class SortedVectorSet
+class VectorSet
 {
 public:
 	// Export ElemType
@@ -25,8 +25,8 @@ public:
 	using iterator = typename VectorSetType::iterator;
 	using const_iterator = typename VectorSetType::const_iterator;
 
-	SortedVectorSet() = default;
-	SortedVectorSet(typename VectorSetType::size_type size): set(size) {}
+	VectorSet() = default;
+	VectorSet(typename VectorSetType::size_type size): set(size) {}
 
 	// Return true iff the set is changed
 	bool insert(ElemType elem)
@@ -51,7 +51,7 @@ public:
 	}
 
 	// Return true iff the set is changed
-	bool mergeWith(const SortedVectorSet<T>& other)
+	bool mergeWith(const VectorSet<T>& other)
 	{
 		bool changed = false;
 
@@ -77,7 +77,7 @@ public:
 	}
 
 	// Return true if *this is a superset of other
-	bool contains(const SortedVectorSet<T>& other) const
+	bool contains(const VectorSet<T>& other) const
 	{
 		if (getSize() < other.getSize())
 			return false;
@@ -97,16 +97,16 @@ public:
 		return set.empty();
 	}
 
-	bool operator==(const SortedVectorSet<T>& other) const
+	bool operator==(const VectorSet<T>& other) const
 	{
 		return set == other.set;
 	}
-	bool operator!=(const SortedVectorSet<T>& other) const
+	bool operator!=(const VectorSet<T>& other) const
 	{
 		return !(*this == other);
 	}
 
-	bool intersects(const SortedVectorSet<T>& other) const
+	bool intersects(const VectorSet<T>& other) const
 	{
 		VectorSetType intersectSet;
 		if (this == &other)
@@ -122,7 +122,7 @@ public:
 	const_iterator begin() const { return set.begin(); }
 	const_iterator end() const { return set.end(); }
 
-	static std::vector<T> intersects(const SortedVectorSet<T>& s0, const SortedVectorSet<T>& s1)
+	static std::vector<T> intersects(const VectorSet<T>& s0, const VectorSet<T>& s1)
 	{
 		std::vector<T> intersectSet;
 		std::set_intersection(s0.begin(), s0.end(), s1.begin(), s1.end(),

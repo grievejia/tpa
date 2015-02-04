@@ -1,7 +1,7 @@
 #ifndef TPA_STORE_MANAGER_H
 #define TPA_STORE_MANAGER_H
 
-#include "TPA/DataFlow/Store.h"
+#include "MemoryModel/PtsSet/Store.h"
 
 namespace tpa
 {
@@ -9,9 +9,7 @@ namespace tpa
 class BindingManager
 {
 public:
-	using PtsSet = Store::PtsSet;
 	using BindingType = Store::MappingType;
-	using PtsSetManager = VectorSetManager<const MemoryLocation*>;
 private:
 	// For creating new ptsset
 	PtsSetManager& valueManager;
@@ -90,7 +88,6 @@ public:
 class StoreManager
 {
 private:
-	using PtsSet = Store::PtsSet;
 	BindingManager globalManager, stackManager, heapManager;
 
 	template <typename OpType>
@@ -105,9 +102,9 @@ private:
 			return op(heapManager, store.getHeapStore());
 	}
 public:
-	StoreManager(BindingManager::PtsSetManager& m): globalManager(m), stackManager(m), heapManager(m) {}
+	StoreManager(PtsSetManager& m): globalManager(m), stackManager(m), heapManager(m) {}
 
-	BindingManager::PtsSetManager& getPtsSetManager() { return globalManager.getPtsSetManager(); }
+	PtsSetManager& getPtsSetManager() { return globalManager.getPtsSetManager(); }
 
 	Store getEmptyStore() const
 	{

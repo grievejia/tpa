@@ -1,5 +1,5 @@
-#include "TPA/DataFlow/Env.h"
-#include "TPA/DataFlow/StoreManager.h"
+#include "MemoryModel/PtsSet/Env.h"
+#include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "Utils/ParseLLVMAssembly.h"
@@ -15,7 +15,7 @@ namespace {
 
 TEST(InterpreterTest, PtsSetTest)
 {
-	VectorSetManager<const MemoryLocation*> pSetManager;
+	PtsSetManager pSetManager;
 
 	auto testModule = parseAssembly(
 		"@g1 = common global i32* null, align 8"
@@ -80,7 +80,7 @@ TEST(InterpreterTest, PtsSetTest)
 TEST(InterpreterTest, EnvTest)
 {
 	auto ptrManager = PointerManager();
-	VectorSetManager<const MemoryLocation*> pSetManager;
+	PtsSetManager pSetManager;
 
 	auto testModule = parseAssembly(
 		"@g1 = common global i32* null, align 8"
@@ -164,7 +164,7 @@ TEST(InterpreterTest, EnvTest)
 
 TEST(InterpreterTest, StoreTest)
 {
-	VectorSetManager<const MemoryLocation*> pSetManager;
+	PtsSetManager pSetManager;
 
 	auto testModule = parseAssembly(
 		"declare noalias i8* @malloc(i64) \n"

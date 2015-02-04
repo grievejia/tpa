@@ -8,7 +8,7 @@ namespace tpa
 template <typename MapType, typename KeyType, typename ValueType>
 static inline bool insertMap(MapType& m, const KeyType& k, const ValueType& v)
 {
-	using VectorType = SortedVectorSet<ValueType>;
+	using VectorType = VectorSet<ValueType>;
 
 	auto insertPair = m.insert(std::make_pair(k, VectorType()));
 	auto setChanged = insertPair.first->second.insert(v);

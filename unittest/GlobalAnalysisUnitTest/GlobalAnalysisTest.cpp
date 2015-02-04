@@ -1,6 +1,6 @@
-#include "TPA/Analysis/GlobalPointerAnalysis.h"
-#include "TPA/DataFlow/Env.h"
-#include "TPA/DataFlow/StoreManager.h"
+#include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
+#include "MemoryModel/PtsSet/Env.h"
+#include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "Utils/ParseLLVMAssembly.h"
@@ -35,7 +35,7 @@ TEST(GlobalAnalysisTest, BasicTest)
 	auto dataLayout = DataLayout(testModule.get());
 	auto memManager = MemoryManager(dataLayout);
 
-	VectorSetManager<const MemoryLocation*> pSetManager;
+	PtsSetManager pSetManager;
 	auto storeManager = StoreManager(pSetManager);
 
 	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager, storeManager);
@@ -107,7 +107,7 @@ TEST(GlobalAnalysisTest, BasicTest2)
 	auto dataLayout = DataLayout(testModule.get());
 	auto memManager = MemoryManager(dataLayout);
 
-	VectorSetManager<const MemoryLocation*> pSetManager;
+	PtsSetManager pSetManager;
 	auto storeManager = StoreManager(pSetManager);
 
 	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager, storeManager);
@@ -191,7 +191,7 @@ TEST(GlobalAnalysisTest, BasicTest3)
 	auto dataLayout = DataLayout(testModule.get());
 	auto memManager = MemoryManager(dataLayout);
 
-	VectorSetManager<const MemoryLocation*> pSetManager;
+	PtsSetManager pSetManager;
 	auto storeManager = StoreManager(pSetManager);
 
 	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager, storeManager);

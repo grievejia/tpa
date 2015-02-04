@@ -38,7 +38,7 @@ private:
 	// 0 = unset
 	size_t rpo;
 
-	using NodeSet = SortedVectorSet<PointerCFGNode*>;
+	using NodeSet = VectorSet<PointerCFGNode*>;
 	// CFG edges
 	NodeSet pred, succ;
 	// Top-level def-use edges

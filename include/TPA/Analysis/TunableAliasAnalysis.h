@@ -1,7 +1,7 @@
 #ifndef TPA_TUNABLE_ALIAS_ANALYSIS_H
 #define TPA_TUNABLE_ALIAS_ANALYSIS_H
 
-#include "TPA/DataFlow/Env.h"
+#include "MemoryModel/PtsSet/Env.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 
 #include <memory>
@@ -30,7 +30,7 @@ class TunableAliasAnalysis
 private:
 	PointerManager ptrManager;
 	std::unique_ptr<MemoryManager> memManager;
-	VectorSetManager<const MemoryLocation*> pSetManager;
+	PtsSetManager pSetManager;
 
 	Env env;
 public:

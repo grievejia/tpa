@@ -1,10 +1,10 @@
 #ifndef TPA_TUNABLE_POINTER_ANALYSIS_H
 #define TPA_TUNABLE_POINTER_ANALYSIS_H
 
-#include "TPA/DataFlow/Env.h"
+#include "MemoryModel/PtsSet/Env.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/StaticCallGraph.h"
-#include "TPA/DataFlow/StoreManager.h"
+#include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 
 #include <memory>
@@ -26,7 +26,7 @@ class TunablePointerAnalysis
 private:
 	PointerManager ptrManager;
 	std::unique_ptr<MemoryManager> memManager;
-	VectorSetManager<const MemoryLocation*> pSetManager;
+	PtsSetManager pSetManager;
 	StoreManager storeManager;
 
 	Env env;

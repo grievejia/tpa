@@ -1,4 +1,4 @@
-#include "TPA/Analysis/GlobalPointerAnalysis.h"
+#include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
 #include "TPA/ControlFlow/SemiSparseProgramBuilder.h"
 #include "TPA/DataFlow/ExternalPointerEffectTable.h"

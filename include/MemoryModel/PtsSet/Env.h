@@ -3,7 +3,7 @@
 
 #include "MemoryModel/Memory/Memory.h"
 #include "MemoryModel/Pointer/Pointer.h"
-#include "Utils/VectorSetManager.h"
+#include "MemoryModel/PtsSet/PtsSetManager.h"
 
 #include <llvm/ADT/DenseMap.h>
 
@@ -13,15 +13,13 @@ namespace tpa
 class Env
 {
 private:
-	using PtsSet = SortedVectorSet<const MemoryLocation*>;
-
-	VectorSetManager<const MemoryLocation*>& pSetManager;
+	PtsSetManager& pSetManager;
 
 	llvm::DenseMap<const Pointer*, const PtsSet*> env;
 public:
 	using const_iterator = decltype(env)::const_iterator;
 
-	Env(VectorSetManager<const MemoryLocation*>& m): pSetManager(m) {}
+	Env(PtsSetManager& m): pSetManager(m) {}
 	Env(Env&& other): pSetManager(other.pSetManager), env(std::move(other.env)) {}
 	Env& operator=(Env&& other)
 	{

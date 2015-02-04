@@ -1,11 +1,11 @@
-#include "TPA/Analysis/GlobalPointerAnalysis.h"
+#include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
 #include "TPA/Analysis/TunableAliasAnalysis.h"
 #include "TPA/ControlFlow/SemiSparseProgramBuilder.h"
 #include "TPA/DataFlow/ExternalPointerEffectTable.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
 #include "TPA/DataFlow/StaticCallGraph.h"
-#include "TPA/DataFlow/StoreManager.h"
+#include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 
 #include <llvm/IR/DataLayout.h>
@@ -53,7 +53,7 @@ AliasResult TunableAliasAnalysis::aliasQuery(const Pointer* ptr0, const Pointer*
 	if (pSet0->has(memManager->getUniversalLocation()) || pSet1->has(memManager->getUniversalLocation()))
 		return AliasResult::MayAlias;
 
-	auto intersectSet = SortedVectorSet<const MemoryLocation*>::intersects(*pSet0, *pSet1);
+	auto intersectSet = VectorSet<const MemoryLocation*>::intersects(*pSet0, *pSet1);
 	if (!intersectSet.empty())
 	{
 		if (intersectSet.size() == 1)

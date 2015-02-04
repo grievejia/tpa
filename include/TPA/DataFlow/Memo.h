@@ -1,7 +1,7 @@
 #ifndef TPA_MEMO_H
 #define TPA_MEMO_H
 
-#include "TPA/DataFlow/StoreManager.h"
+#include "MemoryModel/PtsSet/StoreManager.h"
 
 #include <llvm/ADT/DenseMap.h>
 

@@ -2,7 +2,7 @@
 #define TPA_STORE_H
 
 #include "MemoryModel/Memory/Memory.h"
-#include "Utils/VectorSetManager.h"
+#include "MemoryModel/PtsSet/PtsSetManager.h"
 
 #include <llvm/ADT/DenseMap.h>
 
@@ -107,7 +107,7 @@ public:
 class Store
 {
 public:
-	using PtsSet = SortedVectorSet<const MemoryLocation*>;
+	using PtsSet = VectorSet<const MemoryLocation*>;
 	using MappingType = Bindings<const MemoryLocation*, const PtsSet*>;
 private:
 	MappingType globalMem, stackMem, heapMem;

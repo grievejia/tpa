@@ -1,6 +1,5 @@
 
 set (TPASourceCodes
-	Analysis/GlobalPointerAnalysis.cpp
 	Analysis/TunableAliasAnalysis.cpp
 	Analysis/TunablePointerAnalysis.cpp
 	ControlFlow/PointerCFG.cpp

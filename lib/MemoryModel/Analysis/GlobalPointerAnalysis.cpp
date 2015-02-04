@@ -1,5 +1,5 @@
-#include "TPA/Analysis/GlobalPointerAnalysis.h"
-#include "TPA/DataFlow/StoreManager.h"
+#include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
+#include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 
