@@ -8,6 +8,11 @@
 
 #include <memory>
 
+namespace llvm
+{
+	class raw_ostream;
+}
+
 namespace tpa
 {
 
@@ -148,6 +153,8 @@ public:
 	{
 		return !(*this == other);
 	}
+
+	void dump(llvm::raw_ostream&) const;
 
 	friend class StoreManager;
 };

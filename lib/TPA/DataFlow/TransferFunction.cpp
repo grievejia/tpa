@@ -1,6 +1,6 @@
-#include "TPA/ControlFlow/PointerProgram.h"
+#include "PointerControlFlow//PointerProgram.h"
 #include "MemoryModel/PtsSet/Env.h"
-#include "TPA/DataFlow/ExternalPointerEffectTable.h"
+#include "PointerControlFlow/ExternalPointerEffectTable.h"
 #include "MemoryModel/PtsSet/StoreManager.h"
 #include "TPA/DataFlow/TransferFunction.h"
 #include "MemoryModel/Memory/MemoryManager.h"
@@ -210,7 +210,8 @@ std::pair<bool, bool> TransferFunction::evalStore(const Context* ctx, const Stor
 {
 	auto srcPtr = ptrManager.getPointer(ctx, storeNode->getSrc());
 	auto dstPtr = ptrManager.getPointer(ctx, storeNode->getDest());
-	assert(srcPtr != nullptr && dstPtr != nullptr);
+	if (srcPtr == nullptr || dstPtr == nullptr)
+		return std::make_pair(false, false);
 
 	return evalStore(dstPtr, srcPtr, env, store);
 }

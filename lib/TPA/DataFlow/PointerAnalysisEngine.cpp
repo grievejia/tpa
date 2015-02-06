@@ -1,5 +1,5 @@
-#include "TPA/ControlFlow/PointerCFG.h"
-#include "TPA/ControlFlow/PointerProgram.h"
+#include "PointerControlFlow//PointerCFG.h"
+#include "PointerControlFlow//PointerProgram.h"
 #include "MemoryModel/PtsSet/Env.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
@@ -35,7 +35,7 @@ void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* ca
 {
 	// Update call graph first
 	auto newCtx = KLimitContext::pushContext(ctx, callNode->getInstruction(), callee);
-	auto callGraphChanged = callGraph.insertCallEdge(std::make_pair(ctx, callNode->getInstruction()), std::make_pair(newCtx, callee));
+	callGraph.insertCallEdge(std::make_pair(ctx, callNode->getInstruction()), std::make_pair(newCtx, callee));
 
 	// Handle external function call here
 	if (callee->isDeclaration() || callee->isIntrinsic())
@@ -68,23 +68,20 @@ void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* ca
 	auto storeChanged = memo.updateMemo(newCtx, tgtCFG->getEntryNode(), store);
 	if (envChanged || storeChanged)
 		funWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getEntryNode());
-	else if (callGraphChanged)
-	{
-		// Env and Store is left intact but the call graph is changed.
-		// This situation typically means that we have a premature fixpoint here. Evaluate the return node of the caller might be one solution
-		funWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getExitNode());
-	}
+	propagateMemoryLevel(ctx, callNode, store, workList);
 }
 
 void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* cfg, Env& env, EvaluationWorkList& funWorkList, const PointerProgram& prog)
 {
 	auto& workList = funWorkList.getLocalWorkList(ctx, cfg);
 
-	errs() << "<Function " << cfg->getFunction()->getName() << ">\n";
+	//errs() << "<Function " << cfg->getFunction()->getName() << ">\n";
 	while (!workList.isEmpty())
 	{
 		auto node = workList.dequeue();
+		
 		errs() << "node = " << node->toString() << "\n";
+
 		switch (node->getType())
 		{
 			case PointerCFGNodeType::Entry:
@@ -157,7 +154,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 				bool storeChanged;
 				std::tie(isValid, storeChanged) = transferFunction.evalStore(ctx, storeNode, env, store);
 				
-				if (isValid && storeChanged)
+				if (isValid)
 					propagateMemoryLevel(ctx, storeNode, store, workList);
 				break;
 			}
@@ -216,6 +213,9 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 							funWorkList.enqueue(oldCtx, oldCFG, succ);
 						}
 					}
+					if (envChanged)
+						for (auto succ: callNode->uses())
+							funWorkList.enqueue(oldCtx, oldCFG, succ);
 				}
 
 				break;

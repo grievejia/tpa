@@ -1,7 +1,7 @@
 #ifndef TPA_SEMI_SPARSE_PROGRAM_BUILDER_H
 #define TPA_SEMI_SPARSE_PROGRAM_BUILDER_H
 
-#include "TPA/ControlFlow/PointerProgramBuilder.h"
+#include "PointerControlFlow//PointerProgramBuilder.h"
 
 namespace tpa
 {

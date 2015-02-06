@@ -224,4 +224,32 @@ TEST(MemoryTest, OffsetMemoryObjectTest3)
 	EXPECT_NE(obj6, loc2);
 }
 
+TEST(MemoryTest, OffsetMemoryObjectTest4)
+{
+	auto testModule = parseAssembly(
+		"@arr = global [1 x [2 x i32]] [[2 x i32] [i32 8, i32 8]], align 4\n"
+	);
+
+	auto arr = testModule->global_begin();
+
+	auto dataLayout = DataLayout(testModule.get());
+	auto memManager = MemoryManager(dataLayout);
+
+	auto objArr = memManager.allocateMemory(ProgramLocation(Context::getGlobalContext(), arr), arr->getType()->getElementType());
+	auto loc0 = memManager.offsetMemory(objArr, 0);
+	auto loc1 = memManager.offsetMemory(loc0, 4);
+	auto loc2 = memManager.offsetMemory(loc0, 8);
+
+	EXPECT_EQ(loc0, loc1);
+	EXPECT_EQ(loc1, loc2);
+	EXPECT_TRUE(loc0->isSummaryLocation());
+	EXPECT_TRUE(loc1->isSummaryLocation());
+	EXPECT_TRUE(loc2->isSummaryLocation());
+
+	auto loc3 = memManager.offsetMemory(loc1, 4);
+	auto loc4 = memManager.offsetMemory(loc2, 16);
+	EXPECT_EQ(loc1, loc3);
+	EXPECT_EQ(loc2, loc4);
+}
+
 }	// end of anonymous namespace

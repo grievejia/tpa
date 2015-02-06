@@ -1,7 +1,7 @@
 #include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
-#include "TPA/ControlFlow/SemiSparseProgramBuilder.h"
-#include "TPA/DataFlow/ExternalPointerEffectTable.h"
+#include "PointerControlFlow//SemiSparseProgramBuilder.h"
+#include "PointerControlFlow/ExternalPointerEffectTable.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 

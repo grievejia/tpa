@@ -1,5 +1,6 @@
-#include "TPA/ControlFlow/PointerProgram.h"
+#include "PointerControlFlow//PointerProgram.h"
 
+#include <llvm/IR/Constants.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
 
@@ -108,7 +109,12 @@ std::string ReturnNode::toString() const
 	raw_string_ostream os(rets);
 	os << "[RET] return ";
 	if (ret != nullptr)
-		os << ret->getName();
+	{
+		if (isa<ConstantPointerNull>(ret))
+			os << "null";
+		else
+			os << ret->getName();
+	}
 	return os.str();
 }
 

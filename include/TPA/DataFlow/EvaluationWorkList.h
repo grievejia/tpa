@@ -1,7 +1,7 @@
 #ifndef TPA_EVALUATION_WORKLIST_H
 #define TPA_EVALUATION_WORKLIST_H
 
-#include "TPA/ControlFlow/PointerCFG.h"
+#include "PointerControlFlow//PointerCFG.h"
 #include "Utils/Hashing.h"
 #include "Utils/WorkList.h"
 

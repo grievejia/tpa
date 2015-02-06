@@ -7,6 +7,11 @@
 
 #include <llvm/ADT/DenseMap.h>
 
+namespace llvm
+{
+	class raw_ostream;
+}
+
 namespace tpa
 {
 
@@ -107,6 +112,8 @@ public:
 	size_t getSize() const { return env.size(); }
 	const_iterator begin() const { return env.begin(); }
 	const_iterator end() const { return env.end(); }
+
+	void dump(llvm::raw_ostream&) const; 
 };
 
 }

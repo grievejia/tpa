@@ -2,12 +2,7 @@
 set (TPASourceCodes
 	Analysis/TunableAliasAnalysis.cpp
 	Analysis/TunablePointerAnalysis.cpp
-	ControlFlow/PointerCFG.cpp
-	ControlFlow/PointerProgramBuilder.cpp
-	ControlFlow/SemiSparseProgramBuilder.cpp
-	ControlFlow/WriteDotFile.cpp
 	DataFlow/EvaluationWorkList.cpp
-	DataFlow/ExternalPointerEffectTable.cpp
 	DataFlow/PointerAnalysisEngine.cpp
 	DataFlow/StaticCallGraph.cpp
 	DataFlow/TransferFunction.cpp
@@ -18,4 +13,5 @@ set (TPASourceCodes
 )
 
 add_library (TPA SHARED ${TPASourceCodes})
+target_link_libraries (TPA PointerControlFlow)
 target_link_libraries (TPA MemoryModel)

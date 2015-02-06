@@ -1,6 +1,8 @@
-#include "MemoryModel/Precision/Context.h"
-#include "MemoryModel/Memory/Memory.h"
 #include "MemoryModel/Pointer/Pointer.h"
+#include "MemoryModel/Precision/Context.h"
+#include "MemoryModel/PtsSet/Env.h"
+#include "MemoryModel/PtsSet/Store.h"
+#include "MemoryModel/Memory/Memory.h"
 
 #include <llvm/Support/raw_ostream.h>
 
@@ -56,6 +58,39 @@ raw_ostream& operator<<(raw_ostream& os, const MemoryLocation& l)
 		os << "[]";
 	os << "(" << l.getMemoryObject()->getAllocationSite() << ", " << l.getOffset() << ")";
 	return os;
+}
+
+void Env::dump(raw_ostream& os) const
+{
+	os << "\n----- Env -----\n";
+	for (auto const& mapping: env)
+	{
+		os << *mapping.first << "  -->>  { ";
+		for (auto loc: *mapping.second)
+			os << *loc << " ";
+		os << "}\n";
+	}
+	os << "----- END -----\n\n";
+}
+
+void Store::dump(raw_ostream& os) const
+{
+	auto dumpBinding = [&os] (const MappingType& bindings)
+	{
+		for (auto const& mapping: bindings)
+		{
+			os << *mapping.first << "  -->>  { ";
+			for (auto loc: *mapping.second)
+				os << *loc << " ";
+			os << "}\n";
+		}
+	};
+
+	os << "\n----- Store -----\n";
+	dumpBinding(globalMem);
+	dumpBinding(stackMem);
+	dumpBinding(heapMem);
+	os << "----- END -----\n\n";
 }
 
 }
