@@ -59,6 +59,13 @@ public:
 	{
 		return !(*this == other);
 	}
+	bool operator<(const MemoryLocation& other) const
+	{
+		if (memObj != other.memObj)
+			return memObj < other.memObj;
+		else
+			return offset < other.offset;
+	}
 
 	friend class MemoryManager;
 };

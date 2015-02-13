@@ -1,4 +1,4 @@
-#include "PointerControlFlow/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 
 using namespace llvm;
 

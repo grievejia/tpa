@@ -1,5 +1,5 @@
-#include "PointerControlFlow//PointerProgramBuilder.h"
-#include "PointerControlFlow/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/ControlFlow/PointerProgramBuilder.h"
+#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 #include "Utils/ParseLLVMAssembly.h"
 
 #include "gtest/gtest.h"

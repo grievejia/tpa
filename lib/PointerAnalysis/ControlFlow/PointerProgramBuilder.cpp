@@ -1,5 +1,5 @@
-#include "PointerControlFlow//PointerProgramBuilder.h"
-#include "PointerControlFlow/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/ControlFlow/PointerProgramBuilder.h"
+#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/CFG.h>
@@ -476,6 +476,9 @@ PointerProgram PointerProgramBuilder::buildPointerProgram(const Module& module)
 
 	for (auto const& f: module)
 	{
+		if (f.hasAddressTaken())
+			prog.addAddrTakenFunction(&f);
+		
 		if (f.isDeclaration())
 			continue;
 

@@ -170,7 +170,7 @@ const MemoryLocation* MemoryManager::offsetMemory(const MemoryLocation* loc, siz
 	else
 	{
 		// If we start from a summary object, then no matter how large the offset is, we should always end up within the object itself
-		// If we start from a non-summary object, we should always be able to "jump pass" the possible summary objects ahead of it
+		// If we start from a non-summary object, we should be able to "jump pass" the possible summary objects ahead of it
 		auto locOffset = loc->getOffset();
 		for (auto const& arrayTriple: loc->getMemoryObject()->arrayLayout)
 		{
@@ -181,7 +181,7 @@ const MemoryLocation* MemoryManager::offsetMemory(const MemoryLocation* loc, siz
 	}
 }
 
-std::vector<const MemoryLocation*> MemoryManager::getAllOffsetLocations(const MemoryLocation* loc)
+std::vector<const MemoryLocation*> MemoryManager::getAllOffsetLocations(const MemoryLocation* loc) const
 {
 	auto ret = std::vector<const MemoryLocation*>();
 

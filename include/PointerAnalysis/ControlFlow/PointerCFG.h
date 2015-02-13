@@ -1,6 +1,7 @@
 #ifndef TPA_POINTER_CFG_H
 #define TPA_POINTER_CFG_H
 
+#include "PointerAnalysis/ControlFlow/NodeMixins.h"
 #include "Utils/UniquePtrIterator.h"
 #include "Utils/VectorSet.h"
 
@@ -12,17 +13,6 @@
 
 namespace tpa
 {
-
-enum class PointerCFGNodeType: std::uint8_t
-{
-	Entry,
-	Alloc,
-	Copy,
-	Load,
-	Store,
-	Call,
-	Ret,
-};
 
 // Nodes in the pointer CFG
 // Note that the constructors and destructors of this class and its subclasses are declared private. This is intentional because we don't want other entity except PointerCFG objects to create and destroy the nodes
@@ -121,202 +111,28 @@ public:
 	void insertDefUseEdge(PointerCFGNode* n);
 	void removeDefUseEdge(PointerCFGNode* n);
 
-	// For debugging
-	virtual std::string toString() const = 0;
-
 	friend class PointerCFG;
 };
 
 // EntryNode is, well, the entry of a PointerCFG
-class EntryNode: public PointerCFGNode
-{
-private:
-	EntryNode(): PointerCFGNode(PointerCFGNodeType::Entry, nullptr) {}
-public:
-	// Interface for LLVM-style rtti
-	static bool classof(const PointerCFGNode* n)
-	{
-		return n->getType() == PointerCFGNodeType::Entry;
-	}
-
-	std::string toString() const override;
-
-	friend class PointerCFG;
-};
+using EntryNode = EntryNodeMixin<PointerCFGNode>;
 
 // AllocNode represents a memory allocation operation
-class AllocNode: public PointerCFGNode
-{
-private:
-
-	AllocNode(const llvm::Instruction* i): PointerCFGNode(PointerCFGNodeType::Alloc, i) {}
-public:
-	const llvm::Value* getDest() const { return getInstruction(); }
-	llvm::Type* getAllocType() const;
-
-	// Interface for LLVM-style rtti
-	static bool classof(const PointerCFGNode* n)
-	{
-		return n->getType() == PointerCFGNodeType::Alloc;
-	}
-
-	std::string toString() const override;
-
-	friend class PointerCFG;
-};
+using AllocNode = AllocNodeMixin<PointerCFGNode>;
 
 // CopyNode represent a pointer-copy or pointer-arithmetic operation
 // It can have a single rhs and a non-zero offset, which means pointer arithmetic
 // Or it can have single or multiple rhs and a zero offset, which means pointer copy
-class CopyNode: public PointerCFGNode
-{
-private:
-	using SrcSet = std::vector<const llvm::Value*>;
+using CopyNode = CopyNodeMixin<PointerCFGNode>;
 
-	SrcSet srcs;
-	int offset;
-	bool arrayRef;
-
-	// Single-source copy
-	CopyNode(const llvm::Instruction* i, const llvm::Value* s, int o, bool r): PointerCFGNode(PointerCFGNodeType::Copy, i), offset(o), arrayRef(r)
-	{
-		srcs.push_back(s);
-	}
-	// Multi-source copy (with offset forced to 0)
-	CopyNode(const llvm::Instruction* i): PointerCFGNode(PointerCFGNodeType::Copy, i), offset(0) {}
-public:
-	using const_iterator = SrcSet::const_iterator;
-
-	const llvm::Value* getDest() const { return getInstruction(); }
-	const llvm::Value* getFirstSrc() const 
-	{
-		assert(!srcs.empty() && "Getting the front of an empty copy-list!");
-		return srcs.front();
-	}
-	int getOffset() const { return offset; }
-	bool isArrayRef() const { return arrayRef; }
-
-	void addSrc(const llvm::Value* v) { srcs.push_back(v); }
-	void removeSrc(const llvm::Value* v)
-	{
-		srcs.erase(std::remove(srcs.begin(), srcs.end(), v), srcs.end());
-	}
-	const llvm::Value* getSrc(unsigned idx) const { return srcs.at(idx); }
-	unsigned getNumSrc() const { return srcs.size(); }
-
-	const_iterator begin() const { return srcs.begin(); }
-	const_iterator end() const { return srcs.end(); }
-
-	// Interface for LLVM-style rtti
-	static bool classof(const PointerCFGNode* n)
-	{
-		return n->getType() == PointerCFGNodeType::Copy;
-	}
-
-	std::string toString() const override;
-
-	friend class PointerCFG;
-};
-
-class LoadNode: public PointerCFGNode
-{
-private:
-	const llvm::Value* src;
-
-	LoadNode(const llvm::Instruction* i, const llvm::Value* s): PointerCFGNode(PointerCFGNodeType::Load, i), src(s) {}
-public:
-	const llvm::Value* getDest() const { return getInstruction(); }
-	const llvm::Value* getSrc() const { return src; }
-
-	// Interface for LLVM-style rtti
-	static bool classof(const PointerCFGNode* n)
-	{
-		return n->getType() == PointerCFGNodeType::Load;
-	}
-
-	std::string toString() const override;
-
-	friend class PointerCFG;
-};
-
-class StoreNode: public PointerCFGNode
-{
-private:
-	const llvm::Value* dest;
-	const llvm::Value* src;
-
-	StoreNode(const llvm::Instruction* i, const llvm::Value* d, const llvm::Value* s): PointerCFGNode(PointerCFGNodeType::Store, i), dest(d), src(s) {}
-public:
-	const llvm::Value* getDest() const { return dest; }
-	const llvm::Value* getSrc() const { return src; }
-
-	static bool classof(const PointerCFGNode* n)
-	{
-		return n->getType() == PointerCFGNodeType::Store;
-	}
-
-	std::string toString() const override;
-
-	friend class PointerCFG;
-};
+using LoadNode = LoadNodeMixin<PointerCFGNode>;
+using StoreNode = StoreNodeMixin<PointerCFGNode>;
 
 // CallNode represent an ordinary function call
 // We won't try to distinguish direct and indirect function call here. Direct calls are translated into indirect calls with a single-destination pointer
-class CallNode: public PointerCFGNode
-{
-private:
-	using ArgumentSet = std::vector<const llvm::Value*>;
+using CallNode = CallNodeMixin<PointerCFGNode>;
 
-	// dest can be NULL here if the call returns void type
-	const llvm::Value* dest;
-	const llvm::Value* funPtr;
-	ArgumentSet args;
-
-	CallNode(const llvm::Instruction* i, const llvm::Value* f, const llvm::Value* d = nullptr): PointerCFGNode(PointerCFGNodeType::Call, i), dest(d), funPtr(f) {}
-public:
-	using const_iterator = ArgumentSet::const_iterator;
-
-	const llvm::Value* getDest() const { return dest; }
-	const llvm::Value* getFunctionPointer() const { return funPtr; }
-
-	void addArgument(const llvm::Value* v) { args.push_back(v); }
-	const llvm::Value* getArgument(unsigned idx) const { return args.at(idx); }
-	unsigned getNumArgument() const { return args.size(); }
-
-	const_iterator begin() const { return args.begin(); }
-	const_iterator end() const { return args.end(); }
-
-	// Interface for LLVM-style rtti
-	static bool classof(const PointerCFGNode* n)
-	{
-		return n->getType() == PointerCFGNodeType::Call;
-	}
-
-	std::string toString() const override;
-
-	friend class PointerCFG;
-};
-
-class ReturnNode: public PointerCFGNode
-{
-private:
-	// ret can be NULL if the function returns a void type
-	const llvm::Value* ret;
-
-	ReturnNode(const llvm::Instruction* i, const llvm::Value* r): PointerCFGNode(PointerCFGNodeType::Ret, i), ret(r) {}
-public:
-	const llvm::Value* getReturnValue() const { return ret; }
-
-	// Interface for LLVM-style rtti
-	static bool classof(const PointerCFGNode* n)
-	{
-		return n->getType() == PointerCFGNodeType::Ret;
-	}
-
-	std::string toString() const override;
-
-	friend class PointerCFG;
-};
+using ReturnNode = ReturnNodeMixin<PointerCFGNode>;
 
 // The CFG that only contains pointer-related operations
 

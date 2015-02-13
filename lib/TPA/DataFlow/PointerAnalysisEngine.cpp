@@ -1,5 +1,5 @@
-#include "PointerControlFlow//PointerCFG.h"
-#include "PointerControlFlow//PointerProgram.h"
+#include "PointerAnalysis/ControlFlow/PointerCFG.h"
+#include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "MemoryModel/PtsSet/Env.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
@@ -80,7 +80,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 	{
 		auto node = workList.dequeue();
 		
-		errs() << "node = " << node->toString() << "\n";
+		//errs() << "node = " << node->toString() << "\n";
 
 		switch (node->getType())
 		{

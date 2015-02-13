@@ -1,7 +1,7 @@
 #ifndef TPA_POINTER_PROGRAM_H
 #define TPA_POINTER_PROGRAM_H
 
-#include "PointerControlFlow//PointerCFG.h"
+#include "PointerAnalysis/ControlFlow/PointerCFG.h"
 
 #include <llvm/ADT/iterator_range.h>
 
@@ -60,6 +60,11 @@ public:
 	PointerCFG* createPointerCFGForFunction(const llvm::Function* f);
 	const PointerCFG* getPointerCFG(const llvm::Function* f) const;
 	PointerCFG* getPointerCFG(const llvm::Function* f);
+
+	void addAddrTakenFunction(const llvm::Function* f)
+	{
+		addrTakenFunctions.push_back(f);
+	}
 
 	const PointerCFG* getEntryCFG() const
 	{

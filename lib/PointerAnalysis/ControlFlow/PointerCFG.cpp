@@ -1,6 +1,6 @@
-#include "PointerControlFlow//PointerProgram.h"
+#include "PointerAnalysis/ControlFlow/PointerProgram.h"
 
-#include <llvm/IR/Instructions.h>
+
 
 using namespace llvm;
 
@@ -39,15 +39,10 @@ void PointerCFGNode::removeDefUseEdge(PointerCFGNode* node)
 	node->def.erase(this);
 }
 
-Type* AllocNode::getAllocType() const
-{
-	return cast<AllocaInst>(getInstruction())->getAllocatedType();
-}
-
 PointerCFG::PointerCFG(const Function* f): function(f), entryNode(nullptr), exitNode(nullptr)
 {
 	assert(f != nullptr);
-	entryNode = new EntryNode();
+	entryNode = new EntryNode(f);
 	nodes.emplace_back(entryNode);
 }
 
@@ -66,9 +61,6 @@ PointerCFG* PointerProgram::createPointerCFGForFunction(const llvm::Function* f)
 		assert(entryCFG == nullptr && "Two main() function in a single module?");
 		entryCFG = cfg;
 	}
-
-	if (f->hasAddressTaken())
-		addrTakenFunctions.push_back(f);
 
 	return cfg;
 }

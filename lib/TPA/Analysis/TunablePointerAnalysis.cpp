@@ -1,7 +1,7 @@
 #include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
-#include "PointerControlFlow//SemiSparseProgramBuilder.h"
-#include "PointerControlFlow/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/ControlFlow/SemiSparseProgramBuilder.h"
+#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 
@@ -29,18 +29,53 @@ void TunablePointerAnalysis::runOnModule(const llvm::Module& module)
 
 	auto extTable = ExternalPointerEffectTable();
 	auto builder = SemiSparseProgramBuilder(extTable);
-	auto prog = builder.buildSemiSparseProgram(module);
+	prog = builder.buildSemiSparseProgram(module);
 
 	auto ptrEngine = PointerAnalysisEngine(ptrManager, *memManager, storeManager, callGraph, memo, extTable);
 	ptrEngine.runOnProgram(prog, env, std::move(initStore));
 
-	for (auto const& mapping: env)
+	/*for (auto const& mapping: env)
 	{
 		errs() << *mapping.first << " --> { ";
 		for (auto loc: *mapping.second)
 			errs() << *loc << " ";
 		errs() << "}\n";
-	}
+	}*/
+}
+
+const PtsSet* TunablePointerAnalysis::getPtsSet(const Value* val) const
+{
+	assert(val != nullptr);
+	assert(val->getType()->isPointerTy());
+
+	val = val->stripPointerCasts();
+
+	auto ptr = ptrManager.getPointer(Context::getGlobalContext(), val);
+	assert(ptr != nullptr);
+	return getPtsSet(ptr);
+}
+
+const PtsSet* TunablePointerAnalysis::getPtsSet(const Pointer* ptr) const
+{
+	assert(ptr != nullptr);
+
+	auto pSet = env.lookup(ptr);
+	assert(pSet != nullptr);
+
+	return pSet;
+}
+
+std::vector<const llvm::Function*> TunablePointerAnalysis::getCallTargets(const Context* ctx, const llvm::Instruction* inst) const
+{
+	auto retVec = std::vector<const llvm::Function*>();
+
+	for (auto const& callTgt: callGraph.getCallTargets(std::make_pair(ctx, inst)))
+		retVec.push_back(callTgt.second);
+
+	std::sort(retVec.begin(), retVec.end());
+	retVec.erase(std::unique(retVec.begin(), retVec.end()), retVec.end());
+
+	return retVec;
 }
 
 }

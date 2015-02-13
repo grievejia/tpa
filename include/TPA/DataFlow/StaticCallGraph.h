@@ -16,7 +16,6 @@ namespace tpa
 {
 
 class Context;
-class CallNode;
 class PointerCFG;
 
 class StaticCallGraph

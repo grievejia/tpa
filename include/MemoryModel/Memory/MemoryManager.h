@@ -8,6 +8,7 @@
 #include <llvm/IR/Type.h>
 
 #include <unordered_map>
+#include <set>
 
 namespace tpa
 {
@@ -16,7 +17,7 @@ class MemoryManager
 {
 private:
 	std::unordered_map<ProgramLocation, MemoryObject> objPool;
-	std::unordered_set<MemoryLocation> locSet;
+	std::set<MemoryLocation> locSet;
 
 	MemoryObject universalObj;
 	MemoryObject nullObj;
@@ -43,7 +44,7 @@ public:
 	const MemoryLocation* offsetMemory(const MemoryObject* obj, size_t offset);
 	const MemoryLocation* offsetMemory(const MemoryLocation* loc, size_t offset);
 	// Return all the MemoryLocations that share the same MemoryObject as loc
-	std::vector<const MemoryLocation*> getAllOffsetLocations(const MemoryLocation* loc);
+	std::vector<const MemoryLocation*> getAllOffsetLocations(const MemoryLocation* loc) const;
 
 	const MemoryObject* createMemoryObjectForFunction(const llvm::Function* f);
 	const llvm::Function* getFunctionForObject(const MemoryObject* obj) const;

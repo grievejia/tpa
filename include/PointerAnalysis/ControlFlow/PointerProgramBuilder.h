@@ -1,7 +1,7 @@
 #ifndef TPA_POINTER_PROGRAM_BUILDER_H
 #define TPA_POINTER_PROGRAM_BUILDER_H
 
-#include "PointerControlFlow//PointerProgram.h"
+#include "PointerAnalysis/ControlFlow/PointerProgram.h"
 
 
 namespace llvm

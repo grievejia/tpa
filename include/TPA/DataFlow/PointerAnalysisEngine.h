@@ -7,7 +7,6 @@
 namespace tpa
 {
 
-class CallNode;
 class Env;
 class ExternalPointerEffectTable;
 class Memo;

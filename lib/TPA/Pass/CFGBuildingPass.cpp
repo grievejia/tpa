@@ -1,5 +1,5 @@
-#include "PointerControlFlow//SemiSparseProgramBuilder.h"
-#include "PointerControlFlow/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/ControlFlow/SemiSparseProgramBuilder.h"
+#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 #include "TPA/Pass/CFGBuildingPass.h"
 
 #include <llvm/IR/Module.h>

@@ -1,6 +1,8 @@
 #ifndef TPA_TRANSFER_FUNCTION_H
 #define TPA_TRANSFER_FUNCTION_H
 
+#include "PointerAnalysis/ControlFlow/PointerCFG.h"
+
 #include <utility>
 
 namespace tpa
@@ -14,12 +16,6 @@ class Store;
 class StoreManager;
 class ExternalPointerEffectTable;
 
-class AllocNode;
-class CopyNode;
-class LoadNode;
-class StoreNode;
-class CallNode;
-class ReturnNode;
 class PointerProgram;
 
 class Context;

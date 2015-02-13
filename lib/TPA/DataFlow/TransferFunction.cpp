@@ -1,6 +1,6 @@
-#include "PointerControlFlow//PointerProgram.h"
+#include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "MemoryModel/PtsSet/Env.h"
-#include "PointerControlFlow/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 #include "MemoryModel/PtsSet/StoreManager.h"
 #include "TPA/DataFlow/TransferFunction.h"
 #include "MemoryModel/Memory/MemoryManager.h"
