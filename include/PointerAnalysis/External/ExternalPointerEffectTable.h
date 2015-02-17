@@ -19,7 +19,7 @@ enum class PointerEffect
 	ReturnArg2,
 	ReturnStatic,
 	StoreArg0ToArg1,
-	MemcpyArg0ToArg1,
+	MemcpyArg1ToArg0,
 	Memset,
 };
 

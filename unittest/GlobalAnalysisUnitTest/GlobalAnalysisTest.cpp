@@ -1,5 +1,5 @@
 #include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
-#include "MemoryModel/PtsSet/Env.h"
+#include "MemoryModel/PtsSet/PtsEnv.h"
 #include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"

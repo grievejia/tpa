@@ -34,7 +34,7 @@ void TunableAliasAnalysis::runOnModule(const llvm::Module& module)
 	auto builder = SemiSparseProgramBuilder(extTable);
 	auto prog = builder.buildSemiSparseProgram(module);
 
-	auto memo = Memo(storeManager);
+	auto memo = Memo<PointerCFGNode>(storeManager);
 	auto callGraph = StaticCallGraph();
 	auto ptrEngine = PointerAnalysisEngine(ptrManager, *memManager, storeManager, callGraph, memo, extTable);
 	ptrEngine.runOnProgram(prog, env, std::move(initStore));

@@ -1,9 +1,9 @@
 #include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
-#include "TPA/Analysis/TunablePointerAnalysis.h"
+#include "MemoryModel/Memory/MemoryManager.h"
 #include "PointerAnalysis/ControlFlow/SemiSparseProgramBuilder.h"
 #include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "TPA/Analysis/TunablePointerAnalysis.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
-#include "MemoryModel/Memory/MemoryManager.h"
 
 #include <llvm/IR/DataLayout.h>
 #include <llvm/Support/raw_ostream.h>
@@ -33,14 +33,6 @@ void TunablePointerAnalysis::runOnModule(const llvm::Module& module)
 
 	auto ptrEngine = PointerAnalysisEngine(ptrManager, *memManager, storeManager, callGraph, memo, extTable);
 	ptrEngine.runOnProgram(prog, env, std::move(initStore));
-
-	/*for (auto const& mapping: env)
-	{
-		errs() << *mapping.first << " --> { ";
-		for (auto loc: *mapping.second)
-			errs() << *loc << " ";
-		errs() << "}\n";
-	}*/
 }
 
 const PtsSet* TunablePointerAnalysis::getPtsSet(const Value* val) const

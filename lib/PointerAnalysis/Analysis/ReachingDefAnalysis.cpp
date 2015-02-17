@@ -44,9 +44,9 @@ void evalExternalCall(const PointerCFGNode* node, const Function* f, ReachingDef
 
 			break;
 		}
-		case PointerEffect::MemcpyArg0ToArg1:
+		case PointerEffect::MemcpyArg1ToArg0:
 		{
-			auto dstVal = cs.getArgument(1);
+			auto dstVal = cs.getArgument(0);
 
 			if (auto pSet = ptrAnalysis.getPtsSet(dstVal))
 			{

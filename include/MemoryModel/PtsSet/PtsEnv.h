@@ -1,5 +1,5 @@
-#ifndef TPA_ENV_H
-#define TPA_ENV_H
+#ifndef TPA_PTS_ENV_H
+#define TPA_PTS_ENV_H
 
 #include "MemoryModel/Memory/Memory.h"
 #include "MemoryModel/Pointer/Pointer.h"
@@ -26,6 +26,7 @@ public:
 
 	Env(PtsSetManager& m): pSetManager(m) {}
 	Env(Env&& other): pSetManager(other.pSetManager), env(std::move(other.env)) {}
+	Env(const Env& other): pSetManager(other.pSetManager), env(other.env) {}
 	Env& operator=(Env&& other)
 	{
 		assert(&pSetManager == &other.pSetManager);

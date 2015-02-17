@@ -116,7 +116,7 @@ void processMemReadForExternalCall(const PointerCFGNode* node, const Function* c
 
 			break;
 		}
-		case PointerEffect::MemcpyArg0ToArg1:
+		case PointerEffect::MemcpyArg1ToArg0:
 		{
 			auto dstVal = cs.getArgument(0);
 
@@ -248,7 +248,10 @@ DefUseProgram DefUseProgramBuilder::buildDefUseProgram(const PointerProgram& pro
 		// Create the def-use graph from PointerCFG
 		auto dug = duProg.createDefUseGraphForFunction(cfg.getFunction());
 		buildDefUseGraph(*dug, cfg);
+		if (&cfg == prog.getEntryCFG())
+			duProg.setEntryGraph(dug);
 	}
+	duProg.addAddrTakenFunctions(prog.at_funs());
 
 	return duProg;
 }

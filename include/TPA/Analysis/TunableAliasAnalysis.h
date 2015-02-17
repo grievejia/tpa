@@ -1,7 +1,7 @@
 #ifndef TPA_TUNABLE_ALIAS_ANALYSIS_H
 #define TPA_TUNABLE_ALIAS_ANALYSIS_H
 
-#include "MemoryModel/PtsSet/Env.h"
+#include "MemoryModel/PtsSet/PtsEnv.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 
 #include <memory>

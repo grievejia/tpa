@@ -3,9 +3,11 @@
 #include "MemoryModel/Precision/KLimitContext.h"
 #include "MemoryModel/PtsSet/PtsEnv.h"
 #include "MemoryModel/PtsSet/StoreManager.h"
-#include "PointerAnalysis/ControlFlow/PointerProgram.h"
+#include "PointerAnalysis/DataFlow/DefUseProgram.h"
+#include "PointerAnalysis/DataFlow/ModRefSummary.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
+#include "TPA/DataFlow/SparseAnalysisEngine.h"
 #include "TPA/DataFlow/StaticCallGraph.h"
 
 #include <llvm/Support/raw_ostream.h>
@@ -15,22 +17,46 @@ using namespace llvm;
 namespace tpa
 {
 
-void PointerAnalysisEngine::propagateTopLevel(const PointerCFGNode* node, LocalWorkList& workList)
+void SparseAnalysisEngine::propagateTopLevel(const DefUseGraphNode* node, LocalWorkList& workList)
 {
-	for (auto succ: node->uses())
+	for (auto succ: node->top_succs())
 		workList.enqueue(succ);
 }
 
-void PointerAnalysisEngine::propagateMemoryLevel(const Context* ctx, const PointerCFGNode* node, const Store& store, LocalWorkList& workList)
+void SparseAnalysisEngine::propagateMemoryLevel(const Context* ctx, const DefUseGraphNode* node, const Store& store, LocalWorkList& workList)
 {
-	for (auto succ: node->succs())
+	for (auto const& mapping: node->mem_succs())
 	{
-		if (memo.updateMemo(ctx, succ, store))
-			workList.enqueue(succ);
+		auto loc = mapping.first;
+		if (auto pSet = store.lookup(loc))
+		{
+			for (auto succ: mapping.second)
+			{
+				if (memo.updateMemo(ctx, succ, loc, pSet))
+					workList.enqueue(succ);
+			}
+		}
 	}
 }
 
-void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* callNode, const Function* callee, const PointerProgram& prog, Env& env, Store store, GlobalWorkList& funWorkList, LocalWorkList& workList)
+Store SparseAnalysisEngine::pruneStore(const Store& store, const Function* f)
+{
+	auto retStore = storeManager.getEmptyStore();
+	auto& summary = summaryMap.getSummary(f);
+	for (auto loc: summary.mem_reads())
+	{
+		if (auto pSet = store.lookup(loc))
+			storeManager.strongUpdate(retStore, loc, pSet);
+	}
+	for (auto loc: summary.mem_writes())
+	{
+		if (auto pSet = store.lookup(loc))
+			storeManager.strongUpdate(retStore, loc, pSet);
+	}
+	return retStore;
+}
+
+void SparseAnalysisEngine::applyFunction(const Context* ctx, const CallDefUseNode* callNode, const llvm::Function* callee, const DefUseProgram& prog, Env& env, Store store, GlobalWorkList& funWorkList, LocalWorkList& workList)
 {
 	// Update call graph first
 	auto newCtx = KLimitContext::pushContext(ctx, callNode->getInstruction(), callee);
@@ -56,7 +82,7 @@ void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* ca
 		return;
 	}
 
-	auto tgtCFG = prog.getPointerCFG(callee);
+	auto tgtCFG = prog.getDefUseGraph(callee);
 	assert(tgtCFG != nullptr);
 
 	bool isValid, envChanged;
@@ -64,22 +90,20 @@ void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* ca
 	if (!isValid)
 		return;
 
+	auto prunedStore = pruneStore(store, callee);
 	auto storeChanged = memo.updateMemo(newCtx, tgtCFG->getEntryNode(), store);
 	if (envChanged || storeChanged)
 		funWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getEntryNode());
 	propagateMemoryLevel(ctx, callNode, store, workList);
 }
 
-void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* cfg, Env& env, GlobalWorkList& funWorkList, const PointerProgram& prog)
+void SparseAnalysisEngine::evalFunction(const Context* ctx, const DefUseGraph* dug, Env& env, GlobalWorkList& funWorkList, const DefUseProgram& prog)
 {
-	auto& workList = funWorkList.getLocalWorkList(ctx, cfg);
+	auto& workList = funWorkList.getLocalWorkList(ctx, dug);
 
-	//errs() << "<Function " << cfg->getFunction()->getName() << ">\n";
 	while (!workList.isEmpty())
 	{
 		auto node = workList.dequeue();
-		
-		//errs() << "node = " << node->toString() << "\n";
 
 		switch (node->getType())
 		{
@@ -96,7 +120,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 			}
 			case PointerCFGNodeType::Alloc:
 			{
-				auto allocNode = cast<AllocNode>(node);
+				auto allocNode = cast<AllocDefUseNode>(node);
 
 				auto envChanged = transferFunction.evalAlloc(ctx, allocNode, env);
 
@@ -107,7 +131,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 			}
 			case PointerCFGNodeType::Copy:
 			{
-				auto copyNode = cast<CopyNode>(node);
+				auto copyNode = cast<CopyDefUseNode>(node);
 
 				bool isValid;
 				bool envChanged;
@@ -120,7 +144,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 			}
 			case PointerCFGNodeType::Load:
 			{
-				auto loadNode = cast<LoadNode>(node);
+				auto loadNode = cast<LoadDefUseNode>(node);
 
 				auto optStore = memo.lookup(ctx, node);
 				if (!optStore)
@@ -142,7 +166,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 			}
 			case PointerCFGNodeType::Store:
 			{
-				auto storeNode = cast<StoreNode>(node);
+				auto storeNode = cast<StoreDefUseNode>(node);
 				
 				auto optStore = memo.lookup(ctx, node);
 				if (!optStore)
@@ -159,7 +183,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 			}
 			case PointerCFGNodeType::Call:
 			{
-				auto callNode = cast<CallNode>(node);
+				auto callNode = cast<CallDefUseNode>(node);
 				
 				auto optStore = memo.lookup(ctx, node);
 				if (!optStore)
@@ -175,12 +199,12 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 			}
 			case PointerCFGNodeType::Ret:
 			{
-				auto retNode = cast<ReturnNode>(node);
+				auto retNode = cast<ReturnDefUseNode>(node);
 
-				if (cfg == prog.getEntryCFG())
+				if (dug == prog.getEntryGraph())
 				{
 					// Return from main. Do nothing
-					errs() << "Reached program end\n";
+					errs() << "D Reached program end\n";
 					break;
 				}
 
@@ -189,31 +213,35 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 					break;
 				auto& store = *optStore;
 
-				for (auto retSite: callGraph.getCallSites(std::make_pair(ctx, cfg->getFunction())))
+				for (auto retSite: callGraph.getCallSites(std::make_pair(ctx, dug->getFunction())))
 				{
 					auto& oldCtx = retSite.first;
 					auto& callInst = retSite.second;
 
-					auto oldCFG = prog.getPointerCFG(callInst->getParent()->getParent());
+					auto oldCFG = prog.getDefUseGraph(callInst->getParent()->getParent());
 					assert(oldCFG != nullptr);
 					auto callNode = oldCFG->getNodeFromInstruction(callInst);
 					assert(callNode != nullptr);
 
 					bool isValid, envChanged;
-					std::tie(isValid, envChanged) = transferFunction.evalReturn(ctx, retNode, oldCtx, cast<CallNode>(callNode), env);
+					std::tie(isValid, envChanged) = transferFunction.evalReturn(ctx, retNode, oldCtx, cast<CallDefUseNode>(callNode), env);
 					if (!isValid)
 						break;
 
-					for (auto succ: callNode->succs())
+					for (auto const& mapping: callNode->mem_succs())
 					{
-						auto storeChanged = memo.updateMemo(oldCtx, succ, store);
-						if (envChanged || storeChanged)
+						auto loc = mapping.first;
+						if (auto pSet = store.lookup(loc))
 						{
-							funWorkList.enqueue(oldCtx, oldCFG, succ);
+							for (auto succ: mapping.second)
+							{
+								if (memo.updateMemo(oldCtx, succ, loc, pSet))
+									funWorkList.enqueue(oldCtx, oldCFG, succ);
+							}
 						}
 					}
 					if (envChanged)
-						for (auto succ: callNode->uses())
+						for (auto succ: callNode->top_succs())
 							funWorkList.enqueue(oldCtx, oldCFG, succ);
 				}
 
@@ -223,25 +251,25 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 	}
 }
 
-void PointerAnalysisEngine::runOnProgram(const PointerProgram& prog, Env& env, Store store)
+void SparseAnalysisEngine::runOnDefUseProgram(const DefUseProgram& prog, Env& env, Store store)
 {
 	// The function-level worklist
 	auto workList = GlobalWorkList();
 
 	// Initialize workList and memo
 	auto entryCtx = Context::getGlobalContext();
-	auto entryCFG = prog.getEntryCFG();
-	auto entryNode = entryCFG->getEntryNode();
+	auto entryGraph = prog.getEntryGraph();
+	auto entryNode = entryGraph->getEntryNode();
 	memo.updateMemo(entryCtx, entryNode, store);
-	workList.enqueue(entryCtx, entryCFG, entryNode);
+	workList.enqueue(entryCtx, entryGraph, entryNode);
 
 	while (!workList.isEmpty())
 	{
 		const Context* ctx;
-		const PointerCFG* cfg;
-		std::tie(ctx, cfg) = workList.dequeue();
+		const DefUseGraph* dug;
+		std::tie(ctx, dug) = workList.dequeue();
 
-		evalFunction(ctx, cfg, env, workList, prog);
+		evalFunction(ctx, dug, env, workList, prog);
 	}
 }
 

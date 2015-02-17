@@ -127,6 +127,8 @@ private:
 		}
 	}
 public:
+	using NodeType = DefUseGraphNode;
+
 	using const_param_iterator = llvm::Function::const_arg_iterator;
 	using iterator = UniquePtrIterator<decltype(nodes)::iterator>;
 	using const_iterator = UniquePtrIterator<decltype(nodes)::const_iterator>;

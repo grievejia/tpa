@@ -2,8 +2,10 @@
 set (TPASourceCodes
 	Analysis/TunableAliasAnalysis.cpp
 	Analysis/TunablePointerAnalysis.cpp
-	DataFlow/EvaluationWorkList.cpp
+	Analysis/TunablePointerAnalysisCore.cpp
+	Analysis/TunableSparsePointerAnalysis.cpp
 	DataFlow/PointerAnalysisEngine.cpp
+	DataFlow/SparseAnalysisEngine.cpp
 	DataFlow/StaticCallGraph.cpp
 	DataFlow/TransferFunction.cpp
 	Pass/CFGBuildingPass.cpp
@@ -13,6 +15,7 @@ set (TPASourceCodes
 	Pass/TunableModRefAnalysisPass.cpp
 	Pass/TunablePointerAnalysisPass.cpp
 	Pass/TunableReachingDefAnalysisPass.cpp
+	Pass/TunableSparsePointerAnalysis.cpp
 )
 
 add_library (TPA SHARED ${TPASourceCodes})

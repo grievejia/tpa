@@ -168,6 +168,8 @@ private:
 			instToNode.erase(inst);
 	}
 public:
+	using NodeType = PointerCFGNode;
+
 	using const_param_iterator = llvm::Function::const_arg_iterator;
 	using iterator = UniquePtrIterator<decltype(nodes)::iterator>;
 	using const_iterator = UniquePtrIterator<decltype(nodes)::const_iterator>;
@@ -239,13 +241,13 @@ namespace llvm
 // GraphTraits specialization of PointerCFG
 template <> struct GraphTraits<tpa::PointerCFG*>
 {
-	typedef tpa::PointerCFGNode NodeType;
+	using NodeType = tpa::PointerCFGNode;
 	static NodeType* getEntryNode(tpa::PointerCFG* cfg)
 	{
 		return cfg->getEntryNode();
 	}
 
-	typedef NodeType::iterator ChildIteratorType;
+	using ChildIteratorType = NodeType::iterator;
 	static ChildIteratorType child_begin(NodeType* node)
 	{
 		return node->succ_begin();
@@ -255,7 +257,7 @@ template <> struct GraphTraits<tpa::PointerCFG*>
 		return node->succ_end();
 	}
 
-	typedef tpa::PointerCFG::iterator nodes_iterator;
+	using nodes_iterator = tpa::PointerCFG::iterator;
 	static nodes_iterator nodes_begin(tpa::PointerCFG* g)
 	{
 		return g->begin();
@@ -272,13 +274,13 @@ template <> struct GraphTraits<tpa::PointerCFG*>
 
 template <> struct GraphTraits<const tpa::PointerCFG*>
 {
-	typedef const tpa::PointerCFGNode NodeType;
+	using NodeType = const tpa::PointerCFGNode;
 	static NodeType* getEntryNode(const tpa::PointerCFG* cfg)
 	{
 		return cfg->getEntryNode();
 	}
 	
-	typedef tpa::PointerCFGNode::const_iterator ChildIteratorType;
+	using ChildIteratorType = tpa::PointerCFGNode::const_iterator;
 	static ChildIteratorType child_begin(NodeType* node)
 	{
 		return node->succ_begin();
@@ -288,7 +290,7 @@ template <> struct GraphTraits<const tpa::PointerCFG*>
 		return node->succ_end();
 	}
 
-	typedef tpa::PointerCFG::const_iterator nodes_iterator;
+	using nodes_iterator = tpa::PointerCFG::const_iterator;
 	static nodes_iterator nodes_begin(const tpa::PointerCFG* g)
 	{
 		return g->begin();

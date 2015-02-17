@@ -1,28 +1,20 @@
-#ifndef TPA_TUNABLE_POINTER_ANALYSIS_H
-#define TPA_TUNABLE_POINTER_ANALYSIS_H
+#ifndef TPA_TUNABLE_SPARSE_POINTER_ANALYSIS_H
+#define TPA_TUNABLE_SPARSE_POINTER_ANALYSIS_H
 
+#include "MemoryModel/Pointer/PointerManager.h"
 #include "MemoryModel/PtsSet/PtsEnv.h"
 #include "MemoryModel/PtsSet/StoreManager.h"
-#include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
-#include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/StaticCallGraph.h"
-
-#include <memory>
-
-namespace llvm
-{
-	class Module;
-	class DataLayout;
-}
 
 namespace tpa
 {
 
+class DefUseGraphNode;
 class MemoryManager;
 
-class TunablePointerAnalysis: public PointerAnalysis
+class TunableSparsePointerAnalysis: public PointerAnalysis
 {
 private:
 	PointerManager ptrManager;
@@ -30,17 +22,13 @@ private:
 	PtsSetManager pSetManager;
 	StoreManager storeManager;
 
-	PointerProgram prog;
-
 	Env env;
-	Memo<PointerCFGNode> memo;
+	Memo<DefUseGraphNode> memo;
 
 	StaticCallGraph callGraph;
 public:
-	TunablePointerAnalysis();
-	~TunablePointerAnalysis();
-
-	const PointerProgram& getPointerProgram() const { return prog; }
+	TunableSparsePointerAnalysis();
+	~TunableSparsePointerAnalysis();
 
 	void runOnModule(const llvm::Module& module);
 

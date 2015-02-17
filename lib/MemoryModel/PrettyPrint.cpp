@@ -1,6 +1,6 @@
 #include "MemoryModel/Pointer/Pointer.h"
 #include "MemoryModel/Precision/Context.h"
-#include "MemoryModel/PtsSet/Env.h"
+#include "MemoryModel/PtsSet/PtsEnv.h"
 #include "MemoryModel/PtsSet/Store.h"
 #include "MemoryModel/Memory/Memory.h"
 

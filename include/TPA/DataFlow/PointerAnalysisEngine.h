@@ -1,15 +1,15 @@
 #ifndef TPA_POINTER_ANALYSIS_ENGINE_H
 #define TPA_POINTER_ANALYSIS_ENGINE_H
 
-#include "TPA/DataFlow/TransferFunction.h"
 #include "TPA/DataFlow/EvaluationWorkList.h"
+#include "TPA/DataFlow/Memo.h"
+#include "TPA/DataFlow/TransferFunction.h"
 
 namespace tpa
 {
 
 class Env;
 class ExternalPointerEffectTable;
-class Memo;
 class MemoryManager;
 class PointerCFGNode;
 class PointerManager;
@@ -25,19 +25,20 @@ private:
 	StaticCallGraph& callGraph;
 
 	// The global memo
-	Memo& memo;
+	Memo<PointerCFGNode>& memo;
 
 	// TransferFunction knows how to update from one state to another
-	TransferFunction transferFunction;
+	TransferFunction<PointerCFG> transferFunction;
 
-	using LocalWorkList = EvaluationWorkList::LocalWorkList;
+	using GlobalWorkList = EvaluationWorkList<PointerCFG>;
+	using LocalWorkList = GlobalWorkList::LocalWorkList;
 	
-	void evalFunction(const Context*, const PointerCFG*, Env&, EvaluationWorkList&, const PointerProgram&);
-	void applyFunction(const Context*, const CallNode*, const llvm::Function*, const PointerProgram& prog, Env&, Store, EvaluationWorkList&, LocalWorkList&);
+	void evalFunction(const Context*, const PointerCFG*, Env&, GlobalWorkList&, const PointerProgram&);
+	void applyFunction(const Context*, const CallNode*, const llvm::Function*, const PointerProgram& prog, Env&, Store, GlobalWorkList&, LocalWorkList&);
 	void propagateTopLevel(const PointerCFGNode* node, LocalWorkList& workList);
 	void propagateMemoryLevel(const Context*, const PointerCFGNode*, const Store&, LocalWorkList&);
 public:
-	PointerAnalysisEngine(PointerManager& p, MemoryManager& m, StoreManager& s, StaticCallGraph& g, Memo& me, const ExternalPointerEffectTable& t): callGraph(g), memo(me), transferFunction(p, m, s, t) {}
+	PointerAnalysisEngine(PointerManager& p, MemoryManager& m, StoreManager& s, StaticCallGraph& g, Memo<PointerCFGNode>& me, const ExternalPointerEffectTable& t): callGraph(g), memo(me), transferFunction(p, m, s, t) {}
 
 	void runOnProgram(const PointerProgram&, Env&, Store);
 };

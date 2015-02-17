@@ -1,11 +1,12 @@
-#include "PointerAnalysis/ControlFlow/PointerProgram.h"
-#include "MemoryModel/PtsSet/Env.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
-#include "MemoryModel/PtsSet/StoreManager.h"
-#include "TPA/DataFlow/TransferFunction.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "MemoryModel/Precision/ProgramLocation.h"
+#include "MemoryModel/PtsSet/PtsEnv.h"
+#include "MemoryModel/PtsSet/StoreManager.h"
+#include "PointerAnalysis/ControlFlow/PointerProgram.h"
+#include "PointerAnalysis/DataFlow/DefUseProgram.h"
+#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "TPA/DataFlow/TransferFunction.h"
 
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Constants.h>
@@ -53,7 +54,8 @@ static PointerType* getMallocType(const Instruction* callInst)
 	return nullptr;
 }
 
-bool TransferFunction::evalAlloc(const Context* ctx, const AllocNode* allocNode, Env& env)
+template <typename GraphType>
+bool TransferFunction<GraphType>::evalAlloc(const Context* ctx, const AllocNodeMixin<NodeType>* allocNode, Env& env)
 {
 	auto allocInst = allocNode->getDest();
 	assert(isa<AllocaInst>(allocInst));
@@ -65,7 +67,8 @@ bool TransferFunction::evalAlloc(const Context* ctx, const AllocNode* allocNode,
 	return env.insertBinding(ptr, memLoc);
 }
 
-std::pair<bool, bool> TransferFunction::evalCopy(const Pointer* dst, const Pointer* src, Env& env)
+template <typename GraphType>
+std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Pointer* dst, const Pointer* src, Env& env)
 {
 	auto pSet = env.lookup(src);
 	if (pSet == nullptr)
@@ -75,7 +78,8 @@ std::pair<bool, bool> TransferFunction::evalCopy(const Pointer* dst, const Point
 	return std::make_pair(true, changed);
 }
 
-std::pair<bool, bool> TransferFunction::evalCopy(const Context* ctx, const CopyNode* copyNode, Env& env)
+template <typename GraphType>
+std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Context* ctx, const CopyNodeMixin<NodeType>* copyNode, Env& env)
 {
 	auto& pSetManager = storeManager.getPtsSetManager();
 	auto resSet = pSetManager.getEmptySet();
@@ -141,7 +145,8 @@ std::pair<bool, bool> TransferFunction::evalCopy(const Context* ctx, const CopyN
 	return std::make_pair(true, changed);
 }
 
-std::pair<bool, bool> TransferFunction::evalLoad(const Context* ctx, const LoadNode* loadNode, Env& env, const Store& store)
+template <typename GraphType>
+std::pair<bool, bool> TransferFunction<GraphType>::evalLoad(const Context* ctx, const LoadNodeMixin<NodeType>* loadNode, Env& env, const Store& store)
 {
 	auto srcPtr = ptrManager.getPointer(ctx, loadNode->getSrc());
 	assert(srcPtr != nullptr);
@@ -172,7 +177,8 @@ std::pair<bool, bool> TransferFunction::evalLoad(const Context* ctx, const LoadN
 	return std::make_pair(true, changed);
 }
 
-std::pair<bool, bool> TransferFunction::evalStore(const Pointer* dstPtr, const Pointer* srcPtr, const Env& env, Store& store)
+template <typename GraphType>
+std::pair<bool, bool> TransferFunction<GraphType>::evalStore(const Pointer* dstPtr, const Pointer* srcPtr, const Env& env, Store& store)
 {
 	auto srcSet = env.lookup(srcPtr);
 	if (srcSet == nullptr)
@@ -206,7 +212,8 @@ std::pair<bool, bool> TransferFunction::evalStore(const Pointer* dstPtr, const P
 	return std::make_pair(true, changed);
 }
 
-std::pair<bool, bool> TransferFunction::evalStore(const Context* ctx, const StoreNode* storeNode, const Env& env, Store& store)
+template <typename GraphType>
+std::pair<bool, bool> TransferFunction<GraphType>::evalStore(const Context* ctx, const StoreNodeMixin<NodeType>* storeNode, const Env& env, Store& store)
 {
 	auto srcPtr = ptrManager.getPointer(ctx, storeNode->getSrc());
 	auto dstPtr = ptrManager.getPointer(ctx, storeNode->getDest());
@@ -216,7 +223,8 @@ std::pair<bool, bool> TransferFunction::evalStore(const Context* ctx, const Stor
 	return evalStore(dstPtr, srcPtr, env, store);
 }
 
-bool TransferFunction::evalMalloc(const Pointer* dst, const llvm::Instruction* inst, const llvm::Value* sizeVal, Env& env, Store& store)
+template <typename GraphType>
+bool TransferFunction<GraphType>::evalMalloc(const Pointer* dst, const llvm::Instruction* inst, const llvm::Value* sizeVal, Env& env, Store& store)
 {
 	auto mallocType = getMallocType(inst);
 	if (mallocType == nullptr)
@@ -237,7 +245,8 @@ bool TransferFunction::evalMalloc(const Pointer* dst, const llvm::Instruction* i
 	return env.updateBinding(dst, memSet);
 }
 
-std::vector<const Function*> TransferFunction::resolveCallTarget(const Context* ctx, const CallNode* callNode, const Env& env, const PointerProgram& prog)
+template <typename GraphType>
+std::vector<const Function*> TransferFunction<GraphType>::resolveCallTarget(const Context* ctx, const CallNodeMixin<NodeType>* callNode, const Env& env, const llvm::ArrayRef<const Function*> defaultTargets)
 {
 	auto ret = std::vector<const Function*>();
 
@@ -248,7 +257,7 @@ std::vector<const Function*> TransferFunction::resolveCallTarget(const Context* 
 			// Guess addr-taken functions based on #params
 			if (funSet->has(memManager.getUniversalLocation()))
 			{
-				for (auto tgtFunc: prog.at_funs())
+				for (auto tgtFunc: defaultTargets)
 				{
 					bool isArgMatch = tgtFunc->isVarArg() || (countArguments(tgtFunc) == callNode->getNumArgument());
 					bool isRetMatch = ((tgtFunc->getReturnType()->isVoidTy()) == (callNode->getDest() == nullptr));
@@ -270,7 +279,8 @@ std::vector<const Function*> TransferFunction::resolveCallTarget(const Context* 
 	return ret;
 }
 
-std::pair<bool, bool> TransferFunction::evalCall(const Context* ctx, const CallNode* callNode, const Context* newCtx, const PointerCFG& tgtCFG, Env& env)
+template <typename GraphType>
+std::pair<bool, bool> TransferFunction<GraphType>::evalCall(const Context* ctx, const CallNodeMixin<NodeType>* callNode, const Context* newCtx, const GraphType& tgtCFG, Env& env)
 {
 	// Handle arguments
 	// Some codes do weird things like casting a 0-ary function into a vararg function and call it. We couldn't make any strict equality assumption about the number of arguments here except that the caller must provide enough actuals to make all the callee's formals well-defined
@@ -305,7 +315,8 @@ std::pair<bool, bool> TransferFunction::evalCall(const Context* ctx, const CallN
 	return std::make_pair(true, changed);
 }
 
-std::pair<bool, bool> TransferFunction::evalReturn(const Context* newCtx, const ReturnNode* retNode, const Context* oldCtx, const CallNode* callNode, Env& env)
+template <typename GraphType>
+std::pair<bool, bool> TransferFunction<GraphType>::evalReturn(const Context* newCtx, const ReturnNodeMixin<NodeType>* retNode, const Context* oldCtx, const CallNodeMixin<NodeType>* callNode, Env& env)
 {
 	auto retVal = retNode->getReturnValue();
 	if (retVal == nullptr)
@@ -331,7 +342,8 @@ std::pair<bool, bool> TransferFunction::evalReturn(const Context* newCtx, const 
 	return std::make_pair(true, changed);
 }
 
-std::tuple<bool, bool, bool> TransferFunction::applyExternal(const Context* ctx, const CallNode* callNode, Env& env, Store& store, const llvm::Function* callee)
+template <typename GraphType>
+std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Context* ctx, const CallNodeMixin<NodeType>* callNode, Env& env, Store& store, const llvm::Function* callee)
 {
 	auto extType = extTable.lookup(callee->getName());
 
@@ -519,7 +531,7 @@ std::tuple<bool, bool, bool> TransferFunction::applyExternal(const Context* ctx,
 			auto storeRet = evalStore(dstPtr, srcPtr, env, store);
 			return std::make_tuple(storeRet.first, false, storeRet.second);
 		}
-		case PointerEffect::MemcpyArg0ToArg1:
+		case PointerEffect::MemcpyArg1ToArg0:
 		{
 			// We assume arg0 is the dest, arg1 is the src
 			assert(callNode->getNumArgument() >= 2);
@@ -600,5 +612,9 @@ std::tuple<bool, bool, bool> TransferFunction::applyExternal(const Context* ctx,
 			llvm_unreachable("Unhandled external call");
 	}
 }
+
+// explicit instantiations
+template class TransferFunction<PointerCFG>;
+template class TransferFunction<DefUseGraph>;
 
 }

@@ -96,7 +96,7 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 
 			break;
 		}
-		case PointerEffect::MemcpyArg0ToArg1:
+		case PointerEffect::MemcpyArg1ToArg0:
 		{
 			auto dstVal = cs.getArgument(0);
 			auto srcVal = cs.getArgument(1);

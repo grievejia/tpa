@@ -21,6 +21,7 @@ private:
 	using FunctionListType = std::vector<const llvm::Function*>;
 	FunctionListType addrTakenFunctions;
 public:
+	using NodeType = typename PointerCFG::NodeType;
 
 	class const_iterator
 	{
@@ -80,9 +81,9 @@ public:
 
 	const_fun_iterator at_fun_begin() const { return addrTakenFunctions.begin(); }
 	const_fun_iterator at_fun_end() const { return addrTakenFunctions.end(); }
-	llvm::iterator_range<const_fun_iterator> at_funs() const
+	const FunctionListType& at_funs() const
 	{
-		return llvm::iterator_range<const_fun_iterator>(at_fun_begin(), at_fun_end());
+		return addrTakenFunctions;
 	}
 };
 
