@@ -3,7 +3,7 @@
 
 #include "Client/Lattice/Lattice.h"
 
-namespace tpa
+namespace client
 {
 
 enum class TaintLattice
@@ -23,7 +23,7 @@ template<> struct Lattice<TaintLattice>
 		else
 			return LatticeCompareResult::GreaterThan;
 	}
-	static LatticeType merge(const LatticeType& lhs, const LatticeType& rhs)
+	static TaintLattice merge(const TaintLattice& lhs, const TaintLattice& rhs)
 	{
 		if (lhs == TaintLattice::Tainted || rhs == TaintLattice::Tainted)
 			return TaintLattice::Tainted;

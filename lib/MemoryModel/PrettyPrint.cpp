@@ -75,21 +75,14 @@ void Env::dump(raw_ostream& os) const
 
 void Store::dump(raw_ostream& os) const
 {
-	auto dumpBinding = [&os] (const MappingType& bindings)
-	{
-		for (auto const& mapping: bindings)
-		{
-			os << *mapping.first << "  -->>  { ";
-			for (auto loc: *mapping.second)
-				os << *loc << " ";
-			os << "}\n";
-		}
-	};
-
 	os << "\n----- Store -----\n";
-	dumpBinding(globalMem);
-	dumpBinding(stackMem);
-	dumpBinding(heapMem);
+	for (auto const& mapping: mem)
+	{
+		os << *mapping.first << "  -->>  { ";
+		for (auto loc: *mapping.second)
+			os << *loc << " ";
+		os << "}\n";
+	}
 	os << "----- END -----\n\n";
 }
 

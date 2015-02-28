@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace tpa
+namespace client
 {
 
 enum LatticeCompareResult: std::uint8_t

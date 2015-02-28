@@ -5,6 +5,9 @@
 #include <queue>
 #include <unordered_set>
 
+namespace tpa
+{
+
 // This worklist implementation is a simple FIFO queue with an additional set to help remove duplicate entries
 template <typename ElemType, typename Hasher = std::hash<ElemType>>
 class WorkList
@@ -49,6 +52,7 @@ private:
 	std::unordered_set<ElemType> set;
 public:
 	PrioWorkList() {}
+	PrioWorkList(const Compare& cmp): list(cmp) {}
 
 	bool enqueue(ElemType elem)
 	{
@@ -71,5 +75,7 @@ public:
 	}
 	bool isEmpty() const { return list.empty(); }
 };
+
+}
 
 #endif

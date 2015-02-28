@@ -8,6 +8,7 @@
 #include "TPA/Analysis/TunableSparsePointerAnalysis.h"
 #include "TPA/DataFlow/SparseAnalysisEngine.h"
 
+#include <llvm/IR/CallSite.h>
 #include <llvm/IR/DataLayout.h>
 
 using namespace llvm;
@@ -55,12 +56,17 @@ void TunableSparsePointerAnalysis::runOnModule(const llvm::Module& module)
 
 const PtsSet* TunableSparsePointerAnalysis::getPtsSet(const Value* val) const
 {
+	return getPtsSet(Context::getGlobalContext(), val);
+}
+
+const PtsSet* TunableSparsePointerAnalysis::getPtsSet(const Context* ctx, const Value* val) const
+{
 	assert(val != nullptr);
 	assert(val->getType()->isPointerTy());
 
 	val = val->stripPointerCasts();
 
-	auto ptr = ptrManager.getPointer(Context::getGlobalContext(), val);
+	auto ptr = ptrManager.getPointer(ctx, val);
 	assert(ptr != nullptr);
 	return getPtsSet(ptr);
 }
@@ -79,11 +85,18 @@ std::vector<const llvm::Function*> TunableSparsePointerAnalysis::getCallTargets(
 {
 	auto retVec = std::vector<const llvm::Function*>();
 
-	for (auto const& callTgt: callGraph.getCallTargets(std::make_pair(ctx, inst)))
+	ImmutableCallSite cs(inst);
+	assert(cs && "getCallTargets() gets a non-call inst");
+	if (auto f = cs.getCalledFunction())
+		retVec.push_back(f);
+	else
+	{
+		for (auto const& callTgt: callGraph.getCallTargets(std::make_pair(ctx, inst)))
 		retVec.push_back(callTgt.second);
 
-	std::sort(retVec.begin(), retVec.end());
-	retVec.erase(std::unique(retVec.begin(), retVec.end()), retVec.end());
+		std::sort(retVec.begin(), retVec.end());
+		retVec.erase(std::unique(retVec.begin(), retVec.end()), retVec.end());
+	}
 
 	return retVec;
 }

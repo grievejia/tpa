@@ -37,7 +37,7 @@ bool GlobalPointerAnalysisPass::runOnModule(Module& module)
 	}
 
 	errs() << "\n---- Store ----\n";
-	for (auto const& mapping: store.getGlobalStore())
+	for (auto const& mapping: store)
 	{
 		errs() << *mapping.first << "  -->  { ";
 		for (auto loc: *mapping.second)

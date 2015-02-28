@@ -22,6 +22,7 @@ class PointerAnalysis
 public:
 	virtual const MemoryManager& getMemoryManager() const = 0;
 	virtual const PtsSet* getPtsSet(const llvm::Value* val) const = 0;
+	virtual const PtsSet* getPtsSet(const Context*, const llvm::Value*) const = 0;
 	virtual const PtsSet* getPtsSet(const Pointer* ptr) const = 0;
 	virtual std::vector<const llvm::Function*> getCallTargets(const Context*, const llvm::Instruction*) const = 0;
 	virtual ~PointerAnalysis() = default;

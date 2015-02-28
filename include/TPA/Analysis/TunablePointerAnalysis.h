@@ -51,6 +51,7 @@ public:
 	}
 	const PtsSet* getPtsSet(const llvm::Value* val) const override;
 	const PtsSet* getPtsSet(const Pointer* ptr) const override;
+	const PtsSet* getPtsSet(const Context*, const llvm::Value*) const override;
 	std::vector<const llvm::Function*> getCallTargets(const Context*, const llvm::Instruction*) const override;
 };
 

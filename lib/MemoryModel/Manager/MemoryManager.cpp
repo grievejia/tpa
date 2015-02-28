@@ -116,12 +116,28 @@ const MemoryObject* MemoryManager::allocateMemory(const ProgramLocation& loc, ll
 	return &memObj;
 }
 
+void MemoryManager::setArgv(const MemoryLocation* ptrLoc, const MemoryLocation* memLoc)
+{
+	argvPtrLoc = ptrLoc;
+	argvMemLoc = memLoc;
+}
+
 const MemoryLocation* MemoryManager::getMemoryLocation(const MemoryObject* obj, size_t offset, bool summary)
 {
 	assert(obj != nullptr);
 
 	auto loc = MemoryLocation(obj, offset, summary);
 	auto itr = locSet.insert(loc).first;
+	assert(itr->isSummaryLocation() == summary);
+	return &*itr;
+}
+
+const MemoryLocation* MemoryManager::getMemoryLocation(const MemoryObject* obj, size_t offset, bool summary) const
+{
+	assert(obj != nullptr);
+	auto loc = MemoryLocation(obj, offset, summary);
+	auto itr = locSet.find(loc);
+	assert(itr != locSet.end());
 	assert(itr->isSummaryLocation() == summary);
 	return &*itr;
 }
@@ -162,7 +178,62 @@ const MemoryLocation* MemoryManager::offsetMemory(const MemoryObject* obj, size_
 	return getMemoryLocation(obj, offset, summary);
 }
 
+const MemoryLocation* MemoryManager::offsetMemory(const MemoryObject* obj, size_t offset) const
+{
+	assert(obj != nullptr);
+
+	if (obj == &universalObj || obj == &nullObj)
+		return universalLoc;
+
+	// Here we cannot just return MemoryLocation(obj, offset) because if obj is of a type that contains arrays, the offset may get messed up because of array collapsing. We have to adjust the offset according to the array layout of that particular memory object
+	bool summary = false;
+	for (auto const& arrayTriple: obj->arrayLayout)
+	{
+		if (arrayTriple.start > offset)
+			break;
+
+		if (arrayTriple.start <= offset && offset < arrayTriple.end)
+		{
+			summary = true;
+			offset = arrayTriple.start + (offset - arrayTriple.start) % arrayTriple.size;
+		}
+	}
+
+	if (offset > obj->size)
+	{
+		// Our intent here is to capture obvious out-of-bound pointer arithmetics. If such case is detected, return a universal object immediately, indicating that we have no idea where the out-of-bound pointer might points to
+		// TODO: add a "strict mode" flag that, when set, will report an error instead of trying to carry on the analysis
+		if (OutOfBoundWarning)
+		{
+			errs() << "Warning: out-of-bound pointer arithmetic\n";
+			errs() << "\twhen computing " << *obj << " + " << offset << " (the bound is " << obj->size << ")\n";
+		}
+		return universalLoc;
+	}
+
+	return getMemoryLocation(obj, offset, summary);
+}
+
 const MemoryLocation* MemoryManager::offsetMemory(const MemoryLocation* loc, size_t offset)
+{
+	assert(loc != nullptr);
+	if (offset == 0)
+		return loc;
+	else
+	{
+		// If we start from a summary object, then no matter how large the offset is, we should always end up within the object itself
+		// If we start from a non-summary object, we should be able to "jump pass" the possible summary objects ahead of it
+		auto locOffset = loc->getOffset();
+		for (auto const& arrayTriple: loc->getMemoryObject()->arrayLayout)
+		{
+			if (arrayTriple.start <= locOffset && locOffset < arrayTriple.end)
+				offset %= arrayTriple.size;
+		}
+		return offsetMemory(loc->getMemoryObject(), locOffset + offset);
+	}
+}
+
+const MemoryLocation* MemoryManager::offsetMemory(const MemoryLocation* loc, size_t offset) const
 {
 	assert(loc != nullptr);
 	if (offset == 0)

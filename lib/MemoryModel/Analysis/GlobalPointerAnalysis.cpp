@@ -249,6 +249,7 @@ void GlobalPointerAnalysis::initializeMainArgs(const Module& module, Env& env, S
 		auto argvObjObj = memManager.allocateMemory(ProgramLocation(globalCtx, entryFunc), charArrayTy);
 		auto argvLoc = memManager.offsetMemory(argvObj, 0);
 		auto argvObjLoc = memManager.offsetMemory(argvObjObj, 0);
+		memManager.setArgv(argvLoc, argvObjLoc);
 
 		auto argvPtr = ptrManager.getOrCreatePointer(globalCtx, argv);
 		env.insertBinding(argvPtr, argvLoc);

@@ -32,11 +32,11 @@ public:
 
 	std::experimental::optional<Store> lookup(const Context* ctx, const NodeType* node) const
 	{
+		std::experimental::optional<Store> ret;
 		auto itr = memo.find(std::make_pair(ctx, node));
-		if (itr == memo.end())
-			return std::experimental::optional<Store>();
-		else
-			return itr->second;
+		if (itr != memo.end())
+			ret = itr->second;
+		return ret;
 	}
 
 	// Return true if the memo changes

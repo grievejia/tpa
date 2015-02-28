@@ -2,7 +2,7 @@
 #define TPA_SPARSE_ANALYSIS_ENGINE_H
 
 #include "PointerAnalysis/DataFlow/DefUseGraph.h"
-#include "TPA/DataFlow/EvaluationWorkList.h"
+#include "TPA/DataFlow/TPAWorkList.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/TransferFunction.h"
 
@@ -36,7 +36,7 @@ private:
 	// Modref summary
 	const ModRefSummaryMap& summaryMap;
 
-	using GlobalWorkList = EvaluationWorkList<DefUseGraph>;
+	using GlobalWorkList = TPAWorkList<DefUseGraph>;
 	using LocalWorkList = GlobalWorkList::LocalWorkList;
 
 	void evalFunction(const Context*, const DefUseGraph*, Env&, GlobalWorkList&, const DefUseProgram&);

@@ -19,6 +19,8 @@ else()
 	message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
 endif()
 
+configure_file(config/source_sink.conf source_sink.conf COPYONLY)
+
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
@@ -33,3 +35,4 @@ add_test (MemoryUnitTest ${PROJECT_BINARY_DIR}/unittest/MemoryTest)
 add_test (InterpreterUnitTest ${PROJECT_BINARY_DIR}/unittest/InterpreterTest)
 add_test (GlobalAnalysisUnitTest ${PROJECT_BINARY_DIR}/unittest/GlobalAnalysisTest)
 add_test (ControlFlowTest ${PROJECT_BINARY_DIR}/unittest/ControlFlowTest)
+add_test (TaintnessTest ${PROJECT_BINARY_DIR}/unittest/TaintnessTest)

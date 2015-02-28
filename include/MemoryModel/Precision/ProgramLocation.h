@@ -16,6 +16,8 @@ class ProgramLocation
 private:
 	const Context* context;
 	const llvm::Value* inst;
+
+	using PairType = std::pair<const Context*, const llvm::Value*>;
 public:
 	explicit ProgramLocation(const Context* c, const llvm::Value* i): context(c), inst(i) {}
 
@@ -29,6 +31,11 @@ public:
 	bool operator!=(const ProgramLocation& other) const
 	{
 		return !(*this == other);
+	}
+
+	operator PairType() const
+	{
+		return std::make_pair(context, inst);
 	}
 };
 

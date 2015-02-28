@@ -67,6 +67,8 @@ void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* ca
 	auto storeChanged = memo.updateMemo(newCtx, tgtCFG->getEntryNode(), store);
 	if (envChanged || storeChanged)
 		funWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getEntryNode());
+	// Prevent premature fixpoint
+	// FIXME: should only propagate once for each non-external callsite
 	propagateMemoryLevel(ctx, callNode, store, workList);
 }
 

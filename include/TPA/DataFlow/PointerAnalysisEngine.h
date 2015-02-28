@@ -1,7 +1,7 @@
 #ifndef TPA_POINTER_ANALYSIS_ENGINE_H
 #define TPA_POINTER_ANALYSIS_ENGINE_H
 
-#include "TPA/DataFlow/EvaluationWorkList.h"
+#include "TPA/DataFlow/TPAWorkList.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/TransferFunction.h"
 
@@ -30,7 +30,7 @@ private:
 	// TransferFunction knows how to update from one state to another
 	TransferFunction<PointerCFG> transferFunction;
 
-	using GlobalWorkList = EvaluationWorkList<PointerCFG>;
+	using GlobalWorkList = TPAWorkList<PointerCFG>;
 	using LocalWorkList = GlobalWorkList::LocalWorkList;
 	
 	void evalFunction(const Context*, const PointerCFG*, Env&, GlobalWorkList&, const PointerProgram&);
