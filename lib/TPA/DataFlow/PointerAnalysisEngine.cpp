@@ -8,6 +8,7 @@
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
 #include "TPA/DataFlow/StaticCallGraph.h"
 
+#include "PointerAnalysis/ControlFlow/PointerCFGNodePrint.h"
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
@@ -76,12 +77,12 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 {
 	auto& workList = funWorkList.getLocalWorkList(ctx, cfg);
 
-	//errs() << "<Function " << cfg->getFunction()->getName() << ">\n";
+	errs() << "<Function " << cfg->getFunction()->getName() << ">\n";
 	while (!workList.isEmpty())
 	{
 		auto node = workList.dequeue();
 		
-		//errs() << "node = " << node->toString() << "\n";
+		errs() << "node = " << *node << "\n";
 
 		switch (node->getType())
 		{

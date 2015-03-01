@@ -18,6 +18,7 @@ class KLimitContext
 private:
 	static llvm::DenseMap<const llvm::Function*, size_t> kMap;
 public:
+	static unsigned defaultLimit;
 	static void setLimit(const llvm::Function*, size_t);
 
 	static const Context* pushContext(const Context*, const llvm::Instruction*, const llvm::Function*);

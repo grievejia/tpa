@@ -4,6 +4,7 @@
 #include "MemoryModel/PtsSet/Store.h"
 #include "MemoryModel/Memory/Memory.h"
 
+#include <llvm/IR/CallSite.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
@@ -17,7 +18,9 @@ raw_ostream& operator<< (raw_ostream& os, const Context& c)
 	auto ctx = &c;
 	while (ctx->size > 0)
 	{
-		os << ctx->callSite->getName() << " ";
+		ImmutableCallSite cs(ctx->callSite);
+		assert(cs);
+		os << cs.getCalledValue()->getName() << " ";
 		ctx = ctx->predContext;
 	}
 	os << ">";

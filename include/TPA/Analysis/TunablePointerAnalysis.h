@@ -27,7 +27,7 @@ class TunablePointerAnalysis: public PointerAnalysis
 private:
 	PointerManager ptrManager;
 	std::unique_ptr<MemoryManager> memManager;
-	PtsSetManager pSetManager;
+	mutable PtsSetManager pSetManager;
 	StoreManager storeManager;
 
 	PointerProgram prog;

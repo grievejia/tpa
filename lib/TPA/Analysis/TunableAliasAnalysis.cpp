@@ -1,10 +1,4 @@
-#include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
 #include "TPA/Analysis/TunableAliasAnalysis.h"
-#include "PointerAnalysis/ControlFlow/SemiSparseProgramBuilder.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
-#include "TPA/DataFlow/Memo.h"
-#include "TPA/DataFlow/PointerAnalysisEngine.h"
-#include "TPA/DataFlow/StaticCallGraph.h"
 #include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 
@@ -15,42 +9,19 @@ using namespace llvm;
 namespace tpa
 {
 
-TunableAliasAnalysis::TunableAliasAnalysis(): env(pSetManager) {}
-TunableAliasAnalysis::~TunableAliasAnalysis() = default;
-
 void TunableAliasAnalysis::runOnModule(const llvm::Module& module)
 {
-	auto dataLayout = DataLayout(&module);
-	memManager = std::make_unique<MemoryManager>(dataLayout);
-
-	auto storeManager = StoreManager(pSetManager);
-	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, *memManager, storeManager);
-
-	auto initEnvStore = globalAnalysis.runOnModule(module);
-	env = std::move(initEnvStore.first);
-	auto initStore = std::move(initEnvStore.second);
-
-	auto extTable = ExternalPointerEffectTable();
-	auto builder = SemiSparseProgramBuilder(extTable);
-	auto prog = builder.buildSemiSparseProgram(module);
-
-	auto memo = Memo<PointerCFGNode>(storeManager);
-	auto callGraph = StaticCallGraph();
-	auto ptrEngine = PointerAnalysisEngine(ptrManager, *memManager, storeManager, callGraph, memo, extTable);
-	ptrEngine.runOnProgram(prog, env, std::move(initStore));
+	tpaAnalysis.runOnModule(module);
+	uLoc = tpaAnalysis.getMemoryManager().getUniversalLocation();
+	nLoc = tpaAnalysis.getMemoryManager().getNullLocation();
 }
 
-AliasResult TunableAliasAnalysis::aliasQuery(const Pointer* ptr0, const Pointer* ptr1)
+AliasResult TunableAliasAnalysis::checkAlias(const PtsSet* pSet0, const PtsSet* pSet1)
 {
-	assert(ptr0 != nullptr && ptr1 != nullptr);
-	
-	auto pSet0 = env.lookup(ptr0);
-	auto pSet1 = env.lookup(ptr1);
-
 	if (pSet0 == nullptr || pSet1 == nullptr)
 		return AliasResult::NoAlias;
 
-	if (pSet0->has(memManager->getUniversalLocation()) || pSet1->has(memManager->getUniversalLocation()))
+	if (pSet0->has(uLoc) || pSet1->has(uLoc))
 		return AliasResult::MayAlias;
 
 	auto intersectSet = VectorSet<const MemoryLocation*>::intersects(*pSet0, *pSet1);
@@ -58,7 +29,7 @@ AliasResult TunableAliasAnalysis::aliasQuery(const Pointer* ptr0, const Pointer*
 	{
 		if (intersectSet.size() == 1)
 		{
-			if (intersectSet[0] == memManager->getNullLocation())
+			if (intersectSet[0] == nLoc)
 				return AliasResult::NoAlias;
 			else if (pSet0->getSize() == 1 && pSet1->getSize() == 1)
 				return AliasResult::MustAlias;
@@ -70,9 +41,19 @@ AliasResult TunableAliasAnalysis::aliasQuery(const Pointer* ptr0, const Pointer*
 		return AliasResult::NoAlias;
 }
 
+AliasResult TunableAliasAnalysis::aliasQuery(const Pointer* ptr0, const Pointer* ptr1)
+{
+	assert(ptr0 != nullptr && ptr1 != nullptr && uLoc != nullptr && nLoc != nullptr);
+	
+	auto pSet0 = tpaAnalysis.getPtsSet(ptr0);
+	auto pSet1 = tpaAnalysis.getPtsSet(ptr1);
+
+	return checkAlias(pSet0, pSet1);
+}
+
 AliasResult TunableAliasAnalysis::globalAliasQuery(const llvm::Value* v0, const llvm::Value* v1)
 {
-	assert(v0 != nullptr && v1 != nullptr);
+	assert(v0 != nullptr && v1 != nullptr && uLoc != nullptr && nLoc != nullptr);
 
 	if (!v0->getType()->isPointerTy() || !v1->getType()->isPointerTy())
 		return AliasResult::NoAlias;
@@ -83,14 +64,10 @@ AliasResult TunableAliasAnalysis::globalAliasQuery(const llvm::Value* v0, const 
 	if (v0 == v1)
 		return AliasResult::MustAlias;
 
-	// Lookup the corresponding Pointer
-	auto globalCtx = Context::getGlobalContext();
-	auto ptr0 = ptrManager.getPointer(globalCtx, v0);
-	auto ptr1 = ptrManager.getPointer(globalCtx, v1);
-	if (ptr0 == nullptr || ptr1 == nullptr)
-		return AliasResult::NoAlias;
+	auto pSet0 = tpaAnalysis.getPtsSet(v0);
+	auto pSet1 = tpaAnalysis.getPtsSet(v1);
 	
-	return aliasQuery(ptr0, ptr1);
+	return checkAlias(pSet0, pSet1);
 }
 
 }

@@ -34,6 +34,7 @@ private:
 
 	const ExternalPointerEffectTable& extTable;
 
+	const Pointer* getPointer(const Context*, const llvm::Value*);
 	bool evalMalloc(const Pointer* dst, const llvm::Instruction*, const llvm::Value* size, Env&, Store&);
 	std::pair<bool, bool> evalStore(const Pointer* dst, const Pointer* src, const Env&, Store&);
 	std::pair<bool, bool> evalCopy(const Pointer* dst, const Pointer* src, Env&);

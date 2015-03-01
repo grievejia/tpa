@@ -26,4 +26,15 @@ const Context* Context::getGlobalContext()
 	return &(*itr);
 }
 
+std::vector<const Context*> Context::getAllContexts()
+{
+	std::vector<const Context*> ret;
+	ret.reserve(ctxSet.size());
+
+	for (auto const& ctx: ctxSet)
+		ret.push_back(&ctx);
+
+	return ret;
+}
+
 }

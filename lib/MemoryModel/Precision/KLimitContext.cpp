@@ -6,6 +6,7 @@ namespace tpa
 {
 
 DenseMap<const Function*, size_t> KLimitContext::kMap;
+unsigned KLimitContext::defaultLimit = 0u;
 
 void KLimitContext::setLimit(const Function* f, size_t k)
 {
@@ -14,7 +15,7 @@ void KLimitContext::setLimit(const Function* f, size_t k)
 
 const Context* KLimitContext::pushContext(const Context* ctx, const Instruction* inst, const Function* f)
 {
-	size_t k = 0;
+	size_t k = defaultLimit;
 	auto itr = kMap.find(f);
 	if (itr != kMap.end())
 		k = itr->second;

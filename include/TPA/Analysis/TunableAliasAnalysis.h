@@ -1,10 +1,7 @@
 #ifndef TPA_TUNABLE_ALIAS_ANALYSIS_H
 #define TPA_TUNABLE_ALIAS_ANALYSIS_H
 
-#include "MemoryModel/PtsSet/PtsEnv.h"
-#include "MemoryModel/Pointer/PointerManager.h"
-
-#include <memory>
+#include "TPA/Analysis/TunablePointerAnalysis.h"
 
 namespace llvm
 {
@@ -28,14 +25,12 @@ enum class AliasResult
 class TunableAliasAnalysis
 {
 private:
-	PointerManager ptrManager;
-	std::unique_ptr<MemoryManager> memManager;
-	PtsSetManager pSetManager;
+	TunablePointerAnalysis tpaAnalysis;
+	const MemoryLocation *uLoc, *nLoc;
 
-	Env env;
+	AliasResult checkAlias(const PtsSet*, const PtsSet*);
 public:
-	TunableAliasAnalysis();
-	~TunableAliasAnalysis();
+	TunableAliasAnalysis() = default;
 
 	void runOnModule(const llvm::Module& module);
 

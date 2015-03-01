@@ -46,6 +46,8 @@ public:
 	static const Context* popContext(const Context* ctx);
 	static const Context* getGlobalContext();
 
+	static std::vector<const Context*> getAllContexts();
+
 	friend llvm::raw_ostream& operator<< (llvm::raw_ostream& os, const Context& c);
 	friend struct std::hash<Context>;
 };

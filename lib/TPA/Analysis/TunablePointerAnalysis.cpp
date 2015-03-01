@@ -34,11 +34,21 @@ void TunablePointerAnalysis::runOnModule(const llvm::Module& module)
 
 	auto ptrEngine = PointerAnalysisEngine(ptrManager, *memManager, storeManager, callGraph, memo, extTable);
 	ptrEngine.runOnProgram(prog, env, std::move(initStore));
+
+	//env.dump(errs());
 }
 
 const PtsSet* TunablePointerAnalysis::getPtsSet(const Value* val) const
 {
-	return getPtsSet(Context::getGlobalContext(), val);
+	auto ctxs = Context::getAllContexts();
+	auto retSet = pSetManager.getEmptySet();
+	for (auto ctx: ctxs)
+	{
+		auto newSet = getPtsSet(ctx, val);
+		if (newSet != nullptr)
+			retSet = pSetManager.mergeSet(retSet, newSet);
+	}
+	return retSet;
 }
 
 const PtsSet* TunablePointerAnalysis::getPtsSet(const Context* ctx, const llvm::Value* val) const
@@ -49,7 +59,9 @@ const PtsSet* TunablePointerAnalysis::getPtsSet(const Context* ctx, const llvm::
 	val = val->stripPointerCasts();
 
 	auto ptr = ptrManager.getPointer(ctx, val);
-	assert(ptr != nullptr);
+	if (ptr == nullptr)
+		return nullptr;
+
 	return getPtsSet(ptr);
 }
 

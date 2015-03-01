@@ -55,6 +55,15 @@ static PointerType* getMallocType(const Instruction* callInst)
 }
 
 template <typename GraphType>
+const Pointer* TransferFunction<GraphType>::getPointer(const Context* ctx, const llvm::Value* val)
+{
+	if (isa<GlobalValue>(val))
+		return ptrManager.getPointer(Context::getGlobalContext(), val);
+	else
+		return ptrManager.getPointer(ctx, val);
+}
+
+template <typename GraphType>
 bool TransferFunction<GraphType>::evalAlloc(const Context* ctx, const AllocNodeMixin<NodeType>* allocNode, Env& env)
 {
 	auto allocInst = allocNode->getDest();
@@ -92,7 +101,7 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Context* ctx, 
 		// Single/Multiple srcs, no pointer arithmetic
 		for (auto src: *copyNode)
 		{
-			auto srcPtr = ptrManager.getPointer(ctx, src);
+			auto srcPtr = getPointer(ctx, src);
 			if (srcPtr == nullptr)
 				return std::make_pair(false, false);
 
@@ -108,7 +117,7 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Context* ctx, 
 		// Single src, pointer arithmetic
 		assert(copyNode->getNumSrc() == 1 && "non-0-offset copy node must have only one src!");
 
-		auto srcPtr = ptrManager.getPointer(ctx, copyNode->getFirstSrc());
+		auto srcPtr = getPointer(ctx, copyNode->getFirstSrc());
 		if (srcPtr == nullptr)
 			return std::make_pair(false, false);
 
@@ -148,7 +157,7 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Context* ctx, 
 template <typename GraphType>
 std::pair<bool, bool> TransferFunction<GraphType>::evalLoad(const Context* ctx, const LoadNodeMixin<NodeType>* loadNode, Env& env, const Store& store)
 {
-	auto srcPtr = ptrManager.getPointer(ctx, loadNode->getSrc());
+	auto srcPtr = getPointer(ctx, loadNode->getSrc());
 	assert(srcPtr != nullptr);
 	auto dstPtr = ptrManager.getOrCreatePointer(ctx, loadNode->getDest());
 
@@ -215,8 +224,8 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalStore(const Pointer* dstP
 template <typename GraphType>
 std::pair<bool, bool> TransferFunction<GraphType>::evalStore(const Context* ctx, const StoreNodeMixin<NodeType>* storeNode, const Env& env, Store& store)
 {
-	auto srcPtr = ptrManager.getPointer(ctx, storeNode->getSrc());
-	auto dstPtr = ptrManager.getPointer(ctx, storeNode->getDest());
+	auto srcPtr = getPointer(ctx, storeNode->getSrc());
+	auto dstPtr = getPointer(ctx, storeNode->getDest());
 	if (srcPtr == nullptr || dstPtr == nullptr)
 		return std::make_pair(false, false);
 
@@ -250,7 +259,7 @@ std::vector<const Function*> TransferFunction<GraphType>::resolveCallTarget(cons
 {
 	auto ret = std::vector<const Function*>();
 
-	if (auto funPtr = ptrManager.getPointer(ctx, callNode->getFunctionPointer()))
+	if (auto funPtr = getPointer(ctx, callNode->getFunctionPointer()))
 	{
 		if (auto funSet = env.lookup(funPtr))
 		{
@@ -298,7 +307,7 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalCall(const Context* ctx, 
 			continue;
 		}
 
-		auto argPtr = ptrManager.getPointer(ctx, *argItr);
+		auto argPtr = getPointer(ctx, *argItr);
 		if (argPtr == nullptr)
 			return std::make_pair(false, false);
 		auto argSet = env.lookup(argPtr);
@@ -325,7 +334,7 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalReturn(const Context* new
 		return std::make_pair(true, false);
 	}
 
-	auto retPtr = ptrManager.getPointer(newCtx, retVal);
+	auto retPtr = getPointer(newCtx, retVal);
 	if (retPtr == nullptr)
 		return std::make_pair(false, false);
 
@@ -349,7 +358,7 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 
 	auto returnValue = [this, ctx, &env] (const Pointer* dstPtr, const Value* srcVal)
 	{
-		auto srcPtr = ptrManager.getPointer(ctx, srcVal);
+		auto srcPtr = getPointer(ctx, srcVal);
 		if (srcPtr == nullptr)
 			return std::make_tuple(true, false, false);
 		auto copyRet = evalCopy(dstPtr, srcPtr, env);
@@ -521,10 +530,10 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 		{
 			assert(callNode->getNumArgument() >= 2);
 
-			auto dstPtr = ptrManager.getPointer(ctx, callNode->getArgument(1));
+			auto dstPtr = getPointer(ctx, callNode->getArgument(1));
 			if (dstPtr == nullptr)
 				return std::make_tuple(false, false, false);
-			auto srcPtr = ptrManager.getPointer(ctx, callNode->getArgument(0));
+			auto srcPtr = getPointer(ctx, callNode->getArgument(0));
 			if (srcPtr == nullptr)
 				return std::make_tuple(false, false, false);
 
@@ -536,10 +545,10 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 			// We assume arg0 is the dest, arg1 is the src
 			assert(callNode->getNumArgument() >= 2);
 
-			auto dstPtr = ptrManager.getPointer(ctx, callNode->getArgument(0));
+			auto dstPtr = getPointer(ctx, callNode->getArgument(0));
 			if (dstPtr == nullptr)
 				return std::make_tuple(false, false, false);
-			auto srcPtr = ptrManager.getPointer(ctx, callNode->getArgument(1));
+			auto srcPtr = getPointer(ctx, callNode->getArgument(1));
 			if (srcPtr == nullptr)
 				return std::make_tuple(false, false, false);
 
@@ -567,7 +576,7 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 		{
 			assert(callNode->getNumArgument() >= 1);
 
-			auto dstPtr = ptrManager.getPointer(ctx, callNode->getArgument(0));
+			auto dstPtr = getPointer(ctx, callNode->getArgument(0));
 			if (dstPtr == nullptr)
 				return std::make_tuple(false, false, false);
 			auto dstSet = env.lookup(dstPtr);
