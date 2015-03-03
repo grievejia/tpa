@@ -77,12 +77,12 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 {
 	auto& workList = funWorkList.getLocalWorkList(ctx, cfg);
 
-	errs() << "<Function " << cfg->getFunction()->getName() << ">\n";
+	//errs() << "<Function " << cfg->getFunction()->getName() << ">\n";
 	while (!workList.isEmpty())
 	{
 		auto node = workList.dequeue();
 		
-		errs() << "node = " << *node << "\n";
+		//errs() << "node = " << *node << "\n";
 
 		switch (node->getType())
 		{

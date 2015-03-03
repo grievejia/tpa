@@ -80,6 +80,10 @@ void TaintAnalysis::applyFunction(const Context* ctx, ImmutableCallSite cs, cons
 	assert(cs.arg_size() >= callee->arg_size());
 	auto argNo = 0u;
 	auto paramItr = callee->arg_begin();
+	// Remove all the arguments' binding first
+	for (auto const& arg: callee->args())
+		newState.strongUpdate(&arg, TaintLattice::Untainted);
+	
 	while (argNo < cs.arg_size() && paramItr != callee->arg_end())
 	{
 		auto arg = cs.getArgument(argNo);
@@ -93,7 +97,7 @@ void TaintAnalysis::applyFunction(const Context* ctx, ImmutableCallSite cs, cons
 			argVal = *optArgVal;
 		}
 
-		newState.weakUpdate(paramItr, argVal);
+		newState.strongUpdate(paramItr, argVal);
 		
 		++argNo;
 		++paramItr;
@@ -176,7 +180,7 @@ void TaintAnalysis::evalFunction(const Context* ctx, const Function* f, ClientWo
 	{
 		auto inst = workList.dequeue();
 
-		errs() << "inst = " << *inst << "\n";
+		//errs() << "inst = " << *inst << "\n";
 		auto itr = memo.find(ProgramLocation(ctx, inst));
 		assert(itr != memo.end());
 		auto const& state = itr->second;
@@ -239,6 +243,20 @@ bool TaintAnalysis::runOnModule(const llvm::Module& module)
 		evalFunction(ctx, f, workList, module);		
 	}
 
+	/*for (auto const& mapping: memo)
+	{
+		errs() << "pLoc = " << mapping.first << "\n";
+		for (auto const& envMapping: mapping.second.getEnv())
+		{
+			auto val = envMapping.first;
+			if (auto arg = dyn_cast<Argument>(val))
+			{
+				errs() << "\t" << arg->getParent()->getName() << ":" << arg->getName() << " -> " << (envMapping.second == TaintLattice::Tainted) << "\n";
+			}
+			else if (auto inst = dyn_cast<Instruction>(val))
+				errs() << "\t" << inst->getParent()->getParent()->getName() << "::" << inst->getName() << " -> " << (envMapping.second == TaintLattice::Tainted) << "\n";
+		}
+	}*/
 	return !transferFunction.checkMemoStates(memo);
 }
 

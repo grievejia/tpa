@@ -36,6 +36,10 @@ void TunablePointerAnalysis::runOnModule(const llvm::Module& module)
 	ptrEngine.runOnProgram(prog, env, std::move(initStore));
 
 	//env.dump(errs());
+	auto ctxs = Context::getAllContexts();
+	for (auto ctx: ctxs)
+		errs() << "\t\t" << *ctx << "\n";
+	errs() << "\tTotal # of contexts = " << ctxs.size() << "\n";
 }
 
 const PtsSet* TunablePointerAnalysis::getPtsSet(const Value* val) const

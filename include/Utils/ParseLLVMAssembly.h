@@ -16,16 +16,14 @@ namespace tpa
 // Mark the function inline so that the linker won't bark
 inline std::unique_ptr<llvm::Module> parseAssembly(const char *assembly)
 {
-	auto module = std::make_unique<llvm::Module>("TestModule", llvm::getGlobalContext());
-
 	llvm::SMDiagnostic error;
-	bool parsed = llvm::ParseAssemblyString(assembly, module.get(), error, module->getContext()) == module.get();
+	auto module = llvm::parseAssemblyString(assembly, error, llvm::getGlobalContext());
 
 	auto errMsg = std::string();
 	llvm::raw_string_ostream os(errMsg);
 	error.print("", os);
 
-	if (!parsed)
+	if (!module)
 	{
 		// A failure here means that the test itself is buggy.
 		llvm::report_fatal_error(os.str().c_str());

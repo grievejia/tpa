@@ -334,9 +334,6 @@ std::pair<bool, bool> TaintTransferFunction::processLibraryCall(const Context* c
 
 bool TaintTransferFunction::checkValue(const TEntry& entry, ProgramLocation pLoc, const Value* val, const TaintState& state)
 {
-	//errs() << "ploc = " << pLoc << ", val = " << val->getName() << ", d?" << (entry.what == TClass::DirectMemory) << "\n";
-	//for (auto const& mapping: state.getStore())
-	//	errs() << "\t" << *mapping.first << ", " << (mapping.second == TaintLattice::Tainted) << "\n";
 	if (entry.what == TClass::ValueOnly)
 	{
 		auto sinkVal = state.lookup(val);

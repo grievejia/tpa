@@ -60,10 +60,10 @@ void PointerCFG::writeDotFile(const StringRef& pathName) const
 {
 	errs() << "Writing '" << pathName << "'...";
 
-	std::string errorInfo;
-	raw_fd_ostream file(pathName.data(), errorInfo, sys::fs::F_Text);
+	std::error_code errorCode;
+	raw_fd_ostream file(pathName.data(), errorCode, sys::fs::F_Text);
 
-	if (errorInfo.empty())
+	if (!errorCode)
 		writeGraph(file, this);
 	else
 		errs() << "  error opening file for writing!";
@@ -74,10 +74,10 @@ void PointerCFG::writeDefUseDotFile(const StringRef& pathName) const
 {
 	errs() << "Writing '" << pathName << "'...";
 
-	std::string errorInfo;
-	raw_fd_ostream file(pathName.data(), errorInfo, sys::fs::F_Text);
+	std::error_code errorCode;
+	raw_fd_ostream file(pathName.data(), errorCode, sys::fs::F_Text);
 
-	if (errorInfo.empty())
+	if (!errorCode)
 		writeDefUseGraph(file, this);
 	else
 		errs() << "  error opening file for writing!";

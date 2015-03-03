@@ -3,11 +3,11 @@
 
 #include "MemoryModel/Precision/Context.h"
 
-#include <llvm/ADT/DenseMap.h>
+#include <llvm/ADT/DenseSet.h>
 
 namespace llvm
 {
-	class Function;
+	class Instruction;
 }
 
 namespace tpa
@@ -16,10 +16,10 @@ namespace tpa
 class KLimitContext
 {
 private:
-	static llvm::DenseMap<const llvm::Function*, size_t> kMap;
+	static llvm::DenseSet<const llvm::Instruction*> kSet;
 public:
 	static unsigned defaultLimit;
-	static void setLimit(const llvm::Function*, size_t);
+	static void trackContext(const llvm::Instruction*);
 
 	static const Context* pushContext(const Context*, const llvm::Instruction*, const llvm::Function*);
 };
