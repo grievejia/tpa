@@ -1,6 +1,7 @@
 #ifndef TPA_POINTER_ANALYSIS_ENGINE_H
 #define TPA_POINTER_ANALYSIS_ENGINE_H
 
+#include "PointerAnalysis/ControlFlow/PointerCFG.h"
 #include "TPA/DataFlow/TPAWorkList.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/TransferFunction.h"
@@ -11,7 +12,6 @@ namespace tpa
 class Env;
 class ExternalPointerEffectTable;
 class MemoryManager;
-class PointerCFGNode;
 class PointerManager;
 class PointerProgram;
 class StaticCallGraph;

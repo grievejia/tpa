@@ -1,7 +1,7 @@
-#include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
 #include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
+#include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>

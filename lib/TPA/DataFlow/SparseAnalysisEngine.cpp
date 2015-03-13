@@ -8,7 +8,7 @@
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
 #include "TPA/DataFlow/SparseAnalysisEngine.h"
-#include "TPA/DataFlow/StaticCallGraph.h"
+#include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
 
 #include <llvm/Support/raw_ostream.h>
 

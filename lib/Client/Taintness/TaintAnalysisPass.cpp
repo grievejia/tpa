@@ -1,6 +1,6 @@
 #include "Client/Taintness/TaintAnalysis.h"
 #include "Client/Taintness/TaintAnalysisPass.h"
-#include "TPA/Analysis/TunablePointerAnalysis.h"
+#include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 
 #include <llvm/Support/raw_ostream.h>
 
@@ -14,10 +14,10 @@ namespace taint
 
 bool TaintAnalysisPass::runOnModule(Module& module)
 {
-	TunablePointerAnalysis tpaAnalysis;
-	tpaAnalysis.runOnModule(module);
+	TunablePointerAnalysisWrapper tpaWrapper;
+	tpaWrapper.runOnModule(module);
 
-	TaintAnalysis taintAnalysis(tpaAnalysis);
+	TaintAnalysis taintAnalysis(tpaWrapper.getPointerAnalysis());
 	auto hasError = taintAnalysis.runOnModule(module);
 	if (!hasError)
 	{

@@ -1,8 +1,8 @@
-#include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
 #include "MemoryModel/PtsSet/PtsEnv.h"
 #include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
+#include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
 #include "Utils/ParseLLVMAssembly.h"
 
 #include <llvm/Support/raw_ostream.h>

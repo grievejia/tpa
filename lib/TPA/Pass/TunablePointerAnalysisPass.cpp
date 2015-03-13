@@ -1,5 +1,5 @@
 #include "MemoryModel/Precision/KLimitContext.h"
-#include "TPA/Analysis/TunablePointerAnalysis.h"
+#include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 #include "TPA/Pass/TunablePointerAnalysisPass.h"
 
 #include <llvm/Support/CommandLine.h>
@@ -13,8 +13,8 @@ namespace tpa
 
 bool TunablePointerAnalysisPass::runOnModule(Module& module)
 {
-	TunablePointerAnalysis tpaAnalysis;
-	tpaAnalysis.runOnModule(module);
+	TunablePointerAnalysisWrapper tpaWrapper;
+	tpaWrapper.runOnModule(module);
 
 	return false;
 }

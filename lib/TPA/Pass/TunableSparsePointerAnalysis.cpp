@@ -1,4 +1,4 @@
-#include "TPA/Analysis/TunableSparsePointerAnalysis.h"
+#include "TPA/Analysis/TunableSparsePointerAnalysisWrapper.h"
 #include "TPA/Pass/TunableSparsePointerAnalysisPass.h"
 
 using namespace llvm;
@@ -8,8 +8,8 @@ namespace tpa
 
 bool TunableSparsePointerAnalysisPass::runOnModule(Module& module)
 {
-	TunableSparsePointerAnalysis stpaAnalysis;
-	stpaAnalysis.runOnModule(module);
+	TunableSparsePointerAnalysisWrapper stpaWrapper;
+	stpaWrapper.runOnModule(module);
 
 	return false;
 }

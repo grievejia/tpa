@@ -1,8 +1,8 @@
 #include "PointerAnalysis/Analysis/ModRefAnalysis.h"
 #include "PointerAnalysis/Analysis/ReachingDefAnalysis.h"
+#include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "PointerAnalysis/ControlFlow/PointerCFGNodePrint.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
-#include "TPA/Analysis/TunablePointerAnalysis.h"
+#include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 #include "TPA/Pass/TunableReachingDefAnalysisPass.h"
 
 #include <llvm/Support/raw_ostream.h>
@@ -39,15 +39,14 @@ static void dumpReachingDef(const PointerCFG& cfg, const ReachingDefMap& rdMap)
 
 bool TunableReachingDefAnalysisPass::runOnModule(Module& module)
 {
-	TunablePointerAnalysis tpaAnalysis;
-	tpaAnalysis.runOnModule(module);
+	TunablePointerAnalysisWrapper tpaWrapper;
+	tpaWrapper.runOnModule(module);
 
-	ExternalPointerEffectTable extTable;
-	ModRefAnalysis modRefAnalysis(tpaAnalysis, extTable);
-	auto summaryMap = modRefAnalysis.runOnProgram(tpaAnalysis.getPointerProgram());
+	ModRefAnalysis modRefAnalysis(tpaWrapper.getPointerAnalysis(), tpaWrapper.getExtTable());
+	auto summaryMap = modRefAnalysis.runOnProgram(tpaWrapper.getPointerProgram());
 
-	ReachingDefAnalysis rdAnalysis(tpaAnalysis, summaryMap, extTable);
-	for (auto const& cfg: tpaAnalysis.getPointerProgram())
+	ReachingDefAnalysis rdAnalysis(tpaWrapper.getPointerAnalysis(), summaryMap, tpaWrapper.getExtTable());
+	for (auto const& cfg: tpaWrapper.getPointerProgram())
 	{
 		auto rdMap = rdAnalysis.runOnPointerCFG(cfg);
 		dumpReachingDef(cfg, rdMap);

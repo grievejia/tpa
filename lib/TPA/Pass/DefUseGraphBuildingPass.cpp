@@ -1,7 +1,7 @@
 #include "PointerAnalysis/Analysis/ModRefAnalysis.h"
 #include "PointerAnalysis/DataFlow/DefUseProgramBuilder.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
+#include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 #include "TPA/Pass/DefUseGraphBuildingPass.h"
 
 using namespace llvm;
@@ -11,15 +11,15 @@ namespace tpa
 
 bool DefUseGraphBuildingPass::runOnModule(Module& module)
 {
-	TunablePointerAnalysis tpaAnalysis;
-	tpaAnalysis.runOnModule(module);
+	TunablePointerAnalysisWrapper tpaWrapper;
+	tpaWrapper.runOnModule(module);
 
-	ExternalPointerEffectTable extTable;
-	ModRefAnalysis modRefAnalysis(tpaAnalysis, extTable);
-	auto summaryMap = modRefAnalysis.runOnProgram(tpaAnalysis.getPointerProgram());
+	auto const& ptrAnalysis = tpaWrapper.getPointerAnalysis();
+	ModRefAnalysis modRefAnalysis(ptrAnalysis, tpaWrapper.getExtTable());
+	auto summaryMap = modRefAnalysis.runOnProgram(tpaWrapper.getPointerProgram());
 
-	DefUseProgramBuilder builder(tpaAnalysis, summaryMap, extTable);
-	auto dug = builder.buildDefUseProgram(tpaAnalysis.getPointerProgram());
+	DefUseProgramBuilder builder(ptrAnalysis, summaryMap, tpaWrapper.getExtTable());
+	auto dug = builder.buildDefUseProgram(tpaWrapper.getPointerProgram());
 
 	dug.writeDotFile("dots", "");
 

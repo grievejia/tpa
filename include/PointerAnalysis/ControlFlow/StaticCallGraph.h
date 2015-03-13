@@ -37,7 +37,9 @@ public:
 	bool insertCallEdge(CallSiteType callSite, CallTargetType callTgt);
 
 	llvm::iterator_range<CallTargetVectorConstIterator> getCallTargets(CallSiteType callSite) const;
+	size_t getNumCallTargets(CallSiteType callSite);
 	llvm::iterator_range<CallSiteVectorConstIterator> getCallSites(CallTargetType callTgt) const;
+	size_t getNumReturnTargets(CallTargetType callTgt);
 };
 
 }

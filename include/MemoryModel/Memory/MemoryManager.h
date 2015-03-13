@@ -16,8 +16,8 @@ namespace tpa
 class MemoryManager
 {
 private:
-	std::unordered_map<ProgramLocation, MemoryObject> objPool;
-	std::set<MemoryLocation> locSet;
+	mutable std::unordered_map<ProgramLocation, MemoryObject> objPool;
+	mutable std::set<MemoryLocation> locSet;
 
 	MemoryObject universalObj;
 	MemoryObject nullObj;
@@ -30,7 +30,6 @@ private:
 
 	llvm::DataLayout& dataLayout;
 
-	const MemoryLocation* getMemoryLocation(const MemoryObject*, size_t offset, bool summary = false);
 	const MemoryLocation* getMemoryLocation(const MemoryObject*, size_t offset, bool summary = false) const;
 	size_t initializeMemoryObject(MemoryObject& obj, size_t offset, llvm::Type* t);
 	size_t initializeSummaryObject(MemoryObject& obj, llvm::Type* t);
@@ -58,9 +57,6 @@ public:
 
 	const MemoryObject* allocateMemory(const ProgramLocation& loc, llvm::Type* type, bool forceSummary = false);
 
-	const MemoryLocation* offsetMemory(const MemoryObject* obj, size_t offset);
-	const MemoryLocation* offsetMemory(const MemoryLocation* loc, size_t offset);
-	// FIXME: The const version of offsetMemory() duplicates a lot of codes. That's bad
 	const MemoryLocation* offsetMemory(const MemoryObject* obj, size_t offset) const;
 	const MemoryLocation* offsetMemory(const MemoryLocation* loc, size_t offset) const;
 	

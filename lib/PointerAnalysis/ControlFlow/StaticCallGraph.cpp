@@ -1,4 +1,6 @@
-#include "TPA/DataFlow/StaticCallGraph.h"
+#include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
+
+#include <iterator>
 
 using namespace llvm;
 
@@ -34,6 +36,12 @@ iterator_range<StaticCallGraph::CallTargetVectorConstIterator> StaticCallGraph::
 		return iterator_range<CallTargetVectorConstIterator>(itr->second.begin(), itr->second.end());
 }
 
+size_t StaticCallGraph::getNumCallTargets(CallSiteType callSite)
+{
+	auto range = getCallTargets(callSite);
+	return std::distance(range.begin(), range.end());
+}
+
 iterator_range<StaticCallGraph::CallSiteVectorConstIterator> StaticCallGraph::getCallSites(CallTargetType callTgt) const
 {
 	auto itr = revCallMap.find(callTgt);
@@ -41,6 +49,12 @@ iterator_range<StaticCallGraph::CallSiteVectorConstIterator> StaticCallGraph::ge
 		return iterator_range<CallSiteVectorConstIterator>(CallSiteVectorConstIterator(), CallSiteVectorConstIterator());
 	else
 		return iterator_range<CallSiteVectorConstIterator>(itr->second.begin(), itr->second.end());
+}
+
+size_t StaticCallGraph::getNumReturnTargets(CallTargetType callTgt)
+{
+	auto range = getCallSites(callTgt);
+	return std::distance(range.begin(), range.end());
 }
 
 }

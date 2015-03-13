@@ -1,8 +1,8 @@
 #include "PointerAnalysis/Analysis/ModRefAnalysis.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
-#include "TPA/Analysis/TunablePointerAnalysis.h"
+#include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 #include "TPA/Pass/TunableModRefAnalysisPass.h"
 
+#include <llvm/IR/Function.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
@@ -33,12 +33,11 @@ static void dumpModRefSummary(const ModRefSummaryMap& smap)
 
 bool TunableModRefAnalysisPass::runOnModule(Module& module)
 {
-	TunablePointerAnalysis tpaAnalysis;
-	tpaAnalysis.runOnModule(module);
+	TunablePointerAnalysisWrapper tpaWrapper;
+	tpaWrapper.runOnModule(module);
 
-	ExternalPointerEffectTable extTable;
-	ModRefAnalysis modRefAnalysis(tpaAnalysis, extTable);
-	auto summaryMap = modRefAnalysis.runOnProgram(tpaAnalysis.getPointerProgram());
+	ModRefAnalysis modRefAnalysis(tpaWrapper.getPointerAnalysis(), tpaWrapper.getExtTable());
+	auto summaryMap = modRefAnalysis.runOnProgram(tpaWrapper.getPointerProgram());
 
 	dumpModRefSummary(summaryMap);
 

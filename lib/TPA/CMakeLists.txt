@@ -1,12 +1,11 @@
 
 set (TPASourceCodes
-	Analysis/TunableAliasAnalysis.cpp
 	Analysis/TunablePointerAnalysis.cpp
-	Analysis/TunablePointerAnalysisCore.cpp
+	Analysis/TunablePointerAnalysisWrapper.cpp
 	Analysis/TunableSparsePointerAnalysis.cpp
+	Analysis/TunableSparsePointerAnalysisWrapper.cpp
 	DataFlow/PointerAnalysisEngine.cpp
 	DataFlow/SparseAnalysisEngine.cpp
-	DataFlow/StaticCallGraph.cpp
 	DataFlow/TransferFunction.cpp
 	Pass/CFGBuildingPass.cpp
 	Pass/DefUseGraphBuildingPass.cpp

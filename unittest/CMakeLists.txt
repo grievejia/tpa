@@ -17,7 +17,7 @@ add_executable(InterpreterTest InterpreterUnitTest/InterpreterTest.cpp)
 target_link_libraries(InterpreterTest TPA LLVMAnalysis LLVMAsmParser LLVMSupport LLVMCore gtest_main)
 
 add_executable(GlobalAnalysisTest GlobalAnalysisUnitTest/GlobalAnalysisTest.cpp)
-target_link_libraries(GlobalAnalysisTest MemoryModel LLVMAnalysis LLVMAsmParser LLVMSupport LLVMCore gtest_main)
+target_link_libraries(GlobalAnalysisTest PointerAnalysis LLVMAnalysis LLVMAsmParser LLVMSupport LLVMCore gtest_main)
 
 add_executable(TaintnessTest TaintnessUnitTest/TaintnessTest.cpp)
 target_link_libraries(TaintnessTest Clients TPA LLVMAnalysis LLVMAsmParser LLVMSupport LLVMCore gtest_main)

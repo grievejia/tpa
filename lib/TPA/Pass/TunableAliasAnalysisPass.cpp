@@ -1,3 +1,4 @@
+#include "PointerAnalysis/Analysis/AliasAnalysis.h"
 #include "TPA/Pass/TunableAliasAnalysisPass.h"
 
 using namespace llvm;
@@ -5,18 +6,23 @@ using namespace llvm;
 namespace tpa
 {
 
+TunableAliasAnalysisPass::TunableAliasAnalysisPass(): llvm::ModulePass(ID) {}
+TunableAliasAnalysisPass::~TunableAliasAnalysisPass() {}
+
 bool TunableAliasAnalysisPass::runOnModule(llvm::Module& M)
 {
-	taa.runOnModule(M);
+	assert(aa.get() == nullptr);
+	tpaWrapper.runOnModule(M);
+	aa = std::make_unique<tpa::AliasAnalysis>(tpaWrapper.getPointerAnalysis());
 	return false;
 }
 
-AliasAnalysis::AliasResult TunableAliasAnalysisPass::alias(const AliasAnalysis::Location& l1, const AliasAnalysis::Location& l2)
+llvm::AliasAnalysis::AliasResult TunableAliasAnalysisPass::alias(const AliasAnalysis::Location& l1, const AliasAnalysis::Location& l2)
 {
 	if (l1.Size == 0 || l2.Size == 0)
 		return NoAlias;
 
-	auto myRes = taa.globalAliasQuery(l1.Ptr, l2.Ptr);
+	auto myRes = aa->globalAliasQuery(l1.Ptr, l2.Ptr);
 
 	switch (myRes)
 	{
@@ -32,7 +38,7 @@ AliasAnalysis::AliasResult TunableAliasAnalysisPass::alias(const AliasAnalysis::
 
 void TunableAliasAnalysisPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const
 {
-	AliasAnalysis::getAnalysisUsage(AU);
+	llvm::AliasAnalysis::getAnalysisUsage(AU);
 	AU.setPreservesAll();
 }
 
@@ -49,6 +55,6 @@ void TunableAliasAnalysisPass::releaseMemory()
 
 char TunableAliasAnalysisPass::ID = 0;
 static RegisterPass<TunableAliasAnalysisPass> X("taa", "Alias analysis with tunable precision", true, true);
-static RegisterAnalysisGroup<AliasAnalysis> Y(X);
+static RegisterAnalysisGroup<llvm::AliasAnalysis> Y(X);
 
 }

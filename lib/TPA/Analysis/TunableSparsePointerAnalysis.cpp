@@ -1,10 +1,10 @@
-#include "MemoryModel/Analysis/GlobalPointerAnalysis.h"
 #include "MemoryModel/Memory/MemoryManager.h"
+#include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
 #include "PointerAnalysis/Analysis/ModRefAnalysis.h"
 #include "PointerAnalysis/ControlFlow/SemiSparseProgramBuilder.h"
 #include "PointerAnalysis/DataFlow/DefUseProgramBuilder.h"
 #include "PointerAnalysis/External/ExternalPointerEffectTable.h"
-#include "TPA/Analysis/TunablePointerAnalysisCore.h"
+#include "TPA/Analysis/TunablePointerAnalysis.h"
 #include "TPA/Analysis/TunableSparsePointerAnalysis.h"
 #include "TPA/DataFlow/SparseAnalysisEngine.h"
 
@@ -16,89 +16,15 @@ using namespace llvm;
 namespace tpa
 {
 
-TunableSparsePointerAnalysis::TunableSparsePointerAnalysis(): storeManager(pSetManager), env(pSetManager), memo(storeManager) {}
-TunableSparsePointerAnalysis::~TunableSparsePointerAnalysis() = default;
+TunableSparsePointerAnalysis::TunableSparsePointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& ss, const ExternalPointerEffectTable& e, const ModRefSummaryMap& sm): PointerAnalysis(p, m, ss.getPtsSetManager(), e), storeManager(ss), summaryMap(sm), memo(storeManager) {}
+TunableSparsePointerAnalysis::TunableSparsePointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& ss, const ExternalPointerEffectTable& e, const ModRefSummaryMap& sm, const Env& en): PointerAnalysis(p, m, ss.getPtsSetManager(), e, en), storeManager(ss), summaryMap(sm), memo(storeManager) {}
+TunableSparsePointerAnalysis::TunableSparsePointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& ss, const ExternalPointerEffectTable& e, const ModRefSummaryMap& sm, Env&& en): PointerAnalysis(p, m, ss.getPtsSetManager(), e, std::move(en)), storeManager(ss), summaryMap(sm), memo(storeManager) {}
+TunableSparsePointerAnalysis::~TunableSparsePointerAnalysis() {}
 
-void TunableSparsePointerAnalysis::runOnModule(const llvm::Module& module)
+void TunableSparsePointerAnalysis::runOnDefUseProgram(const DefUseProgram& dug, Store store)
 {
-	auto dataLayout = DataLayout(&module);
-	memManager = std::make_unique<MemoryManager>(dataLayout);
-
-	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, *memManager, storeManager);
-
-	auto initEnvStore = globalAnalysis.runOnModule(module);
-
-	auto extTable = ExternalPointerEffectTable();
-	auto builder = SemiSparseProgramBuilder(extTable);
-	auto prog = builder.buildSemiSparseProgram(module);
-
-	// TPA initial pass
-	TunablePointerAnalysisCore tpaCore(ptrManager, *memManager, storeManager, initEnvStore.first, extTable);
-	tpaCore.runOnProgram(prog, initEnvStore.second);
-
-	ModRefAnalysis modRefAnalysis(tpaCore, extTable);
-	auto summaryMap = modRefAnalysis.runOnProgram(prog);
-
-	DefUseProgramBuilder duBuilder(tpaCore, summaryMap, extTable);
-	auto dug = duBuilder.buildDefUseProgram(prog);
-
-	auto sparseEngine = SparseAnalysisEngine(ptrManager, *memManager, storeManager, callGraph, memo, summaryMap, extTable);
-	env = std::move(initEnvStore.first);
-	sparseEngine.runOnDefUseProgram(dug, env, std::move(initEnvStore.second));
-
-	for (auto const& mapping: env)
-	{
-		auto pSet = tpaCore.getPtsSet(mapping.first);
-		assert(pSet != nullptr);
-		assert(pSet == mapping.second);
-	}
-}
-
-const PtsSet* TunableSparsePointerAnalysis::getPtsSet(const Value* val) const
-{
-	return getPtsSet(Context::getGlobalContext(), val);
-}
-
-const PtsSet* TunableSparsePointerAnalysis::getPtsSet(const Context* ctx, const Value* val) const
-{
-	assert(val != nullptr);
-	assert(val->getType()->isPointerTy());
-
-	val = val->stripPointerCasts();
-
-	auto ptr = ptrManager.getPointer(ctx, val);
-	assert(ptr != nullptr);
-	return getPtsSet(ptr);
-}
-
-const PtsSet* TunableSparsePointerAnalysis::getPtsSet(const Pointer* ptr) const
-{
-	assert(ptr != nullptr);
-
-	auto pSet = env.lookup(ptr);
-	assert(pSet != nullptr);
-
-	return pSet;
-}
-
-std::vector<const llvm::Function*> TunableSparsePointerAnalysis::getCallTargets(const Context* ctx, const llvm::Instruction* inst) const
-{
-	auto retVec = std::vector<const llvm::Function*>();
-
-	ImmutableCallSite cs(inst);
-	assert(cs && "getCallTargets() gets a non-call inst");
-	if (auto f = cs.getCalledFunction())
-		retVec.push_back(f);
-	else
-	{
-		for (auto const& callTgt: callGraph.getCallTargets(std::make_pair(ctx, inst)))
-		retVec.push_back(callTgt.second);
-
-		std::sort(retVec.begin(), retVec.end());
-		retVec.erase(std::unique(retVec.begin(), retVec.end()), retVec.end());
-	}
-
-	return retVec;
+	auto sparseEngine = SparseAnalysisEngine(ptrManager, memManager, storeManager, callGraph, memo, summaryMap, extTable);
+	sparseEngine.runOnDefUseProgram(dug, env, std::move(store));
 }
 
 }

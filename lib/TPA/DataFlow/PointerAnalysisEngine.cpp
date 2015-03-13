@@ -6,7 +6,7 @@
 #include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
-#include "TPA/DataFlow/StaticCallGraph.h"
+#include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
 
 #include "PointerAnalysis/ControlFlow/PointerCFGNodePrint.h"
 #include <llvm/Support/raw_ostream.h>
@@ -69,8 +69,9 @@ void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* ca
 	if (envChanged || storeChanged)
 		funWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getEntryNode());
 	// Prevent premature fixpoint
+	// We enqueue the callee's return node rather than caller's successors of the call node. The reason is that if the callee reaches its fixpoint, the call node's lhs won't get updated
 	// FIXME: should only propagate once for each non-external callsite
-	propagateMemoryLevel(ctx, callNode, store, workList);
+	funWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getExitNode());
 }
 
 void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* cfg, Env& env, GlobalWorkList& funWorkList, const PointerProgram& prog)
@@ -223,6 +224,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 				break;
 			}
 		}
+		//env.dump(errs());
 	}
 }
 
