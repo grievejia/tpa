@@ -3,6 +3,8 @@
 #include "PointerAnalysis/Analysis/ModRefAnalysis.h"
 #include "PointerAnalysis/ControlFlow/SemiSparseProgramBuilder.h"
 #include "PointerAnalysis/DataFlow/DefUseProgramBuilder.h"
+#include "PointerAnalysis/External/ExternalModTable.h"
+#include "PointerAnalysis/External/ExternalRefTable.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
 #include "TPA/Analysis/TunableSparsePointerAnalysisWrapper.h"
 
@@ -30,10 +32,12 @@ void TunableSparsePointerAnalysisWrapper::runOnModule(const llvm::Module& module
 	TunablePointerAnalysis tpa(ptrManager, *memManager, storeManager, extTable, initEnvStore.first);
 	tpa.runOnProgram(prog, initEnvStore.second);
 
-	ModRefAnalysis modRefAnalysis(tpa, extTable);
+	auto extModTable = ExternalModTable();
+	auto extRefTable = ExternalRefTable();
+	ModRefAnalysis modRefAnalysis(tpa, extModTable, extRefTable);
 	auto summaryMap = modRefAnalysis.runOnProgram(prog);
 
-	DefUseProgramBuilder duBuilder(tpa, summaryMap, extTable);
+	DefUseProgramBuilder duBuilder(tpa, summaryMap, extModTable, extRefTable);
 	dug = duBuilder.buildDefUseProgram(prog);
 
 	TunableSparsePointerAnalysis stpa(ptrManager, *memManager, storeManager, extTable, summaryMap, std::move(initEnvStore.first));

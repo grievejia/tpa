@@ -3,13 +3,20 @@
 
 #include "Client/Taintness/TaintEnvStore.h"
 #include "Client/Taintness/TaintTransferFunction.h"
-#include "Client/Util/ClientWorkList.h"
 #include "MemoryModel/Precision/ProgramLocation.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
+#include "PointerAnalysis/DataFlow/DefUseModule.h"
+#include "TPA/DataFlow/TPAWorkList.h"
 
 #include <llvm/IR/CallSite.h>
 
+#include <unordered_set>
 #include <unordered_map>
+
+namespace tpa
+{
+	class ModRefSummaryMap;
+}
 
 namespace client
 {
@@ -19,13 +26,17 @@ namespace taint
 class TaintAnalysis
 {
 private:
-	std::unordered_map<tpa::ProgramLocation, TaintState> memo;
+	using ClientWorkList = tpa::TPAWorkList<tpa::DefUseFunction>;
+
+	std::unordered_map<tpa::ProgramLocation, TaintStore> memo;
 
 	const tpa::PointerAnalysis& ptrAnalysis;
+	const tpa::ModRefSummaryMap& summaryMap;
+
+	TaintEnv env;
 	TaintTransferFunction transferFunction;
 
-	// Maps from callee to its callsites
-	std::unordered_multimap<const llvm::Function*, tpa::ProgramLocation> returnMap;
+	std::unordered_set<tpa::ProgramLocation> visitedFuncs;
 
 	// Helper function to insert memo
 	template <typename StateType>
@@ -42,17 +53,29 @@ private:
 			return itr->second.mergeWith(s);
 		}
 	}
+	bool insertMemoState(const tpa::ProgramLocation& pLoc, const tpa::MemoryLocation* loc, TaintLattice tVal)
+	{
+		bool changed = false;
+		auto itr = memo.find(pLoc);
+		if (itr == memo.end())
+		{
+			itr = memo.insert(std::make_pair(pLoc, TaintStore())).first;
+			changed = true;
+		}
+		
+		return itr->second.weakUpdate(loc, tVal);
+	}
 
-	ClientWorkList initializeWorkList(const llvm::Module& module);
-	void evalFunction(const tpa::Context* ctx, const llvm::Function* f, ClientWorkList& workList, const llvm::Module& module);
-	void applyFunction(const tpa::Context* ctx, llvm::ImmutableCallSite, const llvm::Function* f, const TaintState&, ClientWorkList::LocalWorkList&, ClientWorkList&);
-	void evalReturn(const tpa::Context* ctx, const llvm::Instruction* inst, const TaintState& state, ClientWorkList& workList);
-	void propagateStateChange(const tpa::Context* ctx, const llvm::Instruction* inst, const TaintState& state, ClientWorkList::LocalWorkList& workList);
+	ClientWorkList initializeWorkList(const tpa::DefUseModule& module);
+	void evalFunction(const tpa::Context* ctx, const tpa::DefUseFunction* f, ClientWorkList& workList, const tpa::DefUseModule& module);
+	void applyFunction(const tpa::Context* oldCtx, const tpa::Context* newCtx, llvm::ImmutableCallSite, const tpa::DefUseFunction* f, const TaintStore&, ClientWorkList&);
+	void evalReturn(const tpa::Context* ctx, const llvm::Instruction* inst, TaintEnv& env, const TaintStore& store, const tpa::DefUseModule& duModule, ClientWorkList& workList);
+	void propagateStateChange(const tpa::Context* ctx, const tpa::DefUseInstruction* inst, bool envChanged, bool storeChanged, const TaintStore& store, ClientWorkList::LocalWorkList& workList);
 public:
-	TaintAnalysis(const tpa::PointerAnalysis& p): ptrAnalysis(p), transferFunction(ptrAnalysis) {}
+	TaintAnalysis(const tpa::PointerAnalysis& p, const tpa::ModRefSummaryMap& s, const tpa::ExternalPointerEffectTable& t): ptrAnalysis(p), summaryMap(s), transferFunction(ptrAnalysis, t) {}
 
 	// Return true if there is a info flow violation
-	bool runOnModule(const llvm::Module& M);
+	bool runOnDefUseModule(const tpa::DefUseModule& m);
 };
 
 }

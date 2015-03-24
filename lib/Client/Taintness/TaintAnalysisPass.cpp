@@ -1,5 +1,9 @@
 #include "Client/Taintness/TaintAnalysis.h"
 #include "Client/Taintness/TaintAnalysisPass.h"
+#include "PointerAnalysis/Analysis/ModRefModuleAnalysis.h"
+#include "PointerAnalysis/DataFlow/DefUseModuleBuilder.h"
+#include "PointerAnalysis/External/ExternalModTable.h"
+#include "PointerAnalysis/External/ExternalRefTable.h"
 #include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 
 #include <llvm/Support/raw_ostream.h>
@@ -16,9 +20,20 @@ bool TaintAnalysisPass::runOnModule(Module& module)
 {
 	TunablePointerAnalysisWrapper tpaWrapper;
 	tpaWrapper.runOnModule(module);
+	auto& tpa = tpaWrapper.getPointerAnalysis();
+	auto& extTable = tpaWrapper.getExtTable();
 
-	TaintAnalysis taintAnalysis(tpaWrapper.getPointerAnalysis());
-	auto hasError = taintAnalysis.runOnModule(module);
+	auto extModTable = ExternalModTable();
+	auto extRefTable = ExternalRefTable();
+	ModRefModuleAnalysis modRefAnalysis(tpa, extModTable, extRefTable);
+	auto summaryMap = modRefAnalysis.runOnModule(module);
+
+	DefUseModuleBuilder duBuilder(tpa, summaryMap, extModTable, extRefTable);
+	auto duModule = duBuilder.buildDefUseModule(module);
+
+	TaintAnalysis taintAnalysis(tpa, summaryMap, extTable);
+
+	auto hasError = taintAnalysis.runOnDefUseModule(duModule);
 	if (!hasError)
 	{
 		errs().changeColor(raw_ostream::Colors::GREEN);

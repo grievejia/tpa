@@ -11,7 +11,7 @@ namespace tpa
 
 class Context;
 
-template <typename ElemListType, typename ElemType, typename ElemPrioComparator = std::less<ElemType>>
+template <typename ElemListType, typename T, typename ElemPrioComparator = std::less<T>>
 class EvaluationWorkList
 {
 private:
@@ -20,6 +20,7 @@ private:
 	using FunctionWorkList = WorkList<ContextFunctionPair, PairHasher<const Context*, const ElemListType*>>;
 public:
 	// The intra-procedural level worklist
+	using ElemType = T;
 	using LocalWorkList = PrioWorkList<const ElemType*, ElemPrioComparator>;
 private:
 	using WorkListMap = std::unordered_map<ContextFunctionPair, LocalWorkList, PairHasher<const Context*, const ElemListType*>>;
@@ -60,8 +61,11 @@ public:
 
 	LocalWorkList& getLocalWorkList(const Context* ctx, const ElemListType* g)
 	{
-		auto itr = workListMap.find(std::make_pair(ctx, g));
-		assert(itr != workListMap.end());
+		auto pair = std::make_pair(ctx, g);
+		auto itr = workListMap.find(pair);
+		if (itr == workListMap.end())
+			itr = workListMap.insert(std::make_pair(pair, LocalWorkList(comp))).first;
+		//assert(itr != workListMap.end());
 		// The dequeued worklist may be empty if recursive call is involved
 		//assert(!itr->second.isEmpty());
 		return itr->second;

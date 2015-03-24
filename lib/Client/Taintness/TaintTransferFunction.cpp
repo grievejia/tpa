@@ -14,18 +14,20 @@ namespace client
 namespace taint
 {
 
-TaintTransferFunction::TaintTransferFunction(const PointerAnalysis& pa): ptrAnalysis(pa)
+TaintTransferFunction::TaintTransferFunction(const PointerAnalysis& pa, const tpa::ExternalPointerEffectTable& e): ptrAnalysis(pa), extTable(e)
 {
 	ssManager.readSummaryFromFile("source_sink.conf");
+	uLoc = ptrAnalysis.getMemoryManager().getUniversalLocation();
+	nLoc = ptrAnalysis.getMemoryManager().getNullLocation();
 }
 
-std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx, const Instruction* inst, TaintState& state)
+std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx, const Instruction* inst, TaintEnv& env, TaintStore& store)
 {
-	auto checkTaint = [&state] (const Value* val)
+	auto checkTaint = [ctx, &env] (const Value* val)
 	{
 		if (isa<Constant>(val))
 			return std::experimental::make_optional(TaintLattice::Untainted);
-		return state.lookup(val);
+		return env.lookup(ProgramLocation(ctx, val));
 	};
 
 	auto checkTaintForAllOperands = [&checkTaint] (const Instruction* inst)
@@ -33,8 +35,8 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 		TaintLattice currVal = TaintLattice::Untainted;
 		for (auto i = 0u, e = inst->getNumOperands(); i < e; ++i)
 		{
-			//errs() << "\tcheck op " << i << "\n";
 			auto op = inst->getOperand(i);
+			//errs() << "\tcheck op " << i << ": " << *op << "\n";
 			auto optVal = checkTaint(op);
 			if (!optVal)
 				return optVal;
@@ -51,8 +53,8 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 			auto allocInst = cast<AllocaInst>(inst);
 			auto op0 = allocInst->getArraySize();
 
-			auto optVal = state.lookup(op0);
-			auto envChanged = state.strongUpdate(allocInst, optVal.value_or(TaintLattice::Untainted));
+			auto optVal = env.lookup(ProgramLocation(ctx, op0));
+			auto envChanged = env.strongUpdate(ProgramLocation(ctx, allocInst), optVal.value_or(TaintLattice::Untainted));
 
 			return std::make_tuple(true, envChanged, false);
 		}
@@ -104,7 +106,7 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 			auto optVal = checkTaintForAllOperands(inst);
 			if (optVal)
 			{
-				auto envChanged = state.strongUpdate(inst, *optVal);
+				auto envChanged = env.strongUpdate(ProgramLocation(ctx, inst), *optVal);
 				return std::make_tuple(true, envChanged, false);
 			}
 			else
@@ -112,13 +114,13 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 		}
 		case Instruction::PHI:
 		{
-			// Phi nodes has to proceed the analysis without full information
+			// Phi nodes has to make progress without all operands information available
 			auto optVal = checkTaintForAllOperands(inst);
 			bool envChanged;
 			if (optVal)
-				envChanged = state.strongUpdate(inst, *optVal);
+				envChanged = env.strongUpdate(ProgramLocation(ctx, inst), *optVal);
 			else
-				envChanged = state.strongUpdate(inst, TaintLattice::Untainted);
+				envChanged = env.strongUpdate(ProgramLocation(ctx, inst), TaintLattice::Untainted);
 			return std::make_tuple(true, envChanged, false);
 		}
 		case Instruction::Store:
@@ -140,7 +142,7 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 			{
 				auto loc = *ptsSet->begin();
 				if (!loc->isSummaryLocation())
-					storeChanged = state.strongUpdate(loc, *optVal);
+					storeChanged = store.strongUpdate(loc, *optVal);
 				else
 					needWeakUpdate = true;
 			}
@@ -148,9 +150,12 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 			if (needWeakUpdate)
 			{
 				for (auto loc: *ptsSet)
-					storeChanged |= state.weakUpdate(loc, *optVal);
+				{
+					if (loc == uLoc || loc == nLoc)
+						continue;
+					storeChanged |= store.weakUpdate(loc, *optVal);
+				}
 			}
-
 			return std::make_tuple(true, false, storeChanged);
 		}
 		case Instruction::Load:
@@ -164,15 +169,25 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 			auto resVal = TaintLattice::Untainted;
 			for (auto obj: *ptsSet)
 			{
-				auto optVal = state.lookup(obj);
+				if (obj == uLoc)
+				{
+					resVal = TaintLattice::Tainted;
+					break;
+				}
+				else if (obj == nLoc)
+				{
+					continue;
+				}
+
+				auto optVal = store.lookup(obj);
 				if (optVal)
 					resVal = Lattice<TaintLattice>::merge(resVal, *optVal);
 				else
-				//	return std::make_tuple(false, false, false);
-					resVal = TaintLattice::Untainted;
+					return std::make_tuple(false, false, false);
+				//	resVal = TaintLattice::Untainted;
 			}
 
-			auto envChanged = state.strongUpdate(loadInst, resVal);
+			auto envChanged = env.strongUpdate(ProgramLocation(ctx, loadInst), resVal);
 			return std::make_tuple(true, envChanged, false);
 		}
 		// TODO: Add implicit flow detection for Br
@@ -197,14 +212,12 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 	llvm_unreachable("");
 }
 
-std::pair<bool, bool> TaintTransferFunction::processLibraryCall(const Context* ctx, const llvm::Function* callee, ImmutableCallSite cs, TaintState& state)
+std::tuple<bool, bool, bool> TaintTransferFunction::processLibraryCall(const Context* ctx, const llvm::Function* callee, ImmutableCallSite cs, TaintEnv& env, TaintStore& store)
 {
-	auto envChanged = false;
+	auto envChanged = false, storeChanged = false;
 	auto funName = callee->getName();
 	auto ptrEffect = extTable.lookup(funName);
 
-	if (!callee->getReturnType()->isVoidTy())
-		envChanged |= state.strongUpdate(cs.getInstruction(), TaintLattice::Untainted);
 	if (ptrEffect == PointerEffect::MemcpyArg1ToArg0 || funName == "strcpy" || funName == "strncpy")
 	{
 		auto dstSet = ptrAnalysis.getPtsSet(ctx, cs.getArgument(0));
@@ -218,7 +231,7 @@ std::pair<bool, bool> TaintTransferFunction::processLibraryCall(const Context* c
 			auto startingOffset = srcLoc->getOffset();
 			for (auto oLoc: srcLocs)
 			{
-				auto optVal = state.lookup(oLoc);
+				auto optVal = store.lookup(oLoc);
 				if (!optVal)
 					continue;
 
@@ -226,29 +239,30 @@ std::pair<bool, bool> TaintTransferFunction::processLibraryCall(const Context* c
 				for (auto updateLoc: *dstSet)
 				{
 					auto tgtLoc = memManager.offsetMemory(updateLoc, offset);
-					if (tgtLoc == memManager.getUniversalLocation())
+					if (tgtLoc == uLoc)
 						break;
-					state.weakUpdate(tgtLoc, *optVal);
+					storeChanged |= store.weakUpdate(tgtLoc, *optVal);
 				}
 			}
 		}
 
-		auto optVal = state.lookup(cs.getArgument(0));
+		auto optVal = env.lookup(ProgramLocation(ctx, cs.getArgument(0)));
 		if (optVal)
-			envChanged |= state.strongUpdate(cs.getInstruction(), *optVal);
+			envChanged |= env.strongUpdate(ProgramLocation(ctx, cs.getInstruction()), *optVal);
 	}
 	else if (ptrEffect == PointerEffect::Malloc)
 	{
 		auto dstSet = ptrAnalysis.getPtsSet(ctx, cs.getInstruction());
 		assert(dstSet != nullptr && dstSet->getSize() == 1);
-		state.strongUpdate(*dstSet->begin(), TaintLattice::Untainted);
+		storeChanged |= store.strongUpdate(*dstSet->begin(), TaintLattice::Untainted);
+		envChanged |= env.strongUpdate(ProgramLocation(ctx, cs.getInstruction()), TaintLattice::Untainted);
 	}
-	else if (auto summary = ssManager.getSummary(funName))
+	if (auto summary = ssManager.getSummary(funName))
 	{
-		auto taintValue = [this, ctx, &state, &envChanged] (const TEntry& entry, const llvm::Value* val)
+		auto taintValue = [this, ctx, &env, &store, &envChanged, &storeChanged] (const TEntry& entry, const llvm::Value* val)
 		{
 			if (entry.what == TClass::ValueOnly)
-				envChanged |= state.strongUpdate(val, entry.val);
+				envChanged |= env.strongUpdate(ProgramLocation(ctx, val), entry.val);
 			else if (entry.what == TClass::DirectMemory)
 			{
 				if (auto pSet = ptrAnalysis.getPtsSet(ctx, val))
@@ -256,9 +270,9 @@ std::pair<bool, bool> TaintTransferFunction::processLibraryCall(const Context* c
 					for (auto loc: *pSet)
 					{
 						if (loc->isSummaryLocation())
-							state.weakUpdate(loc, entry.val);
+							storeChanged |= store.weakUpdate(loc, entry.val);
 						else
-							state.strongUpdate(loc, entry.val);
+							storeChanged |= store.strongUpdate(loc, entry.val);
 					}
 				}
  			}
@@ -271,7 +285,10 @@ std::pair<bool, bool> TaintTransferFunction::processLibraryCall(const Context* c
 		for (auto const& entry: *summary)
 		{
 			if (entry.end == TEnd::Sink)
+			{
+				sinkPoints.insert({ctx, cs.getInstruction(), callee});
 				continue;
+			}
 			switch (entry.pos)
 			{
 				case TPosition::Ret:
@@ -328,15 +345,17 @@ std::pair<bool, bool> TaintTransferFunction::processLibraryCall(const Context* c
 			}
 		}
 	}
+	else if (!callee->getReturnType()->isVoidTy())
+		envChanged |= env.weakUpdate(ProgramLocation(ctx, cs.getInstruction()), TaintLattice::Untainted);
 
-	return std::make_pair(true, envChanged);
+	return std::make_tuple(true, envChanged, storeChanged);
 }
 
-bool TaintTransferFunction::checkValue(const TEntry& entry, ProgramLocation pLoc, const Value* val, const TaintState& state)
+bool TaintTransferFunction::checkValue(const TEntry& entry, ProgramLocation pLoc, const TaintEnv& env, const TaintStore& store)
 {
 	if (entry.what == TClass::ValueOnly)
 	{
-		auto sinkVal = state.lookup(val);
+		auto sinkVal = env.lookup(pLoc);
 		if (sinkVal && Lattice<TaintLattice>::compare(*sinkVal, entry.val) == LatticeCompareResult::GreaterThan)
 		{
 			errs().changeColor(raw_ostream::Colors::RED);
@@ -347,11 +366,11 @@ bool TaintTransferFunction::checkValue(const TEntry& entry, ProgramLocation pLoc
 	}
 	else if (entry.what == TClass::DirectMemory)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(pLoc.getContext(), val))
+		if (auto pSet = ptrAnalysis.getPtsSet(pLoc.getContext(), pLoc.getInstruction()))
 		{
 			for (auto loc: *pSet)
 			{
-				auto optVal = state.lookup(loc);
+				auto optVal = store.lookup(loc);
 				if (optVal && Lattice<TaintLattice>::compare(*optVal, entry.val) == LatticeCompareResult::GreaterThan)
 				{
 					errs().changeColor(raw_ostream::Colors::RED);
@@ -369,7 +388,7 @@ bool TaintTransferFunction::checkValue(const TEntry& entry, ProgramLocation pLoc
 	return true;
 }
 
-bool TaintTransferFunction::checkValue(const TSummary& summary, const Context* ctx, llvm::ImmutableCallSite cs, const TaintState& state)
+bool TaintTransferFunction::checkValue(const TSummary& summary, const Context* ctx, llvm::ImmutableCallSite cs, const TaintEnv& env, const TaintStore& store)
 {
 	auto pLoc = ProgramLocation(ctx, cs.getInstruction());
 	for (auto const& entry: summary)
@@ -381,58 +400,58 @@ bool TaintTransferFunction::checkValue(const TSummary& summary, const Context* c
 		{
 			case TPosition::Ret:
 			{
-				if (!checkValue(entry, pLoc, cs.getInstruction(), state))
+				if (!checkValue(entry, pLoc, env, store))
 					return false;
 				break;
 			}
 			case TPosition::Arg0:
 			{
-				if (!checkValue(entry, pLoc, cs.getArgument(0), state))
+				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(0)), env, store))
 					return false;
 				break;
 			}
 			case TPosition::Arg1:
 			{
-				if (!checkValue(entry, pLoc, cs.getArgument(1), state))
+				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(1)), env, store))
 					return false;
 				break;
 			}
 			case TPosition::Arg2:
 			{
-				if (!checkValue(entry, pLoc, cs.getArgument(2), state))
+				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(2)), env, store))
 					return false;
 				break;
 			}
 			case TPosition::Arg3:
 			{
-				if (!checkValue(entry, pLoc, cs.getArgument(3), state))
+				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(3)), env, store))
 					return false;
 				break;
 			}
 			case TPosition::Arg4:
 			{
-				if (!checkValue(entry, pLoc, cs.getArgument(4), state))
+				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(4)), env, store))
 					return false;
 				break;
 			}
 			case TPosition::AfterArg0:
 			{
 				for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-					if (!checkValue(entry, pLoc, cs.getArgument(i), state))
+					if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(i)), env, store))
 						return false;
 				break;
 			}
 			case TPosition::AfterArg1:
 			{
 				for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-					if (!checkValue(entry, pLoc, cs.getArgument(i), state))
+					if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(i)), env, store))
 						return false;
 				break;
 			}
 			case TPosition::AllArgs:
 			{
 				for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
-					if (!checkValue(entry, pLoc, cs.getArgument(i), state))
+					if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(i)), env, store))
 						return false;
 
 				break;
@@ -443,28 +462,22 @@ bool TaintTransferFunction::checkValue(const TSummary& summary, const Context* c
 	return true;
 }
 
-bool TaintTransferFunction::checkMemoStates(const std::unordered_map<ProgramLocation, TaintState>& memo)
+bool TaintTransferFunction::checkMemoStates(const TaintEnv& env, const std::unordered_map<tpa::ProgramLocation, TaintStore>& memo)
 {
-	for (auto const& mapping: memo)
+	for (auto const& record: sinkPoints)
 	{
-		auto const& pLoc = mapping.first;
-		auto cs = ImmutableCallSite(pLoc.getInstruction());
-		if (!cs)
+		errs() << *record.context << ", " << *record.inst << ", " << record.callee->getName() << "\n";
+		ImmutableCallSite cs(record.inst);
+		assert(cs);
+
+		auto summary = ssManager.getSummary(record.callee->getName());
+		if (summary == nullptr)
 			continue;
 
-		auto callees = ptrAnalysis.getCallTargets(pLoc.getContext(), cs.getInstruction());
-		for (auto callee: callees)
-		{
-			if (!callee->isDeclaration())
-				continue;
-
-			auto summary = ssManager.getSummary(callee->getName());
-			if (summary == nullptr)
-				continue;
-
-			if (!checkValue(*summary, pLoc.getContext(), cs, mapping.second))
-				return false;
-		}
+		auto itr = memo.find(ProgramLocation(record.context, record.inst));
+		auto const& store = (itr == memo.end()) ? TaintStore() : itr->second;
+		if (!checkValue(*summary, record.context, cs, env, store))
+			return false;
 	}
 
 	return true;

@@ -6,7 +6,8 @@
 namespace tpa
 {
 
-class ExternalPointerEffectTable;
+class ExternalModTable;
+class ExternalRefTable;
 class PointerAnalysis;
 class PointerCFG;
 class PointerProgram;
@@ -16,11 +17,12 @@ class ModRefAnalysis
 {
 private:
 	const PointerAnalysis& ptrAnalysis;
-	const ExternalPointerEffectTable& extTable;
+	const ExternalModTable& extModTable;
+	const ExternalRefTable& extRefTable;
 
 	void collectProcedureSummary(const PointerCFG&, ModRefSummary&);
 public:
-	ModRefAnalysis(const PointerAnalysis& p, const ExternalPointerEffectTable& t): ptrAnalysis(p), extTable(t) {}
+	ModRefAnalysis(const PointerAnalysis& p, const ExternalModTable& em, const ExternalRefTable& er): ptrAnalysis(p), extModTable(em), extRefTable(er) {}
 
 	ModRefSummaryMap runOnProgram(const PointerProgram& prog);
 };

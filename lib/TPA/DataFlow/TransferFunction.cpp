@@ -128,6 +128,10 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Context* ctx, 
 		// Examine this set one-by-one
 		for (auto tgtLoc: *pSet)
 		{
+			if (tgtLoc == memManager.getUniversalLocation())
+				resSet = pSetManager.insert(resSet, tgtLoc);
+			else if (tgtLoc == memManager.getNullLocation())
+				continue;
 			// We have two cases here:
 			// - For non-array reference, just access the variable with the given offset
 			// - For array reference, we have to examine the variables with offset * 0, offset * 1, offset * 2... all the way till the memory region boundary, if the memory object is not known to be an array previously (this may happen if the program contains nonarray-to-array bitcast)

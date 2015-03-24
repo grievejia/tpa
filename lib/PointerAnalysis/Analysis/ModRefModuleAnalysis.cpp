@@ -1,36 +1,22 @@
 #include "MemoryModel/Memory/MemoryManager.h"
-#include "PointerAnalysis/Analysis/ModRefAnalysis.h"
+#include "PointerAnalysis/Analysis/ModRefModuleAnalysis.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
-#include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "PointerAnalysis/External/ExternalModTable.h"
 #include "PointerAnalysis/External/ExternalRefTable.h"
 #include "Utils/WorkList.h"
 
-#include <llvm/IR/CallSite.h>
-#include <llvm/Support/raw_ostream.h>
+#include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/Module.h>
 
 using namespace llvm;
 
 namespace tpa
 {
 
-namespace
-{
-
 using RevCallMapType = std::unordered_map<const Function*, VectorSet<const Instruction*>>;
 
-void updateRevCallGraph(RevCallMapType& revCallGraph, const PointerCFG& cfg, const PointerAnalysis& ptrAnalysis)
+namespace
 {
-	for (auto node: cfg)
-	{
-		if (auto callNode = dyn_cast<CallNode>(node))
-		{
-			auto callTgts = ptrAnalysis.getCallTargets(Context::getGlobalContext(), callNode->getInstruction());
-			for (auto f: callTgts)
-				revCallGraph[f].insert(callNode->getInstruction());
-		}
-	}
-}
 
 inline bool isLocalStackLocation(const MemoryLocation* loc, const Function* f)
 {
@@ -63,6 +49,78 @@ bool updateSummary(ModRefSummary& callerSummary, const ModRefSummary& calleeSumm
 
 	return changed;
 }
+
+void updateRevCallGraph(RevCallMapType& revCallGraph, const Function& f, const PointerAnalysis& ptrAnalysis)
+{
+	for (auto const& bb: f)
+	{
+		for (auto const& inst: bb)
+		{
+			ImmutableCallSite cs(&inst);
+			if (!cs)
+				continue;
+
+			auto callTgts = ptrAnalysis.getCallTargets(Context::getGlobalContext(), cs.getInstruction());
+			for (auto callee: callTgts)
+				revCallGraph[callee].insert(cs.getInstruction());
+		}
+	}
+}
+
+class SummaryInstVisitor: public InstVisitor<SummaryInstVisitor>
+{
+private:
+	const PointerAnalysis& ptrAnalysis;
+
+	ModRefSummary& summary;
+public:
+	SummaryInstVisitor(const PointerAnalysis& p, ModRefSummary& s): ptrAnalysis(p), summary(s) {}
+
+	void visitLoadInst(LoadInst& loadInst)
+	{
+		auto ptrOp = loadInst.getPointerOperand();
+		if (isa<GlobalValue>(ptrOp))
+			summary.addValueRead(ptrOp);
+		if (auto pSet = ptrAnalysis.getPtsSet(ptrOp))
+		{
+			for (auto loc: *pSet)
+			{
+				if (!isLocalStackLocation(loc, loadInst.getParent()->getParent()))
+					summary.addMemoryRead(loc);
+			}
+		}
+	}
+
+	void visitStoreInst(StoreInst& storeInst)
+	{
+		auto storeSrc = storeInst.getValueOperand();
+		auto storeDst = storeInst.getPointerOperand();
+
+		if (isa<GlobalValue>(storeSrc))
+			summary.addValueRead(storeSrc);
+		if (isa<GlobalValue>(storeDst))
+			summary.addValueRead(storeDst);
+
+		if (auto pSet = ptrAnalysis.getPtsSet(storeDst))
+		{
+			for (auto loc: *pSet)
+			{
+				if (!isLocalStackLocation(loc, storeInst.getParent()->getParent()))
+					summary.addMemoryWrite(loc);
+			}
+		}
+	}
+
+	void visitInstruction(Instruction& inst)
+	{
+		for (auto& use: inst.operands())
+		{
+			auto value = use.get();
+			if (isa<GlobalValue>(value))
+				summary.addValueRead(value);
+		}
+	}
+};
 
 bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, ModRefSummary& summary, const PointerAnalysis& ptrAnalysis, const ExternalModTable& extModTable, const ExternalRefTable& extRefTable)
 {
@@ -242,115 +300,26 @@ void propagateSummary(ModRefSummaryMap& summaryMap, const RevCallMapType& revCal
 	}
 }
 
-}
+}	// end of anonymous namespace
 
-void ModRefAnalysis::collectProcedureSummary(const PointerCFG& cfg, ModRefSummary& summary)
+void ModRefModuleAnalysis::collectProcedureSummary(const Function& f, ModRefSummary& summary)
 {
-	auto f = cfg.getFunction();
-
-	// Search for all non-local values and memory objects and add them to the summary
-	for (auto node: cfg)
-	{
-		switch (node->getType())
-		{
-			case PointerCFGNodeType::Copy:
-			{
-				auto copyNode = cast<CopyNode>(node);
-
-				// The destination value must be local, but the sources may contain globals
-				for (auto src: *copyNode)
-					if (isa<GlobalValue>(src))
-						summary.addValueRead(src);
-
-				break;
-			}
-			case PointerCFGNodeType::Load:
-			{
-				auto loadNode = cast<LoadNode>(node);
-				auto loadSrc = loadNode->getSrc();
-				if (isa<GlobalValue>(loadSrc))
-					summary.addValueRead(loadSrc);
-				if (auto pSet = ptrAnalysis.getPtsSet(loadSrc))
-				{
-					for (auto loc: *pSet)
-					{
-						if (!isLocalStackLocation(loc, f))
-							summary.addMemoryRead(loc);
-					}
-				}
-
-				break;
-			}
-			case PointerCFGNodeType::Store:
-			{
-				auto storeNode = cast<StoreNode>(node);
-				auto storeSrc = storeNode->getSrc();
-				auto storeDst = storeNode->getDest();
-
-				if (isa<GlobalValue>(storeSrc))
-					summary.addValueRead(storeSrc);
-				if (isa<GlobalValue>(storeDst))
-					summary.addValueRead(storeDst);
-
-				/*if (auto pSet = ptrAnalysis.getPtsSet(storeSrc))
-				{
-					for (auto loc: *pSet)
-					{
-						if (!isLocalStackLocation(loc, f))
-							summary.addMemoryRead(loc);
-					}
-				}*/
-				if (auto pSet = ptrAnalysis.getPtsSet(storeDst))
-				{
-					for (auto loc: *pSet)
-					{
-						if (!isLocalStackLocation(loc, f))
-							summary.addMemoryWrite(loc);
-					}
-				}
-
-				break;
-			}
-			case PointerCFGNodeType::Call:
-			{
-				auto callNode = cast<CallNode>(node);
-
-				auto funPtr = callNode->getFunctionPointer();
-				if (isa<GlobalValue>(funPtr))
-					summary.addValueRead(funPtr);
-
-				for (auto arg: *callNode)
-					if (isa<GlobalValue>(arg))
-						summary.addValueRead(arg);
-
-				break;
-			}
-			case PointerCFGNodeType::Ret:
-			{
-				auto retNode = cast<ReturnNode>(node);
-
-				if (auto retVal = retNode->getReturnValue())
-					if (isa<GlobalValue>(retVal))
-						summary.addValueRead(retVal);
-
-				break;
-			}
-			default:
-				break;
-		}
-	}
+	SummaryInstVisitor summaryVisitor(ptrAnalysis, summary);
+	summaryVisitor.visit(const_cast<Function&>(f));
 }
 
-ModRefSummaryMap ModRefAnalysis::runOnProgram(const PointerProgram& prog)
+ModRefSummaryMap ModRefModuleAnalysis::runOnModule(const Module& module)
 {
 	ModRefSummaryMap summaryMap;
 
 	RevCallMapType revCallGraph;
 
-	for (auto const& cfg: prog)
+	for (auto const& f: module)
 	{
-		collectProcedureSummary(cfg, summaryMap.getSummary(cfg.getFunction()));
-		updateRevCallGraph(revCallGraph, cfg, ptrAnalysis);
+		if (f.isDeclaration())
+			continue;
+		collectProcedureSummary(f, summaryMap.getSummary(&f));
+		updateRevCallGraph(revCallGraph, f, ptrAnalysis);
 	}
 
 	propagateSummary(summaryMap, revCallGraph, ptrAnalysis, extModTable, extRefTable);

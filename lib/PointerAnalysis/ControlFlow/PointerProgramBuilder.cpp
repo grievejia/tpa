@@ -100,8 +100,9 @@ PointerCFGNode* PointerProgramBuilder::translateInstruction(PointerCFG& cfg, con
 						errs() << "Unrecognized external funciton call: " << callee->getName() << "\n";
 						llvm_unreachable("");
 					}
-					else if (extType == PointerEffect::NoEffect)
-						return nullptr;
+					// Removing NoEffect external calls has some negative impact on the client. Disable it for now.
+					//else if (extType == PointerEffect::NoEffect)
+					//	return nullptr;
 				}
 			}
 

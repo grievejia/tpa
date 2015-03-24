@@ -1,6 +1,8 @@
 #include "Client/Taintness/TaintAnalysis.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Precision/KLimitContext.h"
+#include "PointerAnalysis/DataFlow/DefUseModule.h"
+#include "PointerAnalysis/DataFlow/ModRefSummary.h"
 
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
@@ -14,197 +16,205 @@ namespace client
 namespace taint
 {
 
-static const Instruction* getNextInstruction(const Instruction* inst)
+TaintAnalysis::ClientWorkList TaintAnalysis::initializeWorkList(const DefUseModule& duModule)
 {
-	assert(!inst->isTerminator());
-	auto itr = BasicBlock::const_iterator(inst);
-	return ++itr;
-}
-
-ClientWorkList TaintAnalysis::initializeWorkList(const llvm::Module& module)
-{
-	auto worklist = ClientWorkList(module);
+	auto worklist = ClientWorkList();
 
 	// Find the entry function
-	auto entryFunc = module.getFunction("main");
-	if (entryFunc == nullptr)
-		llvm_unreachable("Failed to find main function!");
-	auto entryBlock = entryFunc->begin();
+	auto& entryDefUseFunc = duModule.getEntryFunction();
+	auto entryFunc = &entryDefUseFunc.getFunction();
 
 	// Set up the initial environment
 	auto globalCtx = Context::getGlobalContext();
-	auto initState = TaintState();
+	auto initStore = TaintStore();
 
 	if (entryFunc->arg_size() > 0)
 	{
 		auto argcValue = entryFunc->arg_begin();
-		initState.strongUpdate(argcValue, TaintLattice::Tainted);
+		env.strongUpdate(ProgramLocation(globalCtx, argcValue), TaintLattice::Tainted);
 		if (entryFunc->arg_size() > 1)
 		{
 			auto argvValue = (++entryFunc->arg_begin());
 			// TODO: is argv itself tainted or not? I would say no
-			initState.strongUpdate(argvValue, TaintLattice::Untainted);
+			env.strongUpdate(ProgramLocation(globalCtx, argvValue), TaintLattice::Untainted);
 
 			auto& memManager = ptrAnalysis.getMemoryManager();
 			auto argvPtrLoc = memManager.getArgvPtrLoc();
 			auto argvMemLoc = memManager.getArgvMemLoc();
-			initState.strongUpdate(argvPtrLoc, TaintLattice::Tainted);
-			initState.strongUpdate(argvMemLoc, TaintLattice::Tainted);
+			initStore.strongUpdate(argvPtrLoc, TaintLattice::Tainted);
+			initStore.strongUpdate(argvMemLoc, TaintLattice::Tainted);
 		}
 	}
 
-	insertMemoState(ProgramLocation(globalCtx, entryBlock->begin()), std::move(initState));
-	worklist.enqueue(globalCtx, entryFunc, entryBlock->begin());
+	worklist.enqueue(globalCtx, &entryDefUseFunc);
+	auto& entryWorkList = worklist.getLocalWorkList(globalCtx, &entryDefUseFunc);
+	propagateStateChange(globalCtx, entryDefUseFunc.getEntryInst(), true, true, initStore, entryWorkList);
 	return worklist;
 }
 
-void TaintAnalysis::applyFunction(const Context* ctx, ImmutableCallSite cs, const Function* callee, const TaintState& state, ClientWorkList::LocalWorkList& workList, ClientWorkList& funWorkList)
+void TaintAnalysis::applyFunction(const Context* oldCtx, const Context* newCtx, ImmutableCallSite cs, const DefUseFunction* duFunc, const TaintStore& store, ClientWorkList& funWorkList)
 {
-	if (callee->isDeclaration())
-	{
-		if (callee->getName() == "exit" || callee->getName() == "_exit" || callee->getName() == "abort")
-			return;
-		
-		auto newState = state;
-		bool isValid;
-		std::tie(isValid, std::ignore) = transferFunction.processLibraryCall(ctx, callee, cs, newState);
-		if (isValid)
-			propagateStateChange(ctx, cs.getInstruction(), newState, workList);
-		return;
-	}
+	auto f = &duFunc->getFunction();
+	assert(!f->isDeclaration());
 
-	returnMap.insert(std::make_pair(callee, ProgramLocation(ctx, cs.getInstruction())));
-	auto newCtx = KLimitContext::pushContext(ctx, cs.getInstruction(), callee);
-	auto newState = state;
-
-	assert(cs.arg_size() >= callee->arg_size());
+	assert(cs.arg_size() >= f->arg_size());
 	auto argNo = 0u;
-	auto paramItr = callee->arg_begin();
-	// Remove all the arguments' binding first
-	for (auto const& arg: callee->args())
-		newState.strongUpdate(&arg, TaintLattice::Untainted);
-	
-	while (argNo < cs.arg_size() && paramItr != callee->arg_end())
+	auto paramItr = f->arg_begin();
+
+	bool envChanged = false;
+	while (argNo < cs.arg_size() && paramItr != f->arg_end())
 	{
 		auto arg = cs.getArgument(argNo);
 
 		TaintLattice argVal = TaintLattice::Untainted;
 		if (!isa<Constant>(arg))
 		{
-			auto optArgVal = state.lookup(arg);
-			if (!optArgVal)
-				return;
-			argVal = *optArgVal;
+			auto optArgVal = env.lookup(ProgramLocation(oldCtx, arg));
+			//if (!optArgVal)
+			//	return;
+			//argVal = *optArgVal;
+			argVal = optArgVal.value_or(TaintLattice::Untainted);
 		}
 
-		newState.strongUpdate(paramItr, argVal);
+		envChanged |= env.weakUpdate(ProgramLocation(newCtx, paramItr), argVal);
 		
 		++argNo;
 		++paramItr;
 	}
 
-	auto entryInst = callee->getEntryBlock().begin();
-	insertMemoState(ProgramLocation(newCtx, entryInst), newState);
-
-	funWorkList.enqueue(newCtx, callee, entryInst);
+	envChanged |= visitedFuncs.insert(ProgramLocation(newCtx, f)).second;
+	auto entryDefUseInst = duFunc->getEntryInst();
+	if (envChanged)
+	{
+		funWorkList.enqueue(newCtx, duFunc);
+		auto& tgtLocalWorkList = funWorkList.getLocalWorkList(newCtx, duFunc);
+		for (auto succ: entryDefUseInst->top_succs())
+			tgtLocalWorkList.enqueue(succ);
+	}
+	for (auto const& mapping: entryDefUseInst->mem_succs())
+	{
+		auto loc = mapping.first;
+		auto optVal = store.lookup(loc);
+		if (optVal)
+		{
+			for (auto succ: mapping.second)
+			{
+				if (insertMemoState(ProgramLocation(newCtx, succ->getInstruction()), loc, *optVal))
+					funWorkList.enqueue(newCtx, duFunc, succ);
+			}
+		}
+	}
 }
 
-void TaintAnalysis::evalReturn(const tpa::Context* ctx, const llvm::Instruction* inst, const TaintState& state, ClientWorkList& funWorkList)
+void TaintAnalysis::evalReturn(const tpa::Context* ctx, const llvm::Instruction* inst, TaintEnv& env, const TaintStore& store, const DefUseModule& duModule, ClientWorkList& funWorkList)
 {
 	auto retInst = cast<ReturnInst>(inst);
 
-	auto range = returnMap.equal_range(inst->getParent()->getParent());
-	assert(range.first != range.second && range.first != returnMap.end());
+	auto returnTgts = ptrAnalysis.getCallGraph().getCallSites(std::make_pair(ctx, inst->getParent()->getParent()));
+	//auto numReturnTgts = std::distance(returnTgts.begin(), returnTgts.end());
 
-	bool hasReturnVal = false;
+	for (auto const& mapping: store)
+		errs() << *mapping.first << " -> " << (mapping.second == TaintLattice::Tainted) << "\n";
+
+	auto hasReturnVal = false;
 	auto retVal = TaintLattice::Untainted;
 	if (auto ret = retInst->getReturnValue())
 	{
 		hasReturnVal = true;
 		if (!isa<Constant>(ret))
 		{
-			auto optRetVal = state.lookup(ret);
+			auto optRetVal = env.lookup(ProgramLocation(ctx, ret));
 			if (!optRetVal)
 				return;
 			retVal = *optRetVal;
 		}
 	}
 
-	for (auto itr = range.first; itr != range.second; ++itr)
+	for (auto retTgt: returnTgts)
 	{
-		auto oldLoc = itr->second;
-		auto oldCtx = oldLoc.getContext();
-		auto oldInst = cast<Instruction>(oldLoc.getInstruction());
+		auto oldCtx = retTgt.first;
+		auto oldInst = retTgt.second;
 		auto oldFunc = oldInst->getParent()->getParent();
-		auto& oldLocalWorkList = funWorkList.getLocalWorkList(oldCtx, oldFunc);
-		funWorkList.enqueue(oldCtx, oldFunc);
+		auto& oldDuFunc = duModule.getDefUseFunction(oldFunc);
 
+		auto envChanged = false;
 		if (hasReturnVal)
+			envChanged |= env.weakUpdate(ProgramLocation(oldCtx, oldInst), retVal);
+
+		funWorkList.enqueue(oldCtx, &oldDuFunc);
+		auto& oldWorkList = funWorkList.getLocalWorkList(oldCtx, &oldDuFunc);
+		propagateStateChange(oldCtx, oldDuFunc.getDefUseInstruction(oldInst), envChanged, true, store, oldWorkList);
+	}
+}
+
+void TaintAnalysis::propagateStateChange(const Context* ctx, const DefUseInstruction* duInst, bool envChanged, bool storeChanged, const TaintStore& store, ClientWorkList::LocalWorkList& workList)
+{
+	// Propagate top-level value changes
+	if (envChanged)
+	{
+		for (auto succ: duInst->top_succs())
+			workList.enqueue(succ);
+	}
+
+	// Propagate memory-level changes
+	if (storeChanged)
+	{
+		for (auto const& mapping: duInst->mem_succs())
 		{
-			auto newState = state;
-			newState.weakUpdate(oldInst, retVal);
-			propagateStateChange(oldCtx, oldInst, newState, oldLocalWorkList);
-		}
-		else
-		{
-			propagateStateChange(oldCtx, oldInst, state, oldLocalWorkList);
+			auto usedLoc = mapping.first;
+			auto optLocVal = store.lookup(usedLoc);
+			if (!optLocVal)
+				continue;
+			//assert(optLocVal);
+			for (auto succ: mapping.second)
+			{
+				if (insertMemoState(ProgramLocation(ctx, succ->getInstruction()), usedLoc, *optLocVal))
+				{
+					workList.enqueue(succ);
+				}
+			}
 		}
 	}
 }
 
-void TaintAnalysis::propagateStateChange(const Context* ctx, const Instruction* inst, const TaintState& state, ClientWorkList::LocalWorkList& workList)
+void TaintAnalysis::evalFunction(const Context* ctx, const DefUseFunction* duFunc, ClientWorkList& funWorkList, const DefUseModule& duModule)
 {
-	auto enqueueInst = [this, ctx, &state, &workList] (const Instruction* succInst)
-	{
-		if (insertMemoState(ProgramLocation(ctx, succInst), state))
-		{
-			workList.enqueue(succInst);
-		}
-	};
-
-	if (auto termInst = dyn_cast<TerminatorInst>(inst))
-	{
-		assert(!isa<InvokeInst>(inst));
-		for (auto i = 0u, e = termInst->getNumSuccessors(); i < e; ++i)
-			enqueueInst(termInst->getSuccessor(i)->begin());
-	}
-	else
-		enqueueInst(getNextInstruction(inst));
-}
-
-void TaintAnalysis::evalFunction(const Context* ctx, const Function* f, ClientWorkList& funWorkList, const Module& module)
-{
-	auto& workList = funWorkList.getLocalWorkList(ctx, f);
+	errs() << "Function = " << duFunc->getFunction().getName() << "\n";
+	auto& workList = funWorkList.getLocalWorkList(ctx, duFunc);
 
 	while (!workList.isEmpty())
 	{
-		auto inst = workList.dequeue();
+		auto duInst = workList.dequeue();
+		auto inst = duInst->getInstruction();
 
-		//errs() << "inst = " << *inst << "\n";
+		errs() << "inst = " << *inst << "\n";
 		auto itr = memo.find(ProgramLocation(ctx, inst));
-		assert(itr != memo.end());
-		auto const& state = itr->second;
+		auto const& store = (itr == memo.end()) ? TaintStore() : itr->second;
 
 		if (isa<CallInst>(inst) || isa<InvokeInst>(inst))
 		{
 			ImmutableCallSite cs(inst);
 			assert(cs && "evalCall() gets an non-call?");
 
-			auto calleeVec = std::vector<const Function*>();
-			if (auto callee = cs.getCalledFunction())
-				calleeVec.push_back(callee);
-			else
-				calleeVec = ptrAnalysis.getCallTargets(ctx, inst);
+			auto callees = ptrAnalysis.getCallGraph().getCallTargets(std::make_pair(ctx, inst));
 
-			bool mayCallNonExternal = false;
-			for (auto callee: calleeVec)
+			for (auto callTgt: callees)
 			{
-				if (!callee->isDeclaration())
-					mayCallNonExternal = true;
-				applyFunction(ctx, cs, callee, state, workList, funWorkList);
+				auto callee = callTgt.second;
+				if (callee->isDeclaration())
+				{
+					bool isValid, envChanged, storeChanged;
+					auto newStore = store;
+					std::tie(isValid, envChanged, storeChanged) = transferFunction.processLibraryCall(ctx, callee, cs, env, newStore);
+					if (!isValid)
+						continue;
+					propagateStateChange(ctx, duInst, envChanged, storeChanged, newStore, workList);
+				}
+				else
+				{
+					applyFunction(ctx, callTgt.first, cs, &duModule.getDefUseFunction(callee), store, funWorkList);
+				}
 			}
-			if (mayCallNonExternal)
-				propagateStateChange(ctx, inst, state, workList);
 		}
 		else if (isa<ReturnInst>(inst))
 		{
@@ -214,50 +224,38 @@ void TaintAnalysis::evalFunction(const Context* ctx, const Function* f, ClientWo
 				continue;
 			}
 
-			evalReturn(ctx, inst, state, funWorkList);
+			evalReturn(ctx, inst, env, store, duModule, funWorkList);
 		}
 		else
 		{
-			bool isValid;
-			auto newState = state;
-			std::tie(isValid, std::ignore, std::ignore) = transferFunction.evalInst(ctx, inst, newState);
-			//errs() << isValid << "\n";
+			bool isValid, envChanged, storeChanged;
+			auto newStore = store;
+			std::tie(isValid, envChanged, storeChanged) = transferFunction.evalInst(ctx, inst, env, newStore);
 			if (!isValid)
 				continue;
-			propagateStateChange(ctx, inst, newState, workList);
+			propagateStateChange(ctx, duInst, envChanged, storeChanged, newStore, workList);
 		}
 	}
 }
 
 // Return true if there is a info flow violation
-bool TaintAnalysis::runOnModule(const llvm::Module& module)
+bool TaintAnalysis::runOnDefUseModule(const DefUseModule& duModule)
 {
-	auto workList = initializeWorkList(module);
+	auto workList = initializeWorkList(duModule);
 
 	while (!workList.isEmpty())
 	{
 		const Context* ctx;
-		const Function* f;
+		const DefUseFunction* f;
 		std::tie(ctx, f) = workList.dequeue();
 
-		evalFunction(ctx, f, workList, module);		
+		evalFunction(ctx, f, workList, duModule);		
 	}
 
-	/*for (auto const& mapping: memo)
-	{
-		errs() << "pLoc = " << mapping.first << "\n";
-		for (auto const& envMapping: mapping.second.getEnv())
-		{
-			auto val = envMapping.first;
-			if (auto arg = dyn_cast<Argument>(val))
-			{
-				errs() << "\t" << arg->getParent()->getName() << ":" << arg->getName() << " -> " << (envMapping.second == TaintLattice::Tainted) << "\n";
-			}
-			else if (auto inst = dyn_cast<Instruction>(val))
-				errs() << "\t" << inst->getParent()->getParent()->getName() << "::" << inst->getName() << " -> " << (envMapping.second == TaintLattice::Tainted) << "\n";
-		}
-	}*/
-	return !transferFunction.checkMemoStates(memo);
+	//for (auto const& mapping: env)
+	//	errs() << "\t" << ProgramLocation(mapping.first.first, mapping.first.second) << " -> " << (mapping.second == TaintLattice::Tainted) << "\n";
+
+	return !transferFunction.checkMemoStates(env, memo);
 }
 
 }

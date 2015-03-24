@@ -3,7 +3,7 @@
 #include "PointerAnalysis/Analysis/ReachingDefAnalysis.h"
 #include "PointerAnalysis/ControlFlow/PointerCFG.h"
 #include "PointerAnalysis/DataFlow/ModRefSummary.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/ExternalModTable.h"
 #include "Utils/WorkList.h"
 
 #include <llvm/IR/CallSite.h>
@@ -24,59 +24,63 @@ struct PrioCompare
 	}
 };
 
-void evalExternalCall(const PointerCFGNode* node, const Function* f, ReachingDefStore& store, const ExternalPointerEffectTable& extTable, const PointerAnalysis& ptrAnalysis)
+void evalExternalCall(const PointerCFGNode* node, const Function* f, ReachingDefStore<PointerCFGNode>& store, const ExternalModTable& extTable, const PointerAnalysis& ptrAnalysis)
 {
 	ImmutableCallSite cs(node->getInstruction());
 	assert(cs);
 
 	auto extType = extTable.lookup(f->getName());
+	auto modArg = [&ptrAnalysis, &store, node] (const llvm::Value* v, bool array = false)
+	{
+		if (auto pSet = ptrAnalysis.getPtsSet(v))
+		{
+			for (auto loc: *pSet)
+			{
+				if (array)
+				{
+					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+						store.insertBinding(oLoc, node);
+				}
+				else
+				{
+					store.insertBinding(loc, node);
+				}
+			}
+		}
+	};
+
 	switch (extType)
 	{
-		case PointerEffect::StoreArg0ToArg1:
+		case ModEffect::ModArg0:
 		{
-			auto dstVal = cs.getArgument(1);
-
-			if (auto pSet = ptrAnalysis.getPtsSet(dstVal))
-			{
-				for (auto loc: *pSet)
-					store.insertBinding(loc, node);
-			}
+			modArg(cs.getArgument(0));
+			break;
+		}
+		case ModEffect::ModArg1:
+		{
+			modArg(cs.getArgument(1));
+			break;
+		}
+		case ModEffect::ModAfterArg0:
+		{
+			for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
+				modArg(cs.getArgument(i));
+			break;
+		}
+		case ModEffect::ModAfterArg1:
+		{
+			for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
+				modArg(cs.getArgument(i));
+			break;
+		}
+		case ModEffect::ModArg0Array:
+		{
+			modArg(cs.getArgument(0), true);
 
 			break;
 		}
-		case PointerEffect::MemcpyArg1ToArg0:
-		{
-			auto dstVal = cs.getArgument(0);
-
-			if (auto pSet = ptrAnalysis.getPtsSet(dstVal))
-			{
-				for (auto loc: *pSet)
-				{
-					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-						store.insertBinding(oLoc, node);
-				}
-			}
-
-			break;
-		}
-		case PointerEffect::Memset:
-		{
-			auto dstVal = cs.getArgument(0);
-
-			if (auto pSet = ptrAnalysis.getPtsSet(dstVal))
-			{
-				for (auto loc: *pSet)
-				{
-					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-						store.insertBinding(oLoc, node);
-				}
-			}
-
-
-			break;
-		}
-		case PointerEffect::UnknownEffect:
-			llvm_unreachable("Unknown external call");
+		case ModEffect::UnknownEffect:
+			llvm_unreachable("Unknown mod effect");
 		default:
 			break;
 	}
@@ -84,74 +88,7 @@ void evalExternalCall(const PointerCFGNode* node, const Function* f, ReachingDef
 
 }
 
-ReachingDefStore::NodeSet& ReachingDefStore::getReachingDefs(const MemoryLocation* loc)
-{
-	return store[loc];
-}
-
-const ReachingDefStore::NodeSet* ReachingDefStore::getReachingDefs(const MemoryLocation* loc) const
-{
-	auto itr = store.find(loc);
-	if (itr == store.end())
-		return nullptr;
-	else
-		return &itr->second;
-}
-
-bool ReachingDefStore::insertBinding(const MemoryLocation* loc, const PointerCFGNode* node)
-{
-	auto itr = store.find(loc);
-	if (itr == store.end())
-		itr = store.insert(itr, std::make_pair(loc, NodeSet()));
-
-	return itr->second.insert(node);
-}
-
-bool ReachingDefStore::mergeWith(const ReachingDefStore& rhs)
-{
-	bool changed = false;
-	for (auto const& mapping: rhs)
-	{
-		auto loc = mapping.first;
-		auto itr = store.find(loc);
-		if (itr == store.end())
-		{
-			changed = true;
-			store.insert(itr, mapping);
-		}
-		else
-		{
-			changed |= itr->second.mergeWith(mapping.second);
-		}
-	}
-	return changed;
-}
-
-bool ReachingDefMap::update(const PointerCFGNode* node, const ReachingDefStore& storeUpdate)
-{
-	auto itr = rdStore.find(node);
-	if (itr == rdStore.end())
-	{
-		rdStore.insert(std::make_pair(node, storeUpdate));
-		return true;
-	}
-	else
-		return itr->second.mergeWith(storeUpdate);
-}
-
-ReachingDefStore& ReachingDefMap::getReachingDefStore(const PointerCFGNode* node)
-{
-	return rdStore[node];
-}
-
-const ReachingDefStore& ReachingDefMap::getReachingDefStore(const PointerCFGNode* node) const
-{
-	auto itr = rdStore.find(node);
-	assert(itr != rdStore.end());
-	return itr->second;
-}
-
-void ReachingDefAnalysis::evalNode(const PointerCFGNode* node, ReachingDefStore& retStore)
+void ReachingDefAnalysis::evalNode(const PointerCFGNode* node, ReachingDefStore<PointerCFGNode>& retStore)
 {
 	switch (node->getType())
 	{
@@ -160,7 +97,7 @@ void ReachingDefAnalysis::evalNode(const PointerCFGNode* node, ReachingDefStore&
 			auto entryNode = cast<EntryNode>(node);
 			auto& summary = summaryMap.getSummary(entryNode->getFunction());
 
-			ReachingDefStore initStore;
+			ReachingDefStore<PointerCFGNode> initStore;
 			for (auto loc: summary.mem_reads())
 				retStore.insertBinding(loc, node);
 
@@ -195,7 +132,7 @@ void ReachingDefAnalysis::evalNode(const PointerCFGNode* node, ReachingDefStore&
 			{
 				if (callee->isDeclaration())
 				{
-					evalExternalCall(node, callee, retStore, extTable, ptrAnalysis);
+					evalExternalCall(node, callee, retStore, extModTable, ptrAnalysis);
 				}
 				else
 				{
@@ -212,9 +149,9 @@ void ReachingDefAnalysis::evalNode(const PointerCFGNode* node, ReachingDefStore&
 	}
 }
 
-ReachingDefMap ReachingDefAnalysis::runOnPointerCFG(const PointerCFG& cfg)
+ReachingDefMap<PointerCFGNode> ReachingDefAnalysis::runOnPointerCFG(const PointerCFG& cfg)
 {
-	ReachingDefMap rdMap;
+	ReachingDefMap<PointerCFGNode> rdMap;
 
 	PrioWorkList<const PointerCFGNode*, PrioCompare> workList;
 

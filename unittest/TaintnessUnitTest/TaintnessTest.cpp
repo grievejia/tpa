@@ -37,11 +37,12 @@ TEST(TaintnessTest, EnvTest)
 		"}\n"
 	);
 
+	auto globalCtx = Context::getGlobalContext();
 	auto itr = testModule->begin()->begin()->begin();
-	auto x = itr;
-	auto y = ++itr;
-	auto z = ++itr;
-	auto g = testModule->global_begin();
+	auto x = ProgramLocation(globalCtx, itr);
+	auto y = ProgramLocation(globalCtx, ++itr);
+	auto z = ProgramLocation(globalCtx, ++itr);
+	auto g = ProgramLocation(globalCtx, testModule->global_begin());
 
 	auto env = TaintEnv();
 	EXPECT_TRUE(env.weakUpdate(x, TaintLattice::Untainted));

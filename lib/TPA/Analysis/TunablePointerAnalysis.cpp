@@ -18,8 +18,10 @@ TunablePointerAnalysis::~TunablePointerAnalysis() = default;
 
 void TunablePointerAnalysis::runOnProgram(const PointerProgram& prog, Store store)
 {
-	auto ptrEngine = PointerAnalysisEngine(ptrManager, memManager, storeManager, callGraph, memo, extTable);
-	ptrEngine.runOnProgram(prog, env, std::move(store));
+	auto ptrEngine = PointerAnalysisEngine(ptrManager, memManager, storeManager, prog, env, std::move(store), callGraph, memo, extTable);
+	ptrEngine.run();
+
+	//env.dump(errs());
 }
 
 }

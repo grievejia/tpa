@@ -8,6 +8,11 @@
 
 #include <unordered_map>
 
+namespace llvm
+{
+	class raw_ostream;
+}
+
 namespace tpa
 {
 
@@ -111,6 +116,8 @@ public:
 
 	const_iterator begin() const { return summaryMap.begin(); }
 	const_iterator end() const { return summaryMap.end(); }
+
+	void dump(llvm::raw_ostream& os) const;
 };
 
 }

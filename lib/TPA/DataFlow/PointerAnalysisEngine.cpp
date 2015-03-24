@@ -16,6 +16,21 @@ using namespace llvm;
 namespace tpa
 {
 
+PointerAnalysisEngine::PointerAnalysisEngine(PointerManager& p, MemoryManager& m, StoreManager& s, const PointerProgram& pp, Env& e, Store st, StaticCallGraph& g, Memo<PointerCFGNode>& me, const ExternalPointerEffectTable& t): prog(pp), callGraph(g), env(e), memo(me), transferFunction(p, m, s, t)
+{
+	initializeWorkList(std::move(st));
+}
+
+void PointerAnalysisEngine::initializeWorkList(Store store)
+{
+	// Initialize workList and memo
+	auto entryCtx = Context::getGlobalContext();
+	auto entryCFG = prog.getEntryCFG();
+	auto entryNode = entryCFG->getEntryNode();
+	memo.updateMemo(entryCtx, entryNode, store);
+	globalWorkList.enqueue(entryCtx, entryCFG, entryNode);
+}
+
 void PointerAnalysisEngine::propagateTopLevel(const PointerCFGNode* node, LocalWorkList& workList)
 {
 	for (auto succ: node->uses())
@@ -31,7 +46,7 @@ void PointerAnalysisEngine::propagateMemoryLevel(const Context* ctx, const Point
 	}
 }
 
-void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* callNode, const Function* callee, const PointerProgram& prog, Env& env, Store store, GlobalWorkList& funWorkList, LocalWorkList& workList)
+void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* callNode, const Function* callee, Store store, LocalWorkList& localWorkList)
 {
 	// Update call graph first
 	auto newCtx = KLimitContext::pushContext(ctx, callNode->getInstruction(), callee);
@@ -52,8 +67,8 @@ void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* ca
 
 		// External calls are treated as language primitives. There is no need to redirect control flow to another function. Hence we just need to progress as usual
 		if (envChanged)
-			propagateTopLevel(callNode, workList);
-		propagateMemoryLevel(ctx, callNode, store, workList);
+			propagateTopLevel(callNode, localWorkList);
+		propagateMemoryLevel(ctx, callNode, store, localWorkList);
 		return;
 	}
 
@@ -67,21 +82,21 @@ void PointerAnalysisEngine::applyFunction(const Context* ctx, const CallNode* ca
 
 	auto storeChanged = memo.updateMemo(newCtx, tgtCFG->getEntryNode(), store);
 	if (envChanged || storeChanged)
-		funWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getEntryNode());
+		globalWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getEntryNode());
 	// Prevent premature fixpoint
 	// We enqueue the callee's return node rather than caller's successors of the call node. The reason is that if the callee reaches its fixpoint, the call node's lhs won't get updated
 	// FIXME: should only propagate once for each non-external callsite
-	funWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getExitNode());
+	globalWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getExitNode());
 }
 
-void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* cfg, Env& env, GlobalWorkList& funWorkList, const PointerProgram& prog)
+void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* cfg)
 {
-	auto& workList = funWorkList.getLocalWorkList(ctx, cfg);
+	auto& localWorkList = globalWorkList.getLocalWorkList(ctx, cfg);
 
 	//errs() << "<Function " << cfg->getFunction()->getName() << ">\n";
-	while (!workList.isEmpty())
+	while (!localWorkList.isEmpty())
 	{
-		auto node = workList.dequeue();
+		auto node = localWorkList.dequeue();
 		
 		//errs() << "node = " << *node << "\n";
 
@@ -94,8 +109,8 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 					break;
 				auto& store = *optStore;
 
-				propagateTopLevel(node, workList);
-				propagateMemoryLevel(ctx, node, store, workList);
+				propagateTopLevel(node, localWorkList);
+				propagateMemoryLevel(ctx, node, store, localWorkList);
 				break;
 			}
 			case PointerCFGNodeType::Alloc:
@@ -105,7 +120,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 				auto envChanged = transferFunction.evalAlloc(ctx, allocNode, env);
 
 				if (envChanged)
-					propagateTopLevel(allocNode, workList);
+					propagateTopLevel(allocNode, localWorkList);
 
 				break;
 			}
@@ -118,7 +133,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 				std::tie(isValid, envChanged) = transferFunction.evalCopy(ctx, copyNode, env);
 
 				if (isValid && envChanged)
-					propagateTopLevel(copyNode, workList);
+					propagateTopLevel(copyNode, localWorkList);
 
 				break;
 			}
@@ -138,8 +153,8 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 				if (isValid)
 				{
 					if (envChanged)
-						propagateTopLevel(loadNode, workList);
-					propagateMemoryLevel(ctx, loadNode, store, workList);
+						propagateTopLevel(loadNode, localWorkList);
+					propagateMemoryLevel(ctx, loadNode, store, localWorkList);
 				}
 
 				break;
@@ -158,7 +173,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 				std::tie(isValid, storeChanged) = transferFunction.evalStore(ctx, storeNode, env, store);
 				
 				if (isValid)
-					propagateMemoryLevel(ctx, storeNode, store, workList);
+					propagateMemoryLevel(ctx, storeNode, store, localWorkList);
 				break;
 			}
 			case PointerCFGNodeType::Call:
@@ -173,7 +188,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 				auto callees = transferFunction.resolveCallTarget(ctx, callNode, env, prog.at_funs());
 
 				for (auto f: callees)
-					applyFunction(ctx, callNode, f, prog, env, store, funWorkList, workList);
+					applyFunction(ctx, callNode, f, store, localWorkList);
 
 				break;
 			}
@@ -213,12 +228,12 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 						auto storeChanged = memo.updateMemo(oldCtx, succ, store);
 						if (envChanged || storeChanged)
 						{
-							funWorkList.enqueue(oldCtx, oldCFG, succ);
+							globalWorkList.enqueue(oldCtx, oldCFG, succ);
 						}
 					}
 					if (envChanged)
 						for (auto succ: callNode->uses())
-							funWorkList.enqueue(oldCtx, oldCFG, succ);
+							globalWorkList.enqueue(oldCtx, oldCFG, succ);
 				}
 
 				break;
@@ -228,25 +243,15 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 	}
 }
 
-void PointerAnalysisEngine::runOnProgram(const PointerProgram& prog, Env& env, Store store)
+void PointerAnalysisEngine::run()
 {
-	// The function-level worklist
-	auto workList = GlobalWorkList();
-
-	// Initialize workList and memo
-	auto entryCtx = Context::getGlobalContext();
-	auto entryCFG = prog.getEntryCFG();
-	auto entryNode = entryCFG->getEntryNode();
-	memo.updateMemo(entryCtx, entryNode, store);
-	workList.enqueue(entryCtx, entryCFG, entryNode);
-
-	while (!workList.isEmpty())
+	while (!globalWorkList.isEmpty())
 	{
 		const Context* ctx;
 		const PointerCFG* cfg;
-		std::tie(ctx, cfg) = workList.dequeue();
+		std::tie(ctx, cfg) = globalWorkList.dequeue();
 
-		evalFunction(ctx, cfg, env, workList, prog);
+		evalFunction(ctx, cfg);
 	}
 }
 

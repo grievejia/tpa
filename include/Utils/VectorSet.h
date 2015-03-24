@@ -116,6 +116,8 @@ public:
 		return !intersectSet.empty();
 	}
 
+	void clear() { set.clear(); }
+
 	// Iterators
 	iterator begin() { return set.begin(); }
 	iterator end() { return set.end(); }

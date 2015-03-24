@@ -9,9 +9,12 @@ set (TPASourceCodes
 	DataFlow/TransferFunction.cpp
 	Pass/CFGBuildingPass.cpp
 	Pass/DefUseGraphBuildingPass.cpp
+	Pass/DefUseModuleBuildingPass.cpp
 	Pass/GlobalPointerAnalysisPass.cpp
 	Pass/TunableAliasAnalysisPass.cpp
 	Pass/TunableModRefAnalysisPass.cpp
+	Pass/TunableModuleModRefAnalysisPass.cpp
+	Pass/TunableModuleReachingDefAnalysisPass.cpp
 	Pass/TunablePointerAnalysisPass.cpp
 	Pass/TunableReachingDefAnalysisPass.cpp
 	Pass/TunableSparsePointerAnalysis.cpp

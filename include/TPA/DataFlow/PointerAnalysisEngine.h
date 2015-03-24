@@ -21,8 +21,14 @@ class PointerAnalysisEngine
 {
 private:
 
+	// The program
+	const PointerProgram& prog;
+
 	// Call graph
 	StaticCallGraph& callGraph;
+
+	// The environment
+	Env& env;
 
 	// The global memo
 	Memo<PointerCFGNode>& memo;
@@ -30,17 +36,20 @@ private:
 	// TransferFunction knows how to update from one state to another
 	TransferFunction<PointerCFG> transferFunction;
 
+	// The worklist of this engine
 	using GlobalWorkList = TPAWorkList<PointerCFG>;
+	GlobalWorkList globalWorkList;
 	using LocalWorkList = GlobalWorkList::LocalWorkList;
 	
-	void evalFunction(const Context*, const PointerCFG*, Env&, GlobalWorkList&, const PointerProgram&);
-	void applyFunction(const Context*, const CallNode*, const llvm::Function*, const PointerProgram& prog, Env&, Store, GlobalWorkList&, LocalWorkList&);
+	void initializeWorkList(Store store);
+	void evalFunction(const Context*, const PointerCFG*);
+	void applyFunction(const Context*, const CallNode*, const llvm::Function*, Store, LocalWorkList&);
 	void propagateTopLevel(const PointerCFGNode* node, LocalWorkList& workList);
 	void propagateMemoryLevel(const Context*, const PointerCFGNode*, const Store&, LocalWorkList&);
 public:
-	PointerAnalysisEngine(PointerManager& p, MemoryManager& m, StoreManager& s, StaticCallGraph& g, Memo<PointerCFGNode>& me, const ExternalPointerEffectTable& t): callGraph(g), memo(me), transferFunction(p, m, s, t) {}
+	PointerAnalysisEngine(PointerManager& p, MemoryManager& m, StoreManager& s, const PointerProgram& pp, Env& e, Store st, StaticCallGraph& g, Memo<PointerCFGNode>& me, const ExternalPointerEffectTable& t);
 
-	void runOnProgram(const PointerProgram&, Env&, Store);
+	void run();
 };
 
 }

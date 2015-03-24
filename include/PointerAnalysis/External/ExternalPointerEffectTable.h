@@ -1,9 +1,7 @@
 #ifndef TPA_EXTERNAL_POINTER_EFFECT_H
 #define TPA_EXTERNAL_POINTER_EFFECT_H
 
-#include <llvm/ADT/StringRef.h>
-
-#include <vector>
+#include "PointerAnalysis/External/ExternalTable.h"
 
 namespace tpa
 {
@@ -23,18 +21,22 @@ enum class PointerEffect
 	Memset,
 };
 
-class ExternalPointerEffectTable
+template <>
+struct EffectTrait<PointerEffect>
+{
+	static PointerEffect DefaultEffect;
+};
+
+class ExternalPointerEffectTable: public ExternalTable<PointerEffect>
 {
 private:
-	using MappingType = std::pair<llvm::StringRef, PointerEffect>;
-	// Since this table is used in a strict query-after-insertion scenerio, we just need a sorted vector to hold all mappings
-	std::vector<MappingType> table;
-
-	void setUpInitialTable();
+	void initializeTable();
 public:
-	explicit ExternalPointerEffectTable() { setUpInitialTable(); }
-
-	PointerEffect lookup(llvm::StringRef name) const;
+	ExternalPointerEffectTable()
+	{
+		initializeTable();
+		finalizeTable();
+	}
 };
 
 }

@@ -5,7 +5,9 @@ using namespace llvm;
 namespace tpa
 {
 
-void ExternalPointerEffectTable::setUpInitialTable()
+PointerEffect EffectTrait<PointerEffect>::DefaultEffect = PointerEffect::UnknownEffect;
+
+void ExternalPointerEffectTable::initializeTable()
 {
 	table = {
 		{"_IO_getc", PointerEffect::NoEffect},
@@ -13,20 +15,14 @@ void ExternalPointerEffectTable::setUpInitialTable()
 		{"_exit", PointerEffect::NoEffect},
 		{"_setjmp", PointerEffect::NoEffect},
 		{"__assert_fail", PointerEffect::NoEffect},
-		{"__dn_expand", PointerEffect::NoEffect},
-		{"__dn_skipname", PointerEffect::NoEffect},
 		{"__isoc99_fscanf", PointerEffect::NoEffect},
 		{"__isoc99_scanf", PointerEffect::NoEffect},
 		{"__isoc99_sscanf", PointerEffect::NoEffect},
-		{"__res_init", PointerEffect::NoEffect},
-		{"__res_querydomain", PointerEffect::NoEffect},
-		{"__res_search", PointerEffect::NoEffect},
 		{"__sigsetjmp", PointerEffect::NoEffect},
 		{"abs", PointerEffect::NoEffect},
 		{"accept", PointerEffect::NoEffect},
 		{"access", PointerEffect::NoEffect},
 		{"alarm", PointerEffect::NoEffect},
-		{"asprintf", PointerEffect::NoEffect},
 		{"atexit", PointerEffect::NoEffect},
 		{"atof", PointerEffect::NoEffect},
 		{"atoi", PointerEffect::NoEffect},
@@ -134,8 +130,6 @@ void ExternalPointerEffectTable::setUpInitialTable()
 		{"getsockopt", PointerEffect::NoEffect},
 		{"gettimeofday", PointerEffect::NoEffect},
 		{"globfree", PointerEffect::NoEffect},
-		{"gnu_dev_major", PointerEffect::NoEffect},
-		{"gnu_dev_minor", PointerEffect::NoEffect},
 		{"gzclose", PointerEffect::NoEffect},
 		{"gzeof", PointerEffect::NoEffect},
 		{"gzgetc", PointerEffect::NoEffect},
@@ -349,7 +343,6 @@ void ExternalPointerEffectTable::setUpInitialTable()
 		{"unsetenv", PointerEffect::NoEffect},
 		{"utime", PointerEffect::NoEffect},
 		{"utimes", PointerEffect::NoEffect},
-		{"vasprintf", PointerEffect::NoEffect},
 		{"vfprintf", PointerEffect::NoEffect},
 		{"vprintf", PointerEffect::NoEffect},
 		{"vsnprintf", PointerEffect::NoEffect},
@@ -498,24 +491,6 @@ void ExternalPointerEffectTable::setUpInitialTable()
 		{"llvm.memset.p0i8.i64", PointerEffect::Memset},
 		{"llvm.memset.p0i8.i32", PointerEffect::Memset},
 	};
-
-	std::sort(table.begin(), table.end());
-	assert(std::unique(table.begin(), table.end()) == table.end());
-}
-
-PointerEffect ExternalPointerEffectTable::lookup(StringRef name) const
-{
-	// Find the corresponding entry using binary search
-	auto itr = std::lower_bound(table.begin(), table.end(), name,
-		[] (const MappingType& entry, const StringRef& name)
-		{
-			return entry.first < name;
-		});
-
-	if (itr == table.end() || itr->first != name)
-		return PointerEffect::UnknownEffect;
-	else
-		return itr->second;
 }
 
 }
