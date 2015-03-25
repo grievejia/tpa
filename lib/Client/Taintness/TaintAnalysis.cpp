@@ -1,6 +1,6 @@
 #include "Client/Taintness/TaintAnalysis.h"
 #include "MemoryModel/Memory/MemoryManager.h"
-#include "MemoryModel/Precision/KLimitContext.h"
+#include "MemoryModel/Precision/AdaptiveContext.h"
 #include "PointerAnalysis/DataFlow/DefUseModule.h"
 #include "PointerAnalysis/DataFlow/ModRefSummary.h"
 
@@ -46,6 +46,20 @@ TaintAnalysis::ClientWorkList TaintAnalysis::initializeWorkList(const DefUseModu
 		}
 	}
 
+	// Initialize all externally-defined global values
+	for (auto const& global: duModule.getModule().globals())
+	{
+		if (global.isDeclaration())
+		{
+			env.strongUpdate(ProgramLocation(globalCtx, &global), TaintLattice::Untainted);
+			if (auto pSet = ptrAnalysis.getPtsSet(globalCtx, &global))
+			{
+				for (auto loc: *pSet)
+					initStore.strongUpdate(loc, TaintLattice::Untainted);
+			}
+		}
+	}
+
 	worklist.enqueue(globalCtx, &entryDefUseFunc);
 	auto& entryWorkList = worklist.getLocalWorkList(globalCtx, &entryDefUseFunc);
 	propagateStateChange(globalCtx, entryDefUseFunc.getEntryInst(), true, true, initStore, entryWorkList);
@@ -58,27 +72,30 @@ void TaintAnalysis::applyFunction(const Context* oldCtx, const Context* newCtx, 
 	assert(!f->isDeclaration());
 
 	assert(cs.arg_size() >= f->arg_size());
-	auto argNo = 0u;
-	auto paramItr = f->arg_begin();
-
-	bool envChanged = false;
-	while (argNo < cs.arg_size() && paramItr != f->arg_end())
+	std::vector<TaintLattice> callerVals;
+	callerVals.reserve(f->arg_size());
+	for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
 	{
-		auto arg = cs.getArgument(argNo);
-
-		TaintLattice argVal = TaintLattice::Untainted;
+		auto arg = cs.getArgument(i);
+		auto argVal = TaintLattice::Untainted;
 		if (!isa<Constant>(arg))
 		{
 			auto optArgVal = env.lookup(ProgramLocation(oldCtx, arg));
-			//if (!optArgVal)
-			//	return;
-			//argVal = *optArgVal;
-			argVal = optArgVal.value_or(TaintLattice::Untainted);
+			if (!optArgVal)
+				return;
+			argVal = *optArgVal;
 		}
 
+		callerVals.push_back(argVal);
+	}
+
+	monitor.trackCallSite(ProgramLocation(oldCtx, cs.getInstruction()), f, newCtx, env, callerVals);
+
+	bool envChanged = false;
+	auto paramItr = f->arg_begin();
+	for (auto argVal: callerVals)
+	{
 		envChanged |= env.weakUpdate(ProgramLocation(newCtx, paramItr), argVal);
-		
-		++argNo;
 		++paramItr;
 	}
 
@@ -110,11 +127,9 @@ void TaintAnalysis::evalReturn(const tpa::Context* ctx, const llvm::Instruction*
 {
 	auto retInst = cast<ReturnInst>(inst);
 
-	auto returnTgts = ptrAnalysis.getCallGraph().getCallSites(std::make_pair(ctx, inst->getParent()->getParent()));
-	//auto numReturnTgts = std::distance(returnTgts.begin(), returnTgts.end());
-
-	for (auto const& mapping: store)
-		errs() << *mapping.first << " -> " << (mapping.second == TaintLattice::Tainted) << "\n";
+	auto itr = retMap.find(std::make_pair(ctx, inst->getParent()->getParent()));
+	assert(itr != retMap.end());
+	auto const& returnTgts = itr->second;
 
 	auto hasReturnVal = false;
 	auto retVal = TaintLattice::Untainted;
@@ -179,6 +194,7 @@ void TaintAnalysis::propagateStateChange(const Context* ctx, const DefUseInstruc
 
 void TaintAnalysis::evalFunction(const Context* ctx, const DefUseFunction* duFunc, ClientWorkList& funWorkList, const DefUseModule& duModule)
 {
+	errs() << "Context = " << *ctx << "\n";
 	errs() << "Function = " << duFunc->getFunction().getName() << "\n";
 	auto& workList = funWorkList.getLocalWorkList(ctx, duFunc);
 
@@ -187,7 +203,7 @@ void TaintAnalysis::evalFunction(const Context* ctx, const DefUseFunction* duFun
 		auto duInst = workList.dequeue();
 		auto inst = duInst->getInstruction();
 
-		errs() << "inst = " << *inst << "\n";
+		//errs() << "inst = " << *inst << "\n";
 		auto itr = memo.find(ProgramLocation(ctx, inst));
 		auto const& store = (itr == memo.end()) ? TaintStore() : itr->second;
 
@@ -212,7 +228,9 @@ void TaintAnalysis::evalFunction(const Context* ctx, const DefUseFunction* duFun
 				}
 				else
 				{
-					applyFunction(ctx, callTgt.first, cs, &duModule.getDefUseFunction(callee), store, funWorkList);
+					auto newCtx = AdaptiveContext::pushContext(ctx, inst, callee);
+					retMap[std::make_pair(newCtx, callee)].insert(std::make_pair(ctx, inst));
+					applyFunction(ctx, newCtx, cs, &duModule.getDefUseFunction(callee), store, funWorkList);
 				}
 			}
 		}
@@ -239,7 +257,7 @@ void TaintAnalysis::evalFunction(const Context* ctx, const DefUseFunction* duFun
 }
 
 // Return true if there is a info flow violation
-bool TaintAnalysis::runOnDefUseModule(const DefUseModule& duModule)
+bool TaintAnalysis::runOnDefUseModule(const DefUseModule& duModule, bool reportError)
 {
 	auto workList = initializeWorkList(duModule);
 
@@ -255,7 +273,7 @@ bool TaintAnalysis::runOnDefUseModule(const DefUseModule& duModule)
 	//for (auto const& mapping: env)
 	//	errs() << "\t" << ProgramLocation(mapping.first.first, mapping.first.second) << " -> " << (mapping.second == TaintLattice::Tainted) << "\n";
 
-	return !transferFunction.checkMemoStates(env, memo);
+	return !transferFunction.checkMemoStates(env, memo, reportError);
 }
 
 }

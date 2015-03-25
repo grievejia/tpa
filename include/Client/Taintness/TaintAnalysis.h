@@ -1,7 +1,7 @@
 #ifndef TPA_TAINT_ANALYSIS_H
 #define TPA_TAINT_ANALYSIS_H
 
-#include "Client/Taintness/TaintEnvStore.h"
+#include "Client/Taintness/TaintPrecisionMonitor.h"
 #include "Client/Taintness/TaintTransferFunction.h"
 #include "MemoryModel/Precision/ProgramLocation.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
@@ -31,12 +31,16 @@ private:
 	std::unordered_map<tpa::ProgramLocation, TaintStore> memo;
 
 	const tpa::PointerAnalysis& ptrAnalysis;
-	const tpa::ModRefSummaryMap& summaryMap;
 
 	TaintEnv env;
 	TaintTransferFunction transferFunction;
 
+	TaintPrecisionMonitor monitor;
 	std::unordered_set<tpa::ProgramLocation> visitedFuncs;
+
+	using CallSiteSet = tpa::VectorSet<std::pair<const tpa::Context*, const llvm::Instruction*>>;
+	using CallTgt = std::pair<const tpa::Context*, const llvm::Function*>;
+	llvm::DenseMap<CallTgt, CallSiteSet> retMap;
 
 	// Helper function to insert memo
 	template <typename StateType>
@@ -72,10 +76,15 @@ private:
 	void evalReturn(const tpa::Context* ctx, const llvm::Instruction* inst, TaintEnv& env, const TaintStore& store, const tpa::DefUseModule& duModule, ClientWorkList& workList);
 	void propagateStateChange(const tpa::Context* ctx, const tpa::DefUseInstruction* inst, bool envChanged, bool storeChanged, const TaintStore& store, ClientWorkList::LocalWorkList& workList);
 public:
-	TaintAnalysis(const tpa::PointerAnalysis& p, const tpa::ModRefSummaryMap& s, const tpa::ExternalPointerEffectTable& t): ptrAnalysis(p), summaryMap(s), transferFunction(ptrAnalysis, t) {}
+	TaintAnalysis(const tpa::PointerAnalysis& p, const tpa::ExternalPointerEffectTable& t): ptrAnalysis(p), transferFunction(ptrAnalysis, t) {}
 
 	// Return true if there is a info flow violation
-	bool runOnDefUseModule(const tpa::DefUseModule& m);
+	bool runOnDefUseModule(const tpa::DefUseModule& m, bool reportError = true);
+
+	void adaptContextSensitivity() const
+	{
+		monitor.changeContextSensitivity();
+	}
 };
 
 }

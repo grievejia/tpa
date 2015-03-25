@@ -1,5 +1,5 @@
-#ifndef INFOFLOW_SOURCE_SINK_H
-#define INFOFLOW_SOURCE_SINK_H
+#ifndef TPA_TAINT_SOURCE_SINK_H
+#define TPA_TAINT_SOURCE_SINK_H
 
 #include "Client/Lattice/TaintLattice.h"
 

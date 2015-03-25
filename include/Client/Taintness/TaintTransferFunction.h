@@ -70,7 +70,7 @@ public:
 
 	std::tuple<bool, bool, bool> evalInst(const tpa::Context*, const llvm::Instruction*, TaintEnv&, TaintStore&);
 	std::tuple<bool, bool, bool> processLibraryCall(const tpa::Context* ctx, const llvm::Function* callee, llvm::ImmutableCallSite cs, TaintEnv&, TaintStore&);
-	bool checkMemoStates(const TaintEnv&, const std::unordered_map<tpa::ProgramLocation, TaintStore>&);
+	bool checkMemoStates(const TaintEnv&, const std::unordered_map<tpa::ProgramLocation, TaintStore>&, bool);
 };
 
 }	// end of taint

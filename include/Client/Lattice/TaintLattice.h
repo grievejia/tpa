@@ -10,6 +10,7 @@ enum class TaintLattice
 {
 	Untainted,
 	Tainted,
+	Either
 };
 
 template<> struct Lattice<TaintLattice>
@@ -18,17 +19,19 @@ template<> struct Lattice<TaintLattice>
 	{
 		if (lhs == rhs)
 			return LatticeCompareResult::Equal;
-		else if (lhs == TaintLattice::Untainted)
+		else if (rhs == TaintLattice::Either)
 			return LatticeCompareResult::LessThan;
-		else
+		else if (lhs == TaintLattice::Either)
 			return LatticeCompareResult::GreaterThan;
+		else
+			return LatticeCompareResult::Incomparable;
 	}
 	static TaintLattice merge(const TaintLattice& lhs, const TaintLattice& rhs)
 	{
-		if (lhs == TaintLattice::Tainted || rhs == TaintLattice::Tainted)
-			return TaintLattice::Tainted;
+		if (lhs == rhs)
+			return lhs;
 		else
-			return TaintLattice::Untainted;
+			return TaintLattice::Either;
 	}
 };
 

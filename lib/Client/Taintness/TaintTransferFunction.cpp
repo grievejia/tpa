@@ -171,7 +171,7 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 			{
 				if (obj == uLoc)
 				{
-					resVal = TaintLattice::Tainted;
+					resVal = TaintLattice::Either;
 					break;
 				}
 				else if (obj == nLoc)
@@ -183,7 +183,9 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 				if (optVal)
 					resVal = Lattice<TaintLattice>::merge(resVal, *optVal);
 				else
+				{
 					return std::make_tuple(false, false, false);
+				}
 				//	resVal = TaintLattice::Untainted;
 			}
 
@@ -356,11 +358,8 @@ bool TaintTransferFunction::checkValue(const TEntry& entry, ProgramLocation pLoc
 	if (entry.what == TClass::ValueOnly)
 	{
 		auto sinkVal = env.lookup(pLoc);
-		if (sinkVal && Lattice<TaintLattice>::compare(*sinkVal, entry.val) == LatticeCompareResult::GreaterThan)
+		if (sinkVal && *sinkVal != entry.val)
 		{
-			errs().changeColor(raw_ostream::Colors::RED);
-			errs() << "Sink violation at " << *pLoc.getContext() << ":" << *pLoc.getInstruction() << "\n";
-			errs().resetColor();
 			return false;
 		}
 	}
@@ -371,11 +370,8 @@ bool TaintTransferFunction::checkValue(const TEntry& entry, ProgramLocation pLoc
 			for (auto loc: *pSet)
 			{
 				auto optVal = store.lookup(loc);
-				if (optVal && Lattice<TaintLattice>::compare(*optVal, entry.val) == LatticeCompareResult::GreaterThan)
+				if (optVal && *optVal != entry.val)
 				{
-					errs().changeColor(raw_ostream::Colors::RED);
-					errs() << "Sink violation at " << *pLoc.getContext() << ":" << *pLoc.getInstruction() << "\n";
-					errs().resetColor();
 					return false;
 				}
 			}
@@ -462,11 +458,11 @@ bool TaintTransferFunction::checkValue(const TSummary& summary, const Context* c
 	return true;
 }
 
-bool TaintTransferFunction::checkMemoStates(const TaintEnv& env, const std::unordered_map<tpa::ProgramLocation, TaintStore>& memo)
+bool TaintTransferFunction::checkMemoStates(const TaintEnv& env, const std::unordered_map<tpa::ProgramLocation, TaintStore>& memo, bool reportError)
 {
 	for (auto const& record: sinkPoints)
 	{
-		errs() << *record.context << ", " << *record.inst << ", " << record.callee->getName() << "\n";
+		//errs() << *record.context << ", " << *record.inst << ", " << record.callee->getName() << "\n";
 		ImmutableCallSite cs(record.inst);
 		assert(cs);
 
@@ -477,7 +473,15 @@ bool TaintTransferFunction::checkMemoStates(const TaintEnv& env, const std::unor
 		auto itr = memo.find(ProgramLocation(record.context, record.inst));
 		auto const& store = (itr == memo.end()) ? TaintStore() : itr->second;
 		if (!checkValue(*summary, record.context, cs, env, store))
+		{
+			if (reportError)
+			{
+				errs().changeColor(raw_ostream::Colors::RED);
+				errs() << "Sink violation at callsite " << *record.inst << "\n";
+				errs().resetColor();
+			}
 			return false;
+		}
 	}
 
 	return true;

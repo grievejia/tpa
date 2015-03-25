@@ -12,7 +12,7 @@ namespace tpa
 
 const PtsSet* PointerAnalysis::getPtsSet(const Value* val) const
 {
-	auto ptrs = ptrManager.getPointersWithValue(val);
+	auto ptrs = ptrManager.getPointersWithValue(val->stripPointerCasts());
 	auto retSet = pSetManager.getEmptySet();
 	for (auto ptr: ptrs)
 	{
@@ -28,9 +28,7 @@ const PtsSet* PointerAnalysis::getPtsSet(const Context* ctx, const llvm::Value* 
 	assert(val != nullptr);
 	assert(val->getType()->isPointerTy());
 
-	val = val->stripPointerCasts();
-
-	auto ptr = ptrManager.getPointer(ctx, val);
+	auto ptr = ptrManager.getPointer(ctx, val->stripPointerCasts());
 	if (ptr == nullptr)
 		return nullptr;
 
