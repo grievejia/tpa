@@ -1,7 +1,7 @@
 #ifndef TPA_MEMO_H
 #define TPA_MEMO_H
 
-#include "MemoryModel/PtsSet/StoreManager.h"
+#include "MemoryModel/PtsSet/Store.h"
 
 #include <llvm/ADT/DenseMap.h>
 
@@ -19,11 +19,9 @@ private:
 	using KeyType = std::pair<const Context*, const NodeType*>;
 	using MapType = llvm::DenseMap<KeyType, Store>;
 
-	StoreManager& storeManager;
-
 	MapType memo;
 public:
-	Memo(StoreManager& s): storeManager(s) {}
+	Memo() {}
 
 	bool hasMemoState(const Context* ctx, const NodeType* node) const
 	{
@@ -51,24 +49,24 @@ public:
 		}
 		else
 		{
-			return storeManager.mergeStore(itr->second, store);
+			return itr->second.mergeWith(store);
 		}
 	}
 
-	bool updateMemo(const Context* ctx, const NodeType* node, const MemoryLocation* loc, const PtsSet* pSet)
+	bool updateMemo(const Context* ctx, const NodeType* node, const MemoryLocation* loc, PtsSet pSet)
 	{
 		auto key = std::make_pair(ctx, node);
 		auto itr = memo.find(key);
 		if (itr == memo.end())
 		{
-			auto emptyStore = storeManager.getEmptyStore();
-			storeManager.strongUpdate(emptyStore, loc, pSet);
-			memo.insert(std::make_pair(key, std::move(emptyStore)));
+			auto newStore = Store();
+			newStore.strongUpdate(loc, pSet);
+			memo.insert(std::make_pair(key, std::move(newStore)));
 			return true;
 		}
 		else
 		{
-			return storeManager.weakUpdate(itr->second, loc, pSet);
+			return itr->second.weakUpdate(loc, pSet);
 		}
 	}
 

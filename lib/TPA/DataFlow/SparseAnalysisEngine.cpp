@@ -1,8 +1,7 @@
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "MemoryModel/Precision/KLimitContext.h"
-#include "MemoryModel/PtsSet/PtsEnv.h"
-#include "MemoryModel/PtsSet/StoreManager.h"
+#include "MemoryModel/PtsSet/Env.h"
 #include "PointerAnalysis/DataFlow/DefUseProgram.h"
 #include "PointerAnalysis/DataFlow/ModRefSummary.h"
 #include "TPA/DataFlow/Memo.h"
@@ -28,30 +27,30 @@ void SparseAnalysisEngine::propagateMemoryLevel(const Context* ctx, const DefUse
 	for (auto const& mapping: node->mem_succs())
 	{
 		auto loc = mapping.first;
-		if (auto pSet = store.lookup(loc))
+		auto pSet = store.lookup(loc);
+		for (auto succ: mapping.second)
 		{
-			for (auto succ: mapping.second)
-			{
-				if (memo.updateMemo(ctx, succ, loc, pSet))
-					workList.enqueue(succ);
-			}
+			if (memo.updateMemo(ctx, succ, loc, pSet))
+				workList.enqueue(succ);
 		}
 	}
 }
 
 Store SparseAnalysisEngine::pruneStore(const Store& store, const Function* f)
 {
-	auto retStore = storeManager.getEmptyStore();
+	auto retStore = Store();
 	auto& summary = summaryMap.getSummary(f);
 	for (auto loc: summary.mem_reads())
 	{
-		if (auto pSet = store.lookup(loc))
-			storeManager.strongUpdate(retStore, loc, pSet);
+		auto pSet = store.lookup(loc);
+		if (!pSet.isEmpty())
+			retStore.strongUpdate(loc, pSet);
 	}
 	for (auto loc: summary.mem_writes())
 	{
-		if (auto pSet = store.lookup(loc))
-			storeManager.strongUpdate(retStore, loc, pSet);
+		auto pSet = store.lookup(loc);
+		if (!pSet.isEmpty())
+			retStore.strongUpdate(loc, pSet);
 	}
 	return retStore;
 }
@@ -231,7 +230,8 @@ void SparseAnalysisEngine::evalFunction(const Context* ctx, const DefUseGraph* d
 					for (auto const& mapping: callNode->mem_succs())
 					{
 						auto loc = mapping.first;
-						if (auto pSet = store.lookup(loc))
+						auto pSet = store.lookup(loc);
+						if (!pSet.isEmpty())
 						{
 							for (auto succ: mapping.second)
 							{

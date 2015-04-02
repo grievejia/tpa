@@ -73,21 +73,19 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 	auto extModType = extModTable.lookup(f->getName());
 	auto addMemWrite = [&ptrAnalysis, &summary, caller] (const llvm::Value* v, bool array = false)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(v))
+		auto pSet = ptrAnalysis.getPtsSet(v);
+		for (auto loc: pSet)
 		{
-			for (auto loc: *pSet)
+			if (isLocalStackLocation(loc, caller))
+				continue;
+			if (array)
 			{
-				if (isLocalStackLocation(loc, caller))
-					continue;
-				if (array)
-				{
-					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-						summary.addMemoryWrite(oLoc);		
-				}
-				else
-				{
-					summary.addMemoryWrite(loc);
-				}
+				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+					summary.addMemoryWrite(oLoc);		
+			}
+			else
+			{
+				summary.addMemoryWrite(loc);
 			}
 		}
 	};
@@ -130,21 +128,19 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 	auto extRefType = extRefTable.lookup(f->getName());
 	auto addMemRead = [&ptrAnalysis, &summary, caller] (const llvm::Value* v, bool array = false)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(v))
+		auto pSet = ptrAnalysis.getPtsSet(v);
+		for (auto loc: pSet)
 		{
-			for (auto loc: *pSet)
+			if (isLocalStackLocation(loc, caller))
+				continue;
+			if (array)
 			{
-				if (isLocalStackLocation(loc, caller))
-					continue;
-				if (array)
-				{
-					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-						summary.addMemoryRead(oLoc);		
-				}
-				else
-				{
-					summary.addMemoryRead(loc);
-				}
+				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+					summary.addMemoryRead(oLoc);		
+			}
+			else
+			{
+				summary.addMemoryRead(loc);
 			}
 		}
 	};
@@ -270,13 +266,11 @@ void ModRefAnalysis::collectProcedureSummary(const PointerCFG& cfg, ModRefSummar
 				auto loadSrc = loadNode->getSrc();
 				if (isa<GlobalValue>(loadSrc))
 					summary.addValueRead(loadSrc);
-				if (auto pSet = ptrAnalysis.getPtsSet(loadSrc))
+				auto pSet = ptrAnalysis.getPtsSet(loadSrc);
+				for (auto loc: pSet)
 				{
-					for (auto loc: *pSet)
-					{
-						if (!isLocalStackLocation(loc, f))
-							summary.addMemoryRead(loc);
-					}
+					if (!isLocalStackLocation(loc, f))
+						summary.addMemoryRead(loc);
 				}
 
 				break;
@@ -300,13 +294,11 @@ void ModRefAnalysis::collectProcedureSummary(const PointerCFG& cfg, ModRefSummar
 							summary.addMemoryRead(loc);
 					}
 				}*/
-				if (auto pSet = ptrAnalysis.getPtsSet(storeDst))
+				auto pSet = ptrAnalysis.getPtsSet(storeDst);
+				for (auto loc: pSet)
 				{
-					for (auto loc: *pSet)
-					{
-						if (!isLocalStackLocation(loc, f))
-							summary.addMemoryWrite(loc);
-					}
+					if (!isLocalStackLocation(loc, f))
+						summary.addMemoryWrite(loc);
 				}
 
 				break;

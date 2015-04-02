@@ -1,5 +1,4 @@
-#include "MemoryModel/PtsSet/PtsEnv.h"
-#include "MemoryModel/PtsSet/StoreManager.h"
+#include "MemoryModel/PtsSet/Env.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
@@ -35,10 +34,7 @@ TEST(GlobalAnalysisTest, BasicTest)
 	auto dataLayout = DataLayout(testModule.get());
 	auto memManager = MemoryManager(dataLayout);
 
-	PtsSetManager pSetManager;
-	auto storeManager = StoreManager(pSetManager);
-
-	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager, storeManager);
+	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager);
 	auto envStore = globalAnalysis.runOnModule(*testModule);
 	auto env = std::move(envStore.first);
 	auto store = std::move(envStore.second);
@@ -52,36 +48,36 @@ TEST(GlobalAnalysisTest, BasicTest)
 	EXPECT_NE(ptr3, nullptr);
 
 	auto locSet1 = env.lookup(ptr1);
-	ASSERT_NE(locSet1, nullptr);
-	ASSERT_EQ(locSet1->getSize(), 1u);
-	auto loc1 = *locSet1->begin();
+	ASSERT_FALSE(locSet1.isEmpty());
+	ASSERT_EQ(locSet1.getSize(), 1u);
+	auto loc1 = *locSet1.begin();
 	ASSERT_NE(loc1, memManager.getUniversalLocation());
 	auto locSet2 = env.lookup(ptr2);
-	ASSERT_NE(locSet2, nullptr);
-	ASSERT_EQ(locSet2->getSize(), 1u);
-	auto loc2 = *locSet2->begin();
+	ASSERT_FALSE(locSet2.isEmpty());
+	ASSERT_EQ(locSet2.getSize(), 1u);
+	auto loc2 = *locSet2.begin();
 	ASSERT_NE(loc2, memManager.getUniversalLocation());
 	auto locSet3 = env.lookup(ptr3);
-	ASSERT_NE(locSet3, nullptr);
-	ASSERT_EQ(locSet3->getSize(), 1u);
-	auto loc3 = *locSet3->begin();
+	ASSERT_FALSE(locSet3.isEmpty());
+	ASSERT_EQ(locSet3.getSize(), 1u);
+	auto loc3 = *locSet3.begin();
 	ASSERT_NE(loc3, memManager.getUniversalLocation());
 	auto loc4 = memManager.offsetMemory(loc3, dataLayout.getPointerSize());
 	ASSERT_NE(loc4, memManager.getUniversalLocation());
 
 	auto memSet2 = store.lookup(loc2);
-	ASSERT_NE(memSet2, nullptr);
-	ASSERT_EQ(memSet2->getSize(), 1u);
+	ASSERT_FALSE(memSet2.isEmpty());
+	ASSERT_EQ(memSet2.getSize(), 1u);
 	ASSERT_EQ(memSet2, locSet1);
 
 	auto memSet3 = store.lookup(loc3);
-	ASSERT_NE(memSet3, nullptr);
-	ASSERT_EQ(memSet3->getSize(), 1u);
+	ASSERT_FALSE(memSet3.isEmpty());
+	ASSERT_EQ(memSet3.getSize(), 1u);
 	ASSERT_EQ(memSet3, locSet1);
 
 	auto memSet4 = store.lookup(loc4);
-	ASSERT_NE(memSet4, nullptr);
-	ASSERT_EQ(memSet4->getSize(), 1u);
+	ASSERT_FALSE(memSet4.isEmpty());
+	ASSERT_EQ(memSet4.getSize(), 1u);
 	ASSERT_EQ(memSet4, locSet2);
 }
 
@@ -107,10 +103,7 @@ TEST(GlobalAnalysisTest, BasicTest2)
 	auto dataLayout = DataLayout(testModule.get());
 	auto memManager = MemoryManager(dataLayout);
 
-	PtsSetManager pSetManager;
-	auto storeManager = StoreManager(pSetManager);
-
-	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager, storeManager);
+	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager);
 	auto envStore = globalAnalysis.runOnModule(*testModule);
 	auto env = std::move(envStore.first);
 	auto store = std::move(envStore.second);
@@ -126,43 +119,36 @@ TEST(GlobalAnalysisTest, BasicTest2)
 	EXPECT_NE(ptr4, nullptr);
 
 	auto locSet1 = env.lookup(ptr1);
-	ASSERT_NE(locSet1, nullptr);
-	ASSERT_EQ(locSet1->getSize(), 1u);
-	auto loc1 = *locSet1->begin();
+	ASSERT_EQ(locSet1.getSize(), 1u);
+	auto loc1 = *locSet1.begin();
 	ASSERT_NE(loc1, memManager.getUniversalLocation());
 	auto locSet2 = env.lookup(ptr2);
-	ASSERT_NE(locSet2, nullptr);
-	ASSERT_EQ(locSet2->getSize(), 1u);
-	auto loc2 = *locSet2->begin();
+	ASSERT_EQ(locSet2.getSize(), 1u);
+	auto loc2 = *locSet2.begin();
 	ASSERT_NE(loc2, memManager.getUniversalLocation());
 	auto locSet3 = env.lookup(ptr3);
-	ASSERT_NE(locSet3, nullptr);
-	ASSERT_EQ(locSet3->getSize(), 1u);
-	auto loc3 = *locSet3->begin();
+	ASSERT_EQ(locSet3.getSize(), 1u);
+	auto loc3 = *locSet3.begin();
 	ASSERT_NE(loc3, memManager.getUniversalLocation());
 	auto locSet4 = env.lookup(ptr4);
-	ASSERT_NE(locSet4, nullptr);
-	ASSERT_EQ(locSet4->getSize(), 1u);
-	auto loc4 = *locSet4->begin();
+	ASSERT_EQ(locSet4.getSize(), 1u);
+	auto loc4 = *locSet4.begin();
 	ASSERT_NE(loc4, memManager.getUniversalLocation());
 
 	auto memSet2 = store.lookup(loc2);
-	ASSERT_NE(memSet2, nullptr);
-	ASSERT_EQ(memSet2->getSize(), 1u);
-	auto memSet2Loc = *memSet2->begin();
+	ASSERT_EQ(memSet2.getSize(), 1u);
+	auto memSet2Loc = *memSet2.begin();
 	ASSERT_EQ(memSet2Loc, memManager.offsetMemory(loc1, 4));
 
 	auto memSet3 = store.lookup(loc3);
-	ASSERT_NE(memSet3, nullptr);
-	ASSERT_EQ(memSet3->getSize(), 1u);
-	auto memSet3Loc = *memSet3->begin();
+	ASSERT_EQ(memSet3.getSize(), 1u);
+	auto memSet3Loc = *memSet3.begin();
 	ASSERT_EQ(memSet3Loc, memManager.getNullLocation());
 
 	auto memSet4 = store.lookup(loc4);
-	ASSERT_NE(memSet4, nullptr);
-	ASSERT_EQ(memSet4->getSize(), 2u);
-	ASSERT_TRUE(memSet4->has(loc2));
-	ASSERT_TRUE(memSet4->has(loc3));
+	ASSERT_EQ(memSet4.getSize(), 2u);
+	ASSERT_TRUE(memSet4.has(loc2));
+	ASSERT_TRUE(memSet4.has(loc3));
 }
 
 TEST(GlobalAnalysisTest, BasicTest3)
@@ -191,10 +177,7 @@ TEST(GlobalAnalysisTest, BasicTest3)
 	auto dataLayout = DataLayout(testModule.get());
 	auto memManager = MemoryManager(dataLayout);
 
-	PtsSetManager pSetManager;
-	auto storeManager = StoreManager(pSetManager);
-
-	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager, storeManager);
+	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager);
 	auto envStore = globalAnalysis.runOnModule(*testModule);
 	auto env = std::move(envStore.first);
 	auto store = std::move(envStore.second);
@@ -214,66 +197,54 @@ TEST(GlobalAnalysisTest, BasicTest3)
 	EXPECT_NE(ptr6, nullptr);
 
 	auto locSet1 = env.lookup(ptr1);
-	ASSERT_NE(locSet1, nullptr);
-	ASSERT_EQ(locSet1->getSize(), 1u);
-	auto loc1 = *locSet1->begin();
+	ASSERT_EQ(locSet1.getSize(), 1u);
+	auto loc1 = *locSet1.begin();
 	ASSERT_NE(loc1, memManager.getUniversalLocation());
 	auto locSet2 = env.lookup(ptr2);
-	ASSERT_NE(locSet2, nullptr);
-	ASSERT_EQ(locSet2->getSize(), 1u);
-	auto loc2 = *locSet2->begin();
+	ASSERT_EQ(locSet2.getSize(), 1u);
+	auto loc2 = *locSet2.begin();
 	ASSERT_NE(loc2, memManager.getUniversalLocation());
 	auto locSet3 = env.lookup(ptr3);
-	ASSERT_NE(locSet3, nullptr);
-	ASSERT_EQ(locSet3->getSize(), 1u);
-	auto loc3 = *locSet3->begin();
+	ASSERT_EQ(locSet3.getSize(), 1u);
+	auto loc3 = *locSet3.begin();
 	ASSERT_NE(loc3, memManager.getUniversalLocation());
 	auto locSet4 = env.lookup(ptr4);
-	ASSERT_NE(locSet4, nullptr);
-	ASSERT_EQ(locSet4->getSize(), 1u);
-	auto loc4 = *locSet4->begin();
+	ASSERT_EQ(locSet4.getSize(), 1u);
+	auto loc4 = *locSet4.begin();
 	ASSERT_NE(loc4, memManager.getUniversalLocation());
 	auto locSet5 = env.lookup(ptr5);
-	ASSERT_NE(locSet5, nullptr);
-	ASSERT_EQ(locSet5->getSize(), 1u);
-	auto loc5 = *locSet5->begin();
+	ASSERT_EQ(locSet5.getSize(), 1u);
+	auto loc5 = *locSet5.begin();
 	ASSERT_NE(loc5, memManager.getUniversalLocation());
 	auto locSet6 = env.lookup(ptr6);
-	ASSERT_NE(locSet6, nullptr);
-	ASSERT_EQ(locSet6->getSize(), 1u);
-	auto loc6 = *locSet6->begin();
+	ASSERT_EQ(locSet6.getSize(), 1u);
+	auto loc6 = *locSet6.begin();
 	ASSERT_NE(loc6, memManager.getUniversalLocation());
 
 	auto memSet2 = store.lookup(loc2);
-	ASSERT_NE(memSet2, nullptr);
-	ASSERT_EQ(memSet2->getSize(), 1u);
-	auto memSet2Loc = *memSet2->begin();
+	ASSERT_EQ(memSet2.getSize(), 1u);
+	auto memSet2Loc = *memSet2.begin();
 	ASSERT_EQ(memSet2Loc, memManager.offsetMemory(loc1, 4));
 
 	auto memSet3 = store.lookup(loc3);
-	ASSERT_NE(memSet3, nullptr);
-	ASSERT_EQ(memSet3->getSize(), 1u);
+	ASSERT_EQ(memSet3.getSize(), 1u);
 	ASSERT_EQ(memSet3, memSet2);
 
 	auto memSet4 = store.lookup(loc4);
-	ASSERT_NE(memSet4, nullptr);
-	ASSERT_EQ(memSet4->getSize(), 1u);
+	ASSERT_EQ(memSet4.getSize(), 1u);
 	ASSERT_EQ(memSet4, locSet1);
 
 	auto memSet5 = store.lookup(loc5);
-	ASSERT_NE(memSet5, nullptr);
-	ASSERT_EQ(memSet5->getSize(), 1u);
-	ASSERT_TRUE(memSet5->has(loc3));
+	ASSERT_EQ(memSet5.getSize(), 1u);
+	ASSERT_TRUE(memSet5.has(loc3));
 
 	auto memSet5o = store.lookup(memManager.offsetMemory(loc5, 16));
-	ASSERT_NE(memSet5o, nullptr);
-	ASSERT_EQ(memSet5o->getSize(), 1u);
-	ASSERT_TRUE(memSet5o->has(loc4));
+	ASSERT_EQ(memSet5o.getSize(), 1u);
+	ASSERT_TRUE(memSet5o.has(loc4));
 
 	auto memSet6 = store.lookup(loc6);
-	ASSERT_NE(memSet6, nullptr);
-	ASSERT_EQ(memSet6->getSize(), 1u);
-	ASSERT_TRUE(memSet6->has(memManager.offsetMemory(loc5, 16)));
+	ASSERT_EQ(memSet6.getSize(), 1u);
+	ASSERT_TRUE(memSet6.has(memManager.offsetMemory(loc5, 16)));
 }
 
 }

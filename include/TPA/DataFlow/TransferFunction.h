@@ -1,6 +1,8 @@
 #ifndef TPA_TRANSFER_FUNCTION_H
 #define TPA_TRANSFER_FUNCTION_H
 
+#include "MemoryModel/PtsSet/Env.h"
+#include "MemoryModel/PtsSet/Store.h"
 #include "PointerAnalysis/ControlFlow/NodeMixins.h"
 
 #include <llvm/ADT/ArrayRef.h>
@@ -13,9 +15,6 @@ namespace tpa
 class PointerManager;
 class MemoryManager;
 
-class Env;
-class Store;
-class StoreManager;
 class ExternalPointerEffectTable;
 
 class PointerProgram;
@@ -30,7 +29,6 @@ private:
 
 	PointerManager& ptrManager;
 	MemoryManager& memManager;
-	StoreManager& storeManager;
 
 	const ExternalPointerEffectTable& extTable;
 
@@ -39,7 +37,7 @@ private:
 	std::pair<bool, bool> evalStore(const Pointer* dst, const Pointer* src, const Env&, Store&);
 	std::pair<bool, bool> evalCopy(const Pointer* dst, const Pointer* src, Env&);
 public:
-	TransferFunction(PointerManager& p, MemoryManager& m, StoreManager& s, const ExternalPointerEffectTable& t): ptrManager(p), memManager(m), storeManager(s), extTable(t) {}
+	TransferFunction(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& t): ptrManager(p), memManager(m), extTable(t) {}
 
 	// Return true if env changes
 	bool evalAlloc(const Context*, const AllocNodeMixin<NodeType>*, Env&);

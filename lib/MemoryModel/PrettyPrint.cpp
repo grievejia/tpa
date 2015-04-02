@@ -1,6 +1,6 @@
 #include "MemoryModel/Pointer/Pointer.h"
 #include "MemoryModel/Precision/Context.h"
-#include "MemoryModel/PtsSet/PtsEnv.h"
+#include "MemoryModel/PtsSet/Env.h"
 #include "MemoryModel/PtsSet/Store.h"
 #include "MemoryModel/Memory/Memory.h"
 
@@ -63,30 +63,30 @@ raw_ostream& operator<<(raw_ostream& os, const MemoryLocation& l)
 	return os;
 }
 
-void Env::dump(raw_ostream& os) const
+template <typename Map>
+void dumpMap(raw_ostream& os, const Map& map, StringRef title)
 {
-	os << "\n----- Env -----\n";
-	for (auto const& mapping: env)
+	os << "\n----- " << title << " -----\n";
+	for (auto const& mapping: map)
 	{
 		os << *mapping.first << "  -->>  { ";
-		for (auto loc: *mapping.second)
+		for (auto loc: mapping.second)
 			os << *loc << " ";
 		os << "}\n";
 	}
 	os << "----- END -----\n\n";
 }
 
-void Store::dump(raw_ostream& os) const
+raw_ostream& operator<<(raw_ostream& os, const Env& env)
 {
-	os << "\n----- Store -----\n";
-	for (auto const& mapping: mem)
-	{
-		os << *mapping.first << "  -->>  { ";
-		for (auto loc: *mapping.second)
-			os << *loc << " ";
-		os << "}\n";
-	}
-	os << "----- END -----\n\n";
+	dumpMap(os, env, "Env");
+	return os;
+}
+
+raw_ostream& operator<<(raw_ostream& os, const Store& store)
+{
+	dumpMap(os, store, "Store");
+	return os;
 }
 
 }

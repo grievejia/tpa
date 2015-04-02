@@ -1,7 +1,7 @@
 #ifndef TPA_GLOBAL_POINTER_ANALYSIS_H
 #define TPA_GLOBAL_POINTER_ANALYSIS_H
 
-#include "MemoryModel/PtsSet/PtsEnv.h"
+#include "MemoryModel/PtsSet/Env.h"
 #include "MemoryModel/PtsSet/Store.h"
 
 namespace llvm
@@ -17,14 +17,12 @@ namespace tpa
 class MemoryLocation;
 class MemoryManager;
 class PointerManager;
-class StoreManager;
 
 class GlobalPointerAnalysis
 {
 private:
 	PointerManager& ptrManager;
 	MemoryManager& memManager;
-	StoreManager& storeManager;
 
 	const llvm::DataLayout& dataLayout;
 	const Context* globalCtx;
@@ -35,7 +33,7 @@ private:
 	void processGlobalInitializer(const MemoryLocation*, const llvm::Constant*, const Env&, Store&);
 	const MemoryLocation* processConstantGEP(const llvm::Constant*, size_t, const Env&, Store&);
 public:
-	GlobalPointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& s);
+	GlobalPointerAnalysis(PointerManager& p, MemoryManager& m);
 
 	std::pair<Env, Store> runOnModule(const llvm::Module&);
 };

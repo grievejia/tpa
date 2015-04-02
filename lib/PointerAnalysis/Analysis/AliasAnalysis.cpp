@@ -1,5 +1,5 @@
 #include "MemoryModel/Memory/MemoryManager.h"
-#include "MemoryModel/PtsSet/PtsSetManager.h"
+#include "MemoryModel/PtsSet/PtsSet.h"
 #include "PointerAnalysis/Analysis/AliasAnalysis.h"
 
 #include <llvm/IR/Value.h>
@@ -11,22 +11,22 @@ namespace tpa
 
 AliasAnalysis::AliasAnalysis(const PointerAnalysis& p): ptrAnalysis(p), uLoc(ptrAnalysis.getMemoryManager().getUniversalLocation()), nLoc(ptrAnalysis.getMemoryManager().getNullLocation()) {}
 
-AliasResult AliasAnalysis::checkAlias(const PtsSet* pSet0, const PtsSet* pSet1)
+AliasResult AliasAnalysis::checkAlias(PtsSet pSet0, PtsSet pSet1)
 {
-	if (pSet0 == nullptr || pSet1 == nullptr)
+	if (pSet0.isEmpty()|| pSet1.isEmpty())
 		return AliasResult::NoAlias;
 
-	if (pSet0->has(uLoc) || pSet1->has(uLoc))
+	if (pSet0.has(uLoc) || pSet1.has(uLoc))
 		return AliasResult::MayAlias;
 
-	auto intersectSet = PtsSet::intersects(*pSet0, *pSet1);
+	auto intersectSet = PtsSet::intersects(pSet0, pSet1);
 	if (!intersectSet.empty())
 	{
 		if (intersectSet.size() == 1)
 		{
 			if (intersectSet[0] == nLoc)
 				return AliasResult::NoAlias;
-			else if (pSet0->getSize() == 1 && pSet1->getSize() == 1)
+			else if (pSet0.getSize() == 1 && pSet1.getSize() == 1)
 				return AliasResult::MustAlias;
 		}
 		

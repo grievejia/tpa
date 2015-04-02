@@ -1,4 +1,3 @@
-#include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
@@ -19,31 +18,12 @@ bool GlobalPointerAnalysisPass::runOnModule(Module& module)
 	auto dataLayout = DataLayout(&module);
 	auto memManager = MemoryManager(dataLayout);
 
-	PtsSetManager pSetManager;
-	auto storeManager = StoreManager(pSetManager);
-
-	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager, storeManager);
+	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager);
 	auto envStore = globalAnalysis.runOnModule(module);
 	auto env = std::move(envStore.first);
 	auto store = std::move(envStore.second);
 
-	errs() << "---- Env ----\n";
-	for (auto const& mapping: env)
-	{
-		errs() << *mapping.first << "  -->  { ";
-		for (auto loc: *mapping.second)
-			errs() << *loc << " ";
-		errs() << "}\n";
-	}
-
-	errs() << "\n---- Store ----\n";
-	for (auto const& mapping: store)
-	{
-		errs() << *mapping.first << "  -->  { ";
-		for (auto loc: *mapping.second)
-			errs() << *loc << " ";
-		errs() << "}\n";
-	}
+	errs() << env << store << "\n";
 
 	return false;
 }

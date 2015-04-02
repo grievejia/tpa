@@ -2,7 +2,6 @@
 #define TPA_TUNABLE_SPARSE_POINTER_ANALYSIS_WRAPPER_H
 
 #include "MemoryModel/Pointer/PointerManager.h"
-#include "MemoryModel/PtsSet/StoreManager.h"
 #include "PointerAnalysis/DataFlow/DefUseProgram.h"
 #include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 #include "TPA/Analysis/TunableSparsePointerAnalysis.h"
@@ -24,8 +23,6 @@ class TunableSparsePointerAnalysisWrapper
 private:
 	PointerManager ptrManager;
 	std::unique_ptr<MemoryManager> memManager;
-	PtsSetManager pSetManager;
-	StoreManager storeManager;
 
 	DefUseProgram dug;
 	std::unique_ptr<TunableSparsePointerAnalysis> ptrAnalysis;

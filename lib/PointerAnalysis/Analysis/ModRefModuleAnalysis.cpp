@@ -81,13 +81,11 @@ public:
 		auto ptrOp = loadInst.getPointerOperand();
 		if (isa<GlobalValue>(ptrOp))
 			summary.addValueRead(ptrOp);
-		if (auto pSet = ptrAnalysis.getPtsSet(ptrOp))
+		auto pSet = ptrAnalysis.getPtsSet(ptrOp);
+		for (auto loc: pSet)
 		{
-			for (auto loc: *pSet)
-			{
-				if (!isLocalStackLocation(loc, loadInst.getParent()->getParent()))
-					summary.addMemoryRead(loc);
-			}
+			if (!isLocalStackLocation(loc, loadInst.getParent()->getParent()))
+				summary.addMemoryRead(loc);
 		}
 	}
 
@@ -101,13 +99,11 @@ public:
 		if (isa<GlobalValue>(storeDst))
 			summary.addValueRead(storeDst);
 
-		if (auto pSet = ptrAnalysis.getPtsSet(storeDst))
+		auto pSet = ptrAnalysis.getPtsSet(storeDst);
+		for (auto loc: pSet)
 		{
-			for (auto loc: *pSet)
-			{
-				if (!isLocalStackLocation(loc, storeInst.getParent()->getParent()))
-					summary.addMemoryWrite(loc);
-			}
+			if (!isLocalStackLocation(loc, storeInst.getParent()->getParent()))
+				summary.addMemoryWrite(loc);
 		}
 	}
 
@@ -131,21 +127,19 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 	auto extModType = extModTable.lookup(f->getName());
 	auto addMemWrite = [&ptrAnalysis, &summary, caller] (const llvm::Value* v, bool array = false)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(v))
+		auto pSet = ptrAnalysis.getPtsSet(v);
+		for (auto loc: pSet)
 		{
-			for (auto loc: *pSet)
+			if (isLocalStackLocation(loc, caller))
+				continue;
+			if (array)
 			{
-				if (isLocalStackLocation(loc, caller))
-					continue;
-				if (array)
-				{
-					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-						summary.addMemoryWrite(oLoc);		
-				}
-				else
-				{
-					summary.addMemoryWrite(loc);
-				}
+				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+					summary.addMemoryWrite(oLoc);		
+			}
+			else
+			{
+				summary.addMemoryWrite(loc);
 			}
 		}
 	};
@@ -188,21 +182,19 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 	auto extRefType = extRefTable.lookup(f->getName());
 	auto addMemRead = [&ptrAnalysis, &summary, caller] (const llvm::Value* v, bool array = false)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(v))
+		auto pSet = ptrAnalysis.getPtsSet(v);
+		for (auto loc: pSet)
 		{
-			for (auto loc: *pSet)
+			if (isLocalStackLocation(loc, caller))
+				continue;
+			if (array)
 			{
-				if (isLocalStackLocation(loc, caller))
-					continue;
-				if (array)
-				{
-					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-						summary.addMemoryRead(oLoc);		
-				}
-				else
-				{
-					summary.addMemoryRead(loc);
-				}
+				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+					summary.addMemoryRead(oLoc);		
+			}
+			else
+			{
+				summary.addMemoryRead(loc);
 			}
 		}
 	};

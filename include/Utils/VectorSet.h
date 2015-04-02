@@ -13,26 +13,32 @@ template <typename T, typename Compare = std::less<T>>
 class VectorSet
 {
 public:
-	// Export ElemType
-	using ElemType = T;
 	// Try to be consistent with STL containers
 	using value_type = T;
 private:
 	// A sorted vector to represent ptsset
-	using VectorSetType = std::vector<ElemType>;
+	using VectorSetType = std::vector<T>;
 	VectorSetType set;
 public:
 	using iterator = typename VectorSetType::iterator;
 	using const_iterator = typename VectorSetType::const_iterator;
 
 	VectorSet() = default;
-	VectorSet(typename VectorSetType::size_type size): set(size) {}
+	VectorSet(T elem)
+	{
+		set.push_back(elem);
+	}
+	VectorSet(typename VectorSetType::size_type size)
+	{
+		set.reserve(size);
+	}
 
 	// Return true iff the set is changed
-	bool insert(ElemType elem)
+	bool insert(T elem)
 	{
-		auto insPos = std::lower_bound(set.begin(), set.end(), elem, Compare());
-		if (insPos == set.end() || elem < *insPos)
+		Compare comp;
+		auto insPos = std::lower_bound(set.begin(), set.end(), elem, comp);
+		if (insPos == set.end() || comp(elem, *insPos))
 		{
 			set.insert(insPos, elem);
 			return true;
@@ -41,10 +47,11 @@ public:
 	}
 
 	// Return true iff the set is changed
-	bool erase(ElemType elem)
+	bool erase(T elem)
 	{
-		auto removePos = std::lower_bound(set.begin(), set.end(), elem);
-		if (removePos == set.end() || elem < *removePos)
+		Compare comp;
+		auto removePos = std::lower_bound(set.begin(), set.end(), elem, comp);
+		if (removePos == set.end() || comp(elem, *removePos))
 			return false;
 		set.erase(removePos);
 		return true;
@@ -55,23 +62,24 @@ public:
 	{
 		bool changed = false;
 
+		Compare comp;
 		set.reserve(set.size() + other.set.size());
 		for (auto const& elem: other)
 		{
-			if (!std::binary_search(set.begin(), set.end(), elem, Compare()))
+			if (!std::binary_search(set.begin(), set.end(), elem, comp))
 			{
 				changed = true;
 				set.push_back(elem);
 			}
 		}
 		if (changed)
-			std::sort(set.begin(), set.end(), Compare());
+			std::sort(set.begin(), set.end(), comp);
 
 		return changed;
 	}
 
 	// Return true iff the variable is found
-	bool has(ElemType elem) const
+	bool has(T elem) const
 	{
 		return std::binary_search(set.begin(), set.end(), elem, Compare());
 	}
@@ -106,16 +114,6 @@ public:
 		return !(*this == other);
 	}
 
-	bool intersects(const VectorSet<T>& other) const
-	{
-		VectorSetType intersectSet;
-		if (this == &other)
-			return true;
-		std::set_intersection(begin(), end(), other.begin(), other.end(),
-			std::inserter(intersectSet, intersectSet.begin()), Compare());
-		return !intersectSet.empty();
-	}
-
 	void clear() { set.clear(); }
 
 	// Iterators
@@ -124,7 +122,7 @@ public:
 	const_iterator begin() const { return set.begin(); }
 	const_iterator end() const { return set.end(); }
 
-	static std::vector<T> intersects(const VectorSet<T>& s0, const VectorSet<T>& s1)
+	static std::vector<T> intersects(const VectorSet<T, Compare>& s0, const VectorSet<T, Compare>& s1)
 	{
 		std::vector<T> intersectSet;
 		std::set_intersection(s0.begin(), s0.end(), s1.begin(), s1.end(),

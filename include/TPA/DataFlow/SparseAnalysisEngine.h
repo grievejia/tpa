@@ -10,13 +10,11 @@ namespace tpa
 {
 
 class DefUseProgram;
-class Env;
 class ExternalPointerEffectTable;
 class MemoryManager;
 class ModRefSummaryMap;
 class PointerManager;
 class StaticCallGraph;
-class StoreManager;
 
 class SparseAnalysisEngine
 {
@@ -26,9 +24,6 @@ private:
 
 	// The global memo
 	Memo<DefUseGraphNode>& memo;
-
-	// The store manager
-	StoreManager& storeManager;
 
 	// TransferFunction knows how to update from one state to another
 	TransferFunction<DefUseGraph> transferFunction;
@@ -45,7 +40,7 @@ private:
 	void propagateTopLevel(const DefUseGraphNode* node, LocalWorkList& workList);
 	void propagateMemoryLevel(const Context*, const DefUseGraphNode*, const Store&, LocalWorkList&);
 public:
-	SparseAnalysisEngine(PointerManager& p, MemoryManager& m, StoreManager& s, StaticCallGraph& g, Memo<DefUseGraphNode>& me, const ModRefSummaryMap& sm, const ExternalPointerEffectTable& t): callGraph(g), memo(me), storeManager(s), transferFunction(p, m, s, t), summaryMap(sm) {}
+	SparseAnalysisEngine(PointerManager& p, MemoryManager& m, StaticCallGraph& g, Memo<DefUseGraphNode>& me, const ModRefSummaryMap& sm, const ExternalPointerEffectTable& t): callGraph(g), memo(me), transferFunction(p, m, t), summaryMap(sm) {}
 
 	void runOnDefUseProgram(const DefUseProgram&, Env&, Store);
 };

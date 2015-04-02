@@ -13,7 +13,7 @@ using namespace llvm;
 namespace tpa
 {
 
-TunableSparsePointerAnalysisWrapper::TunableSparsePointerAnalysisWrapper(): storeManager(pSetManager) {}
+TunableSparsePointerAnalysisWrapper::TunableSparsePointerAnalysisWrapper() {}
 TunableSparsePointerAnalysisWrapper::~TunableSparsePointerAnalysisWrapper() {}
 
 void TunableSparsePointerAnalysisWrapper::runOnModule(const llvm::Module& module)
@@ -21,7 +21,7 @@ void TunableSparsePointerAnalysisWrapper::runOnModule(const llvm::Module& module
 	auto dataLayout = DataLayout(&module);
 	memManager = std::make_unique<MemoryManager>(dataLayout);
 
-	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, *memManager, storeManager);
+	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, *memManager);
 
 	auto initEnvStore = globalAnalysis.runOnModule(module);
 
@@ -29,7 +29,7 @@ void TunableSparsePointerAnalysisWrapper::runOnModule(const llvm::Module& module
 	auto prog = builder.buildSemiSparseProgram(module);
 
 	// TPA initial pass
-	TunablePointerAnalysis tpa(ptrManager, *memManager, storeManager, extTable, initEnvStore.first);
+	TunablePointerAnalysis tpa(ptrManager, *memManager, extTable, initEnvStore.first);
 	tpa.runOnProgram(prog, initEnvStore.second);
 
 	auto extModTable = ExternalModTable();
@@ -40,7 +40,7 @@ void TunableSparsePointerAnalysisWrapper::runOnModule(const llvm::Module& module
 	DefUseProgramBuilder duBuilder(tpa, summaryMap, extModTable, extRefTable);
 	dug = duBuilder.buildDefUseProgram(prog);
 
-	TunableSparsePointerAnalysis stpa(ptrManager, *memManager, storeManager, extTable, summaryMap, std::move(initEnvStore.first));
+	TunableSparsePointerAnalysis stpa(ptrManager, *memManager, extTable, summaryMap, std::move(initEnvStore.first));
 	stpa.runOnDefUseProgram(dug, std::move(initEnvStore.second));
 }
 

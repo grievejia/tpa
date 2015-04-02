@@ -141,11 +141,12 @@ private:
 
 	void processMemRead(Instruction& inst, Value* ptr, bool array = false)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(ptr))
+		auto pSet = ptrAnalysis.getPtsSet(ptr);
+		if (!pSet.isEmpty())
 		{
 			auto& rdStore = rdMap.getReachingDefStore(&inst);
 			auto dstDuInst = duFunc.getDefUseInstruction(&inst);
-			for (auto loc: *pSet)
+			for (auto loc: pSet)
 			{
 				if (array)
 				{

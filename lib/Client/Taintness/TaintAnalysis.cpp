@@ -1,6 +1,6 @@
 #include "Client/Taintness/TaintAnalysis.h"
 #include "MemoryModel/Memory/MemoryManager.h"
-#include "MemoryModel/Precision/AdaptiveContext.h"
+#include "MemoryModel/Precision/KLimitContext.h"
 #include "PointerAnalysis/DataFlow/DefUseModule.h"
 #include "PointerAnalysis/DataFlow/ModRefSummary.h"
 
@@ -52,11 +52,9 @@ TaintAnalysis::ClientWorkList TaintAnalysis::initializeWorkList(const DefUseModu
 		if (global.isDeclaration())
 		{
 			env.strongUpdate(ProgramLocation(globalCtx, &global), TaintLattice::Untainted);
-			if (auto pSet = ptrAnalysis.getPtsSet(globalCtx, &global))
-			{
-				for (auto loc: *pSet)
-					initStore.strongUpdate(loc, TaintLattice::Untainted);
-			}
+			auto pSet = ptrAnalysis.getPtsSet(globalCtx, &global);
+			for (auto loc: pSet)
+				initStore.strongUpdate(loc, TaintLattice::Untainted);
 		}
 	}
 
@@ -228,7 +226,7 @@ void TaintAnalysis::evalFunction(const Context* ctx, const DefUseFunction* duFun
 				}
 				else
 				{
-					auto newCtx = AdaptiveContext::pushContext(ctx, inst, callee);
+					auto newCtx = KLimitContext::pushContext(ctx, inst, callee);
 					retMap[std::make_pair(newCtx, callee)].insert(std::make_pair(ctx, inst));
 					applyFunction(ctx, newCtx, cs, &duModule.getDefUseFunction(callee), store, funWorkList);
 				}

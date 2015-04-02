@@ -2,6 +2,7 @@
 #define TPA_POINTER_ANALYSIS_ENGINE_H
 
 #include "PointerAnalysis/ControlFlow/PointerCFG.h"
+#include "PointerAnalysis/ControlFlow/NodeVisitor.h"
 #include "TPA/DataFlow/TPAWorkList.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/TransferFunction.h"
@@ -9,15 +10,13 @@
 namespace tpa
 {
 
-class Env;
 class ExternalPointerEffectTable;
 class MemoryManager;
 class PointerManager;
 class PointerProgram;
 class StaticCallGraph;
-class StoreManager;
 
-class PointerAnalysisEngine
+class PointerAnalysisEngine: public NodeVisitor<PointerCFGNode>
 {
 private:
 
@@ -40,6 +39,15 @@ private:
 	using GlobalWorkList = TPAWorkList<PointerCFG>;
 	GlobalWorkList globalWorkList;
 	using LocalWorkList = GlobalWorkList::LocalWorkList;
+
+	// NodeVisitor implementations
+	void visitEntryNode(const EntryNode&);
+	void visitAllocNode(const AllocNode&);
+	void visitCopyNode(const CopyNode&);
+	void visitLoadNode(const LoadNode&);
+	void visitStoreNode(const StoreNode&);
+	void visitCallNode(const CallNode&);
+	void visitReturnNode(const ReturnNode&);
 	
 	void initializeWorkList(Store store);
 	void evalFunction(const Context*, const PointerCFG*);
@@ -47,7 +55,7 @@ private:
 	void propagateTopLevel(const PointerCFGNode* node, LocalWorkList& workList);
 	void propagateMemoryLevel(const Context*, const PointerCFGNode*, const Store&, LocalWorkList&);
 public:
-	PointerAnalysisEngine(PointerManager& p, MemoryManager& m, StoreManager& s, const PointerProgram& pp, Env& e, Store st, StaticCallGraph& g, Memo<PointerCFGNode>& me, const ExternalPointerEffectTable& t);
+	PointerAnalysisEngine(PointerManager& p, MemoryManager& m, const PointerProgram& pp, Env& e, Store st, StaticCallGraph& g, Memo<PointerCFGNode>& me, const ExternalPointerEffectTable& t);
 
 	void run();
 };

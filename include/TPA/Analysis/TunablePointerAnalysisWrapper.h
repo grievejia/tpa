@@ -2,7 +2,6 @@
 #define TPA_SEMI_SPARSE_POINTER_ANALYSIS_WRAPPER_H
 
 #include "MemoryModel/Pointer/PointerManager.h"
-#include "MemoryModel/PtsSet/StoreManager.h"
 #include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
@@ -24,8 +23,6 @@ class TunablePointerAnalysisWrapper
 private:
 	PointerManager ptrManager;
 	std::unique_ptr<MemoryManager> memManager;
-	PtsSetManager pSetManager;
-	StoreManager storeManager;
 
 	PointerProgram prog;
 	std::unique_ptr<TunablePointerAnalysis> ptrAnalysis;

@@ -10,37 +10,37 @@ using namespace llvm;
 namespace tpa
 {
 
-const PtsSet* PointerAnalysis::getPtsSet(const Value* val) const
+PtsSet PointerAnalysis::getPtsSet(const Value* val) const
 {
 	auto ptrs = ptrManager.getPointersWithValue(val->stripPointerCasts());
-	auto retSet = pSetManager.getEmptySet();
+	auto retSet = PtsSet::getEmptySet();
 	for (auto ptr: ptrs)
 	{
 		auto newSet = getPtsSet(ptr);
-		if (newSet != nullptr)
-			retSet = pSetManager.mergeSet(retSet, newSet);
+		if (!newSet.isEmpty())
+			retSet = retSet.merge(newSet);
 	}
 	return retSet;
 }
 
-const PtsSet* PointerAnalysis::getPtsSet(const Context* ctx, const llvm::Value* val) const
+PtsSet PointerAnalysis::getPtsSet(const Context* ctx, const llvm::Value* val) const
 {
 	assert(val != nullptr);
 	assert(val->getType()->isPointerTy());
 
 	auto ptr = ptrManager.getPointer(ctx, val->stripPointerCasts());
 	if (ptr == nullptr)
-		return nullptr;
+		return PtsSet::getEmptySet();
 
 	return getPtsSet(ptr);
 }
 
-const PtsSet* PointerAnalysis::getPtsSet(const Pointer* ptr) const
+PtsSet PointerAnalysis::getPtsSet(const Pointer* ptr) const
 {
 	assert(ptr != nullptr);
 
 	auto pSet = env.lookup(ptr);
-	assert(pSet != nullptr);
+	assert(!pSet.isEmpty());
 
 	return pSet;
 }

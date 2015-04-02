@@ -135,12 +135,12 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 				return std::make_tuple(false, false, false);
 
 			auto ptsSet = ptrAnalysis.getPtsSet(ctx, ptrOp);
-			assert(ptsSet != nullptr);
-			auto needWeakUpdate = (ptsSet->getSize() > 1);
+			assert(!ptsSet.isEmpty());
+			auto needWeakUpdate = (ptsSet.getSize() > 1);
 			bool storeChanged = false;
 			if (!needWeakUpdate)
 			{
-				auto loc = *ptsSet->begin();
+				auto loc = *ptsSet.begin();
 				if (!loc->isSummaryLocation())
 					storeChanged = store.strongUpdate(loc, *optVal);
 				else
@@ -149,7 +149,7 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 			
 			if (needWeakUpdate)
 			{
-				for (auto loc: *ptsSet)
+				for (auto loc: ptsSet)
 				{
 					if (loc == uLoc || loc == nLoc)
 						continue;
@@ -164,10 +164,10 @@ std::tuple<bool, bool, bool> TaintTransferFunction::evalInst(const Context* ctx,
 
 			auto ptrOp = loadInst->getPointerOperand();
 			auto ptsSet = ptrAnalysis.getPtsSet(ctx, ptrOp);
-			assert(ptsSet != nullptr);
+			assert(!ptsSet.isEmpty());
 
 			auto resVal = TaintLattice::Untainted;
-			for (auto obj: *ptsSet)
+			for (auto obj: ptsSet)
 			{
 				if (obj == uLoc)
 				{
@@ -224,10 +224,10 @@ std::tuple<bool, bool, bool> TaintTransferFunction::processLibraryCall(const Con
 	{
 		auto dstSet = ptrAnalysis.getPtsSet(ctx, cs.getArgument(0));
 		auto srcSet = ptrAnalysis.getPtsSet(ctx, cs.getArgument(1));
-		assert(dstSet != nullptr && srcSet != nullptr);
+		assert(!dstSet.isEmpty() && !srcSet.isEmpty());
 
 		auto& memManager = ptrAnalysis.getMemoryManager();
-		for (auto srcLoc: *srcSet)
+		for (auto srcLoc: srcSet)
 		{
 			auto srcLocs = memManager.getAllOffsetLocations(srcLoc);
 			auto startingOffset = srcLoc->getOffset();
@@ -238,7 +238,7 @@ std::tuple<bool, bool, bool> TaintTransferFunction::processLibraryCall(const Con
 					continue;
 
 				auto offset = oLoc->getOffset() - startingOffset;
-				for (auto updateLoc: *dstSet)
+				for (auto updateLoc: dstSet)
 				{
 					auto tgtLoc = memManager.offsetMemory(updateLoc, offset);
 					if (tgtLoc == uLoc)
@@ -255,8 +255,8 @@ std::tuple<bool, bool, bool> TaintTransferFunction::processLibraryCall(const Con
 	else if (ptrEffect == PointerEffect::Malloc)
 	{
 		auto dstSet = ptrAnalysis.getPtsSet(ctx, cs.getInstruction());
-		assert(dstSet != nullptr && dstSet->getSize() == 1);
-		storeChanged |= store.strongUpdate(*dstSet->begin(), TaintLattice::Untainted);
+		assert(dstSet.getSize() == 1);
+		storeChanged |= store.strongUpdate(*dstSet.begin(), TaintLattice::Untainted);
 		envChanged |= env.strongUpdate(ProgramLocation(ctx, cs.getInstruction()), TaintLattice::Untainted);
 	}
 	if (auto summary = ssManager.getSummary(funName))
@@ -267,15 +267,13 @@ std::tuple<bool, bool, bool> TaintTransferFunction::processLibraryCall(const Con
 				envChanged |= env.strongUpdate(ProgramLocation(ctx, val), entry.val);
 			else if (entry.what == TClass::DirectMemory)
 			{
-				if (auto pSet = ptrAnalysis.getPtsSet(ctx, val))
+				auto pSet = ptrAnalysis.getPtsSet(ctx, val);
+				for (auto loc: pSet)
 				{
-					for (auto loc: *pSet)
-					{
-						if (loc->isSummaryLocation())
-							storeChanged |= store.weakUpdate(loc, entry.val);
-						else
-							storeChanged |= store.strongUpdate(loc, entry.val);
-					}
+					if (loc->isSummaryLocation())
+						storeChanged |= store.weakUpdate(loc, entry.val);
+					else
+						storeChanged |= store.strongUpdate(loc, entry.val);
 				}
  			}
 			else if (entry.what == TClass::ReachableMemory)
@@ -365,15 +363,13 @@ bool TaintTransferFunction::checkValue(const TEntry& entry, ProgramLocation pLoc
 	}
 	else if (entry.what == TClass::DirectMemory)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(pLoc.getContext(), pLoc.getInstruction()))
+		auto pSet = ptrAnalysis.getPtsSet(pLoc.getContext(), pLoc.getInstruction());
+		for (auto loc: pSet)
 		{
-			for (auto loc: *pSet)
+			auto optVal = store.lookup(loc);
+			if (optVal && *optVal != entry.val)
 			{
-				auto optVal = store.lookup(loc);
-				if (optVal && *optVal != entry.val)
-				{
-					return false;
-				}
+				return false;
 			}
 		}
 	}

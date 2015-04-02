@@ -1,4 +1,3 @@
-#include "MemoryModel/PtsSet/StoreManager.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
 
@@ -11,14 +10,14 @@ using namespace llvm;
 namespace tpa
 {
 
-TunablePointerAnalysis::TunablePointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& ss, const ExternalPointerEffectTable& e): PointerAnalysis(p, m, ss.getPtsSetManager(), e), storeManager(ss), memo(storeManager) {}
-TunablePointerAnalysis::TunablePointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& ss, const ExternalPointerEffectTable& e, const Env& en): PointerAnalysis(p, m, ss.getPtsSetManager(), e, en), storeManager(ss), memo(storeManager) {}
-TunablePointerAnalysis::TunablePointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& ss, const ExternalPointerEffectTable& e, Env&& en): PointerAnalysis(p, m, ss.getPtsSetManager(), e, std::move(en)), storeManager(ss), memo(storeManager) {}
+TunablePointerAnalysis::TunablePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e): PointerAnalysis(p, m, e) {}
+TunablePointerAnalysis::TunablePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e, const Env& en): PointerAnalysis(p, m, e, en) {}
+TunablePointerAnalysis::TunablePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e, Env&& en): PointerAnalysis(p, m, e, std::move(en)) {}
 TunablePointerAnalysis::~TunablePointerAnalysis() = default;
 
 void TunablePointerAnalysis::runOnProgram(const PointerProgram& prog, Store store)
 {
-	auto ptrEngine = PointerAnalysisEngine(ptrManager, memManager, storeManager, prog, env, std::move(store), callGraph, memo, extTable);
+	auto ptrEngine = PointerAnalysisEngine(ptrManager, memManager, prog, env, std::move(store), callGraph, memo, extTable);
 	ptrEngine.run();
 
 	//env.dump(errs());

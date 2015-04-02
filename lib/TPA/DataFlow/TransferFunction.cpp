@@ -1,8 +1,7 @@
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "MemoryModel/Precision/ProgramLocation.h"
-#include "MemoryModel/PtsSet/PtsEnv.h"
-#include "MemoryModel/PtsSet/StoreManager.h"
+#include "MemoryModel/PtsSet/Env.h"
 #include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "PointerAnalysis/DataFlow/DefUseProgram.h"
 #include "PointerAnalysis/External/ExternalPointerEffectTable.h"
@@ -73,25 +72,24 @@ bool TransferFunction<GraphType>::evalAlloc(const Context* ctx, const AllocNodeM
 	auto memObj = memManager.allocateMemory(ProgramLocation(ctx, allocInst), allocNode->getAllocType());
 	auto memLoc = memManager.offsetMemory(memObj, 0);
 
-	return env.insertBinding(ptr, memLoc);
+	return env.insert(ptr, memLoc);
 }
 
 template <typename GraphType>
 std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Pointer* dst, const Pointer* src, Env& env)
 {
 	auto pSet = env.lookup(src);
-	if (pSet == nullptr)
+	if (pSet.isEmpty())
 		return std::make_pair(false, false);
 
-	auto changed = env.updateBinding(dst, pSet);
+	auto changed = env.strongUpdate(dst, pSet);
 	return std::make_pair(true, changed);
 }
 
 template <typename GraphType>
 std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Context* ctx, const CopyNodeMixin<NodeType>* copyNode, Env& env)
 {
-	auto& pSetManager = storeManager.getPtsSetManager();
-	auto resSet = pSetManager.getEmptySet();
+	auto resSet = PtsSet::getEmptySet();
 	auto offset = copyNode->getOffset();
 
 	auto dstPtr = ptrManager.getOrCreatePointer(ctx, copyNode->getDest());
@@ -106,10 +104,10 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Context* ctx, 
 				return std::make_pair(false, false);
 
 			auto pSet = env.lookup(srcPtr);
-			if (pSet == nullptr)
+			if (pSet.isEmpty())
 				return std::make_pair(false, false);
 
-			resSet = pSetManager.mergeSet(resSet, pSet);
+			resSet = resSet.merge(pSet);
 		}
 	}
 	else
@@ -122,14 +120,14 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Context* ctx, 
 			return std::make_pair(false, false);
 
 		auto pSet = env.lookup(srcPtr);
-		if (pSet == nullptr)
+		if (pSet.isEmpty())
 			return std::make_pair(false, false);
 
 		// Examine this set one-by-one
-		for (auto tgtLoc: *pSet)
+		for (auto tgtLoc: pSet)
 		{
 			if (tgtLoc == memManager.getUniversalLocation())
-				resSet = pSetManager.insert(resSet, tgtLoc);
+				resSet = resSet.insert(tgtLoc);
 			else if (tgtLoc == memManager.getNullLocation())
 				continue;
 			// We have two cases here:
@@ -142,19 +140,19 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalCopy(const Context* ctx, 
 				for (unsigned i = 0, e = objSize - tgtLoc->getOffset(); i < e; i += offset)
 				{
 					auto obj = memManager.offsetMemory(tgtLoc, i);
-					resSet = pSetManager.insert(resSet, obj);
+					resSet = resSet.insert(obj);
 				}
 			}
 			else
 			{
 				auto offsetLoc = memManager.offsetMemory(tgtLoc, offset);
-				resSet = pSetManager.insert(resSet, offsetLoc);
+				resSet = resSet.insert(offsetLoc);
 			}
 		}
 	}
 
 	// Perform strong update
-	bool changed = env.updateBinding(dstPtr, resSet);
+	bool changed = env.strongUpdate(dstPtr, resSet);
 	return std::make_pair(true, changed);
 }
 
@@ -166,26 +164,26 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalLoad(const Context* ctx, 
 	auto dstPtr = ptrManager.getOrCreatePointer(ctx, loadNode->getDest());
 
 	auto srcSet = env.lookup(srcPtr);
-	if (srcSet == nullptr)
+	if (srcSet.isEmpty())
 		return std::make_pair(false, false);
 
-	auto& pSetManager = storeManager.getPtsSetManager();
-	auto resSet = pSetManager.getEmptySet();
+	auto resSet = PtsSet::getEmptySet();
 
 	bool isValid = false;
-	for (auto tgtLoc: *srcSet)
+	for (auto tgtLoc: srcSet)
 	{
-		if (auto tgtSet = store.lookup(tgtLoc))
+		auto tgtSet = store.lookup(tgtLoc);
+		if (!tgtSet.isEmpty())
 		{
 			isValid = true;
-			resSet = pSetManager.mergeSet(resSet, tgtSet);
+			resSet = resSet.merge(tgtSet);
 		}
 	}
 
 	if (!isValid)
 		return std::make_pair(false, false);
 
-	auto changed = env.updateBinding(dstPtr, resSet);
+	auto changed = env.strongUpdate(dstPtr, resSet);
 
 	return std::make_pair(true, changed);
 }
@@ -194,24 +192,24 @@ template <typename GraphType>
 std::pair<bool, bool> TransferFunction<GraphType>::evalStore(const Pointer* dstPtr, const Pointer* srcPtr, const Env& env, Store& store)
 {
 	auto srcSet = env.lookup(srcPtr);
-	if (srcSet == nullptr)
+	if (srcSet.isEmpty())
 		return std::make_pair(false, false);
 	auto dstSet = env.lookup(dstPtr);
-	if (dstSet == nullptr)
+	if (dstSet.isEmpty())
 		return std::make_pair(false, false);
 
-	assert(!dstSet->isEmpty() && "dstSet should not be empty");
-	auto dstLoc = *dstSet->begin();
-	if (dstSet->getSize() == 1 && dstLoc != memManager.getUniversalLocation() && !dstLoc->isSummaryLocation())
+	assert(!dstSet.isEmpty() && "dstSet should not be empty");
+	auto dstLoc = *dstSet.begin();
+	if (dstSet.getSize() == 1 && dstLoc != memManager.getUniversalLocation() && !dstLoc->isSummaryLocation())
 	{
 		// Strong update
-		auto changed = storeManager.strongUpdate(store, dstLoc, srcSet);
+		auto changed = store.strongUpdate(dstLoc, srcSet);
 		return std::make_pair(true, changed);
 	}
 
 	// Weak update
 	bool changed = false;
-	for (auto updateLoc: *dstSet)
+	for (auto updateLoc: dstSet)
 	{
 		if (updateLoc == memManager.getUniversalLocation())
 		{
@@ -220,7 +218,7 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalStore(const Pointer* dstP
 			//	errs() << "Warning: storing into a memory location that is untracked by the analysis.\n";
 			continue;
 		}
-		changed |= storeManager.weakUpdate(store, updateLoc, srcSet);
+		changed |= store.weakUpdate(updateLoc, srcSet);
 	}
 	return std::make_pair(true, changed);
 }
@@ -254,8 +252,8 @@ bool TransferFunction<GraphType>::evalMalloc(const Pointer* dst, const llvm::Ins
 		memObj = memManager.allocateMemory(ProgramLocation(dst->getContext(), inst), mallocType->getPointerElementType(), true);
 
 	auto memLoc = memManager.offsetMemory(memObj, 0);
-	auto memSet = storeManager.getPtsSetManager().getSingletonSet(memLoc);
-	return env.updateBinding(dst, memSet);
+	auto memSet = PtsSet::getSingletonSet(memLoc);
+	return env.strongUpdate(dst, memSet);
 }
 
 template <typename GraphType>
@@ -265,10 +263,11 @@ std::vector<const Function*> TransferFunction<GraphType>::resolveCallTarget(cons
 
 	if (auto funPtr = getPointer(ctx, callNode->getFunctionPointer()))
 	{
-		if (auto funSet = env.lookup(funPtr))
+		auto funSet = env.lookup(funPtr);
+		if (!funSet.isEmpty())
 		{
 			// Guess addr-taken functions based on #params
-			if (funSet->has(memManager.getUniversalLocation()))
+			if (funSet.has(memManager.getUniversalLocation()))
 			{
 				for (auto tgtFunc: defaultTargets)
 				{
@@ -280,7 +279,7 @@ std::vector<const Function*> TransferFunction<GraphType>::resolveCallTarget(cons
 			}
 			else
 			{
-				for (auto funLoc: *funSet)
+				for (auto funLoc: funSet)
 				{
 					if (auto tgtFunc = memManager.getFunctionForObject(funLoc->getMemoryObject()))
 						ret.push_back(tgtFunc);
@@ -315,11 +314,11 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalCall(const Context* ctx, 
 		if (argPtr == nullptr)
 			return std::make_pair(false, false);
 		auto argSet = env.lookup(argPtr);
-		if (argSet == nullptr)
+		if (argSet.isEmpty())
 			return std::make_pair(false, false);
 		auto paramPtr = ptrManager.getOrCreatePointer(newCtx, paramItr);
 
-		changed |= env.mergeBinding(paramPtr, argSet);
+		changed |= env.weakUpdate(paramPtr, argSet);
 		
 		++argItr;
 		++paramItr;
@@ -343,7 +342,7 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalReturn(const Context* new
 		return std::make_pair(false, false);
 
 	auto retSet = env.lookup(retPtr);
-	if (retSet == nullptr)
+	if (retSet.isEmpty())
 		return std::make_pair(false, false);
 
 	auto dstVal = callNode->getDest();
@@ -351,7 +350,7 @@ std::pair<bool, bool> TransferFunction<GraphType>::evalReturn(const Context* new
 		return std::make_pair(true, false);
 
 	auto dstPtr = ptrManager.getOrCreatePointer(oldCtx, dstVal);
-	auto changed = env.mergeBinding(dstPtr, retSet);
+	auto changed = env.weakUpdate(dstPtr, retSet);
 	return std::make_pair(true, changed);
 }
 
@@ -379,16 +378,16 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 		for (auto oLoc: locs)
 		{
 			auto oSet = store.lookup(oLoc);
-			if (oSet == nullptr)
+			if (oSet.isEmpty())
 				continue;
 
 			auto offset = oLoc->getOffset() - startingOffset;
-			for (auto updateLoc: *dstSet)
+			for (auto updateLoc: dstSet)
 			{
 				auto tgtLoc = memManager.offsetMemory(updateLoc, offset);
 				if (tgtLoc == memManager.getUniversalLocation())
 					break;
-				changed |= storeManager.weakUpdate(store, tgtLoc, oSet);
+				changed |= store.weakUpdate(tgtLoc, oSet);
 			}
 		}
 		return changed;
@@ -431,11 +430,10 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 		}
 
 		bool changed = false;
-		auto& pSetManager = storeManager.getPtsSetManager();
-		auto nullSet = pSetManager.insert(pSetManager.getEmptySet(), memManager.getNullLocation());
+		auto nullSet = PtsSet::getSingletonSet(memManager.getNullLocation());
 		for (auto tgtObj: candidates)
 		{
-			changed |= storeManager.weakUpdate(store, tgtObj, nullSet);
+			changed |= store.weakUpdate(tgtObj, nullSet);
 		}
 
 		return changed;
@@ -557,14 +555,14 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 				return std::make_tuple(false, false, false);
 
 			auto dstSet = env.lookup(dstPtr);
-			if (dstSet == nullptr)
+			if (dstSet.isEmpty())
 				return std::make_tuple(false, false, false);
 			auto srcSet = env.lookup(srcPtr);
-			if (srcSet == nullptr)
+			if (srcSet.isEmpty())
 				return std::make_tuple(false, false, false);
 
 			bool storeChanged = false;
-			for (auto tgtLoc: *srcSet)
+			for (auto tgtLoc: srcSet)
 				storeChanged |= ptsSetCopy(dstSet, tgtLoc);
 
 			// Process the return value
@@ -572,7 +570,7 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 			if (auto retVal = callNode->getDest())
 			{
 				auto retPtr = ptrManager.getOrCreatePointer(ctx, retVal);
-				envChanged |= env.updateBinding(retPtr, dstSet);
+				envChanged |= env.strongUpdate(retPtr, dstSet);
 			}
 			return std::make_tuple(true, envChanged, storeChanged);
 		}
@@ -584,7 +582,7 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 			if (dstPtr == nullptr)
 				return std::make_tuple(false, false, false);
 			auto dstSet = env.lookup(dstPtr);
-			if (dstSet == nullptr)
+			if (dstSet.isEmpty())
 				return std::make_tuple(false, false, false);
 
 			ImmutableCallSite cs(callNode->getInstruction());
@@ -604,7 +602,7 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 				return std::make_tuple(true, false, false);
 
 			bool storeChanged = false;
-			for (auto tgtLoc: *dstSet)
+			for (auto tgtLoc: dstSet)
 			{
 				if (tgtLoc == memManager.getUniversalLocation())
 					continue;
@@ -617,7 +615,7 @@ std::tuple<bool, bool, bool> TransferFunction<GraphType>::applyExternal(const Co
 			if (auto retVal = callNode->getDest())
 			{
 				auto retPtr = ptrManager.getOrCreatePointer(ctx, retVal);
-				envChanged |= env.updateBinding(retPtr, dstSet);
+				envChanged |= env.strongUpdate(retPtr, dstSet);
 			}
 			return std::make_tuple(true, envChanged, storeChanged);
 		}

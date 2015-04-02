@@ -22,7 +22,7 @@ private:
 	const PointerAnalysis& ptrAnalysis;
 	const MemoryLocation *uLoc, *nLoc;
 
-	AliasResult checkAlias(const PtsSet*, const PtsSet*);
+	AliasResult checkAlias(PtsSet, PtsSet);
 public:
 	AliasAnalysis(const PointerAnalysis& ptrAnalysis);
 

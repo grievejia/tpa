@@ -39,23 +39,21 @@ private:
 
 	void evalStore(Instruction& inst, Value* ptr)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(ptr))
+		auto pSet = ptrAnalysis.getPtsSet(ptr);
+		bool needWeekUpdate = true;
+		if (pSet.getSize() == 1)
 		{
-			bool needWeekUpdate = true;
-			if (pSet->getSize() == 1)
+			auto loc = *pSet.begin();
+			if (!loc->isSummaryLocation())
 			{
-				auto loc = *pSet->begin();
-				if (!loc->isSummaryLocation())
-				{
-					store.updateBinding(*pSet->begin(), &inst);
-					needWeekUpdate = false;
-				}
+				store.updateBinding(*pSet.begin(), &inst);
+				needWeekUpdate = false;
 			}
-			if (needWeekUpdate)
-			{
-				for (auto loc: *pSet)
-					store.insertBinding(loc, &inst);
-			}
+		}
+		if (needWeekUpdate)
+		{
+			for (auto loc: pSet)
+				store.insertBinding(loc, &inst);
 		}
 	}
 
@@ -64,21 +62,19 @@ private:
 		auto extType = extModTable.lookup(f->getName());
 		auto modArg = [this, cs] (const Value* v, bool array = false)
 		{
-			if (auto pSet = ptrAnalysis.getPtsSet(v))
+			auto pSet = ptrAnalysis.getPtsSet(v);
+			for (auto loc: pSet)
 			{
-				for (auto loc: *pSet)
+				if (array)
 				{
-					if (array)
-					{
-						for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-							store.insertBinding(oLoc, cs.getInstruction());
-					}
-					else
-					{
-						store.insertBinding(loc, cs.getInstruction());
-					}
-					
+					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+						store.insertBinding(oLoc, cs.getInstruction());
 				}
+				else
+				{
+					store.insertBinding(loc, cs.getInstruction());
+				}
+				
 			}
 		};
 		switch (extType)
@@ -126,8 +122,8 @@ public:
 	void visitAllocaInst(AllocaInst& allocInst)
 	{
 		auto pSet = ptrAnalysis.getPtsSet(&allocInst);
-		assert(pSet != nullptr && pSet->getSize() == 1);
-		store.insertBinding(*pSet->begin(), &allocInst);
+		assert(pSet.getSize() == 1);
+		store.insertBinding(*pSet.begin(), &allocInst);
 	}
 
 	void visitStoreInst(StoreInst& storeInst)

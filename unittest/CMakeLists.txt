@@ -7,7 +7,7 @@ link_directories (${tpa_BINARY_DIR}/lib)
 set (EXECUTABLE_OUTPUT_PATH ${tpa_BINARY_DIR}/unittest)
 add_definitions(-DGTEST_HAS_RTTI=0)
 
-add_executable(MemoryTest MemoryUnitTest/MemoryTest.cpp)
+add_executable(MemoryTest MemoryUnitTest/PtsSetTest.cpp MemoryUnitTest/MemoryTest.cpp)
 target_link_libraries(MemoryTest MemoryModel LLVMAsmParser LLVMSupport LLVMCore gtest_main)
 
 add_executable(ControlFlowTest ControlFlowUnitTest/ControlFlowTest.cpp)

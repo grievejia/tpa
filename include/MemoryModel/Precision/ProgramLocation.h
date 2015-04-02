@@ -20,6 +20,7 @@ private:
 	using PairType = std::pair<const Context*, const llvm::Value*>;
 public:
 	explicit ProgramLocation(const Context* c, const llvm::Value* i): context(c), inst(i) {}
+	ProgramLocation(const PairType& p): context(p.first), inst(p.second) {}
 
 	const Context* getContext() const { return context; }
 	const llvm::Value* getInstruction() const { return inst; }

@@ -1,4 +1,3 @@
-#include "MemoryModel/PtsSet/StoreManager.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
@@ -11,7 +10,7 @@
 using namespace tpa;
 using namespace llvm;
 
-GlobalPointerAnalysis::GlobalPointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& s): ptrManager(p), memManager(m), storeManager(s), dataLayout(memManager.getDataLayout()), globalCtx(Context::getGlobalContext()) {}
+GlobalPointerAnalysis::GlobalPointerAnalysis(PointerManager& p, MemoryManager& m): ptrManager(p), memManager(m), dataLayout(memManager.getDataLayout()), globalCtx(Context::getGlobalContext()) {}
 
 void GlobalPointerAnalysis::registerGlobalValues(Env& env, const Module& module)
 {
@@ -27,7 +26,7 @@ void GlobalPointerAnalysis::registerGlobalValues(Env& env, const Module& module)
 		auto gLoc = memManager.offsetMemory(gObj, 0);
 
 		// Now add the top-level mapping
-		env.insertBinding(gPtr, gLoc);
+		env.insert(gPtr, gLoc);
 	}
 
 	// Next, scan the functions
@@ -39,7 +38,7 @@ void GlobalPointerAnalysis::registerGlobalValues(Env& env, const Module& module)
 		auto fLoc = memManager.offsetMemory(fObj, 0);
 
 		// Add the top-level mapping
-		env.insertBinding(fPtr, fLoc);
+		env.insert(fPtr, fLoc);
 	}
 }
 
@@ -50,8 +49,8 @@ void GlobalPointerAnalysis::initializeGlobalValues(Env& env, Store& store, const
 		auto gPtr = ptrManager.getPointer(globalCtx, &gVal);
 		assert(gPtr != nullptr && "Cannot find global ptr!");
 		auto gSet = env.lookup(gPtr);
-		assert(gSet != nullptr && gSet->getSize() == 1 && "Cannot find pSet of global ptr!");
-		auto gLoc = *gSet->begin();
+		assert(gSet.getSize() == 1 && "Cannot find pSet of global ptr!");
+		auto gLoc = *gSet.begin();
 		assert(gLoc != nullptr);
 
 		if (gVal.hasInitializer())
@@ -62,7 +61,7 @@ void GlobalPointerAnalysis::initializeGlobalValues(Env& env, Store& store, const
 		{
 			// If gVal doesn't have an initializer, since we are assuming a whole-program analysis, the value must be external (e.g. struct FILE* stdin)
 			// To be conservative, assume that those "external" globals can points to anything
-			storeManager.insert(store, gLoc, memManager.getUniversalLocation());
+			store.insert(gLoc, memManager.getUniversalLocation());
 		}
 	}
 }
@@ -74,7 +73,7 @@ void GlobalPointerAnalysis::processGlobalInitializer(const MemoryLocation* gLoc,
 		// Make gLoc points to null Loc
 		// This is how we differentiate undefined values and null pointers: null-pointers' pts-to sets are not empty, yet undefined values are
 		if (initializer->getType()->isPointerTy())
-			storeManager.insert(store, gLoc, memManager.getNullLocation());
+			store.insert(gLoc, memManager.getNullLocation());
 		else if (auto caz = dyn_cast<ConstantAggregateZero>(initializer))
 		{
 			// Examine the type of initializer and expand it accordingly
@@ -106,9 +105,9 @@ void GlobalPointerAnalysis::processGlobalInitializer(const MemoryLocation* gLoc,
 				auto iPtr = ptrManager.getPointer(globalCtx, initializer);
 				assert(iPtr != nullptr && "rhs ptr not found");
 				auto iSet = env.lookup(iPtr);
-				assert(iSet != nullptr && "Cannot find pSet of global ptr!");
+				assert(!iSet.isEmpty() && "Cannot find pSet of global ptr!");
 
-				storeManager.weakUpdate(store, gLoc, iSet);
+				store.weakUpdate(gLoc, iSet);
 			}
 			else if (auto ce = dyn_cast<ConstantExpr>(initializer))
 			{
@@ -124,13 +123,13 @@ void GlobalPointerAnalysis::processGlobalInitializer(const MemoryLocation* gLoc,
 						auto offsetLoc = processConstantGEP(cast<Constant>(baseVal), offset, env, store);
 						assert(offsetLoc != memManager.getUniversalLocation());
 
-						storeManager.insert(store, gLoc, offsetLoc);
+						store.insert(gLoc, offsetLoc);
 						break;
 					}
 					case Instruction::IntToPtr:
 					{
 						// By default, clang won't generate global pointer arithmetic as ptrtoint+inttoptr, so we will do the simplest thing here
-						storeManager.insert(store, gLoc, memManager.getUniversalLocation());
+						store.insert(gLoc, memManager.getUniversalLocation());
 
 						break;
 					}
@@ -194,8 +193,8 @@ const MemoryLocation* GlobalPointerAnalysis::processConstantGEP(const llvm::Cons
 		auto iPtr = ptrManager.getPointer(globalCtx, base);
 		assert(iPtr != nullptr && "rhs ptr not found");
 		auto iSet = env.lookup(iPtr);
-		assert(iSet != nullptr && iSet->getSize() == 1 && "rhs obj not found");
-		auto iLoc = *iSet->begin();
+		assert(iSet.getSize() == 1 && "rhs obj not found");
+		auto iLoc = *iSet.begin();
 
 		return memManager.offsetMemory(iLoc, offset);
 	}
@@ -252,24 +251,24 @@ void GlobalPointerAnalysis::initializeMainArgs(const Module& module, Env& env, S
 		memManager.setArgv(argvLoc, argvObjLoc);
 
 		auto argvPtr = ptrManager.getOrCreatePointer(globalCtx, argv);
-		env.insertBinding(argvPtr, argvLoc);
-		storeManager.insert(store, argvLoc, argvObjLoc);
+		env.insert(argvPtr, argvLoc);
+		store.insert(argvLoc, argvObjLoc);
 	}
 }
 
 std::pair<Env, Store> GlobalPointerAnalysis::runOnModule(const Module& module)
 {
-	Env env(storeManager.getPtsSetManager());
-	auto store = storeManager.getEmptyStore();
+	Env env;
+	auto store = Store();
 
 	// Set up the points-to relations of uPtr, uObj and nullPtr
 	auto uPtr = ptrManager.getUniversalPtr();
 	auto uLoc = memManager.getUniversalLocation();
-	env.insertBinding(uPtr, uLoc);
-	storeManager.insert(store, uLoc, uLoc);
+	env.insert(uPtr, uLoc);
+	store.insert(uLoc, uLoc);
 	auto nPtr = ptrManager.getNullPtr();
 	auto nLoc = memManager.getNullLocation();
-	env.insertBinding(nPtr, nLoc);
+	env.insert(nPtr, nLoc);
 
 	// First, scan through all the global values and register them in ptrManager. This scan should precede varaible initialization because the initialization may refer to another global value defined "below" it
 	registerGlobalValues(env, module);

@@ -32,19 +32,17 @@ void evalExternalCall(const PointerCFGNode* node, const Function* f, ReachingDef
 	auto extType = extTable.lookup(f->getName());
 	auto modArg = [&ptrAnalysis, &store, node] (const llvm::Value* v, bool array = false)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(v))
+		auto pSet = ptrAnalysis.getPtsSet(v);
+		for (auto loc: pSet)
 		{
-			for (auto loc: *pSet)
+			if (array)
 			{
-				if (array)
-				{
-					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-						store.insertBinding(oLoc, node);
-				}
-				else
-				{
-					store.insertBinding(loc, node);
-				}
+				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+					store.insertBinding(oLoc, node);
+			}
+			else
+			{
+				store.insertBinding(loc, node);
 			}
 		}
 	};
@@ -106,9 +104,9 @@ void ReachingDefAnalysis::evalNode(const PointerCFGNode* node, ReachingDefStore<
 		case PointerCFGNodeType::Alloc:
 		{
 			auto pSet = ptrAnalysis.getPtsSet(node->getInstruction());
-			assert(pSet != nullptr && pSet->getSize() == 1);
+			assert(pSet.getSize() == 1);
 
-			retStore.insertBinding(*pSet->begin(), node);
+			retStore.insertBinding(*pSet.begin(), node);
 
 			break;
 		}
@@ -117,11 +115,9 @@ void ReachingDefAnalysis::evalNode(const PointerCFGNode* node, ReachingDefStore<
 			auto storeNode = cast<StoreNode>(node);
 
 			auto dstVal = storeNode->getDest();
-			if (auto pSet = ptrAnalysis.getPtsSet(dstVal))
-			{
-				for (auto loc: *pSet)
-					retStore.insertBinding(loc, node);
-			}
+			auto pSet = ptrAnalysis.getPtsSet(dstVal);
+			for (auto loc: pSet)
+				retStore.insertBinding(loc, node);
 
 			break;
 		}

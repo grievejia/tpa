@@ -1,8 +1,7 @@
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "MemoryModel/Precision/KLimitContext.h"
-#include "MemoryModel/PtsSet/PtsEnv.h"
-#include "MemoryModel/PtsSet/StoreManager.h"
+#include "MemoryModel/PtsSet/Env.h"
 #include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
@@ -16,7 +15,7 @@ using namespace llvm;
 namespace tpa
 {
 
-PointerAnalysisEngine::PointerAnalysisEngine(PointerManager& p, MemoryManager& m, StoreManager& s, const PointerProgram& pp, Env& e, Store st, StaticCallGraph& g, Memo<PointerCFGNode>& me, const ExternalPointerEffectTable& t): prog(pp), callGraph(g), env(e), memo(me), transferFunction(p, m, s, t)
+PointerAnalysisEngine::PointerAnalysisEngine(PointerManager& p, MemoryManager& m, const PointerProgram& pp, Env& e, Store st, StaticCallGraph& g, Memo<PointerCFGNode>& me, const ExternalPointerEffectTable& t): prog(pp), callGraph(g), env(e), memo(me), transferFunction(p, m, t)
 {
 	initializeWorkList(std::move(st));
 }
@@ -239,7 +238,6 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 				break;
 			}
 		}
-		//env.dump(errs());
 	}
 }
 

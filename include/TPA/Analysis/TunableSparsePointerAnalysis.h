@@ -11,19 +11,17 @@ class DefUseGraphNode;
 class DefUseProgram;
 class MemoryManager;
 class ModRefSummaryMap;
-class StoreManager;
 
 class TunableSparsePointerAnalysis: public PointerAnalysis
 {
 private:
-	StoreManager& storeManager;
 	const ModRefSummaryMap& summaryMap;
 
 	Memo<DefUseGraphNode> memo;
 public:
-	TunableSparsePointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& ss, const ExternalPointerEffectTable& e, const ModRefSummaryMap& sm);
-	TunableSparsePointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& ss, const ExternalPointerEffectTable& e, const ModRefSummaryMap& sm, const Env&);
-	TunableSparsePointerAnalysis(PointerManager& p, MemoryManager& m, StoreManager& ss, const ExternalPointerEffectTable& e, const ModRefSummaryMap& sm, Env&&);
+	TunableSparsePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e, const ModRefSummaryMap& sm);
+	TunableSparsePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e, const ModRefSummaryMap& sm, const Env&);
+	TunableSparsePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e, const ModRefSummaryMap& sm, Env&&);
 	~TunableSparsePointerAnalysis();
 
 	void runOnDefUseProgram(const DefUseProgram& prog, Store store);

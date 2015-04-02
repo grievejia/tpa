@@ -103,19 +103,18 @@ void processMemReadForExternalCall(const PointerCFGNode* node, const Function* c
 				srcDefUseNode->insertMemLevelEdge(loc, dstDefUseNode);
 			}
 		};
-		if (auto pSet = ptrAnalysis.getPtsSet(v))
+
+		auto pSet = ptrAnalysis.getPtsSet(v);
+		for (auto loc: pSet)
 		{
-			for (auto loc: *pSet)
+			if (array)
 			{
-				if (array)
-				{
-					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-						refLoc(oLoc);
-				}
-				else
-				{
-					refLoc(loc);
-				}
+				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+					refLoc(oLoc);
+			}
+			else
+			{
+				refLoc(loc);
 			}
 		}
 	};
@@ -173,11 +172,12 @@ void buildMemLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap, const Mod
 {
 	auto processMemRead = [&nodeMap, &rdMap, &ptrAnalysis] (const PointerCFGNode* node, const llvm::Value* val)
 	{
-		if (auto pSet = ptrAnalysis.getPtsSet(val))
+		auto pSet = ptrAnalysis.getPtsSet(val);
+		if (!pSet.isEmpty())
 		{
 			auto& rdStore = rdMap.getReachingDefStore(node);
 			auto dstDefUseNode = getDefUseNode(nodeMap, node);
-			for (auto loc: *pSet)
+			for (auto loc: pSet)
 			{
 				auto nodeSet = rdStore.getReachingDefs(loc);
 				assert(nodeSet != nullptr);
