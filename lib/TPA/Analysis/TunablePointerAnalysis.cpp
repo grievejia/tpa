@@ -1,4 +1,6 @@
+#include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
+#include "TPA/DataFlow/GlobalState.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
 
 #include <llvm/IR/CallSite.h>
@@ -17,10 +19,11 @@ TunablePointerAnalysis::~TunablePointerAnalysis() = default;
 
 void TunablePointerAnalysis::runOnProgram(const PointerProgram& prog, Store store)
 {
-	auto ptrEngine = PointerAnalysisEngine(ptrManager, memManager, prog, env, std::move(store), callGraph, memo, extTable);
+	GlobalState<PointerProgram> globalState(prog, callGraph, env);
+	auto ptrEngine = PointerAnalysisEngine(ptrManager, memManager, globalState, std::move(store), extTable);
 	ptrEngine.run();
 
-	//env.dump(errs());
+	errs() << env << '\n';
 }
 
 }

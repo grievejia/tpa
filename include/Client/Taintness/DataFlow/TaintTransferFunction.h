@@ -1,8 +1,8 @@
 #ifndef INFOFLOW_TRANSFER_FUNCTION_H
 #define INFOFLOW_TRANSFER_FUNCTION_H
 
-#include "Client/Taintness/SourceSink.h"
-#include "Client/Taintness/TaintEnvStore.h"
+#include "Client/Taintness/DataFlow/SourceSink.h"
+#include "Client/Taintness/DataFlow/TaintEnvStore.h"
 #include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 #include "Utils/Hashing.h"
 

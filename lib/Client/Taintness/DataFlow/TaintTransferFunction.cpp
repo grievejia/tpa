@@ -1,4 +1,4 @@
-#include "Client/Taintness/TaintTransferFunction.h"
+#include "Client/Taintness/DataFlow/TaintTransferFunction.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 

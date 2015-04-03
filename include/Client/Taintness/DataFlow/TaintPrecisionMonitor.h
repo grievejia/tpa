@@ -2,7 +2,7 @@
 #define TPA_TAINT_PRECISION_MONITOR_H
 
 #include "Client/Lattice/TaintLattice.h"
-#include "Client/Taintness/TaintEnvStore.h"
+#include "Client/Taintness/DataFlow/TaintEnvStore.h"
 #include "MemoryModel/Precision/ProgramLocation.h"
 
 #include <unordered_set>

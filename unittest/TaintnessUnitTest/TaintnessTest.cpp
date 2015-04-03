@@ -1,5 +1,5 @@
-#include "Client/Taintness/SourceSink.h"
-#include "Client/Taintness/TaintEnvStore.h"
+#include "Client/Taintness/DataFlow/SourceSink.h"
+#include "Client/Taintness/DataFlow/TaintEnvStore.h"
 #include "Utils/ParseLLVMAssembly.h"
 
 #include "gtest/gtest.h"
@@ -56,11 +56,10 @@ TEST(TaintnessTest, EnvTest)
 
 	auto env2 = env;
 	EXPECT_FALSE(env2.weakUpdate(y, TaintLattice::Tainted));
-	EXPECT_FALSE(env2.weakUpdate(y, TaintLattice::Untainted));
 	EXPECT_FALSE(env2.weakUpdate(x, TaintLattice::Untainted));
 	EXPECT_TRUE(env2.weakUpdate(x, TaintLattice::Tainted));
 	EXPECT_TRUE(bool(env2.lookup(x)));
-	EXPECT_EQ(*env2.lookup(x), TaintLattice::Tainted);
+	EXPECT_EQ(*env2.lookup(x), TaintLattice::Either);
 	EXPECT_TRUE(bool(env.lookup(x)));
 	EXPECT_EQ(*env.lookup(x), TaintLattice::Untainted);
 
@@ -68,10 +67,12 @@ TEST(TaintnessTest, EnvTest)
 	EXPECT_TRUE(env3.weakUpdate(z, TaintLattice::Untainted));
 	EXPECT_TRUE(env3.weakUpdate(g, TaintLattice::Tainted));
 	auto env4 = TaintEnv();
-	EXPECT_TRUE(env4.weakUpdate(g, TaintLattice::Untainted));
+	EXPECT_TRUE(env4.weakUpdate(g, TaintLattice::Tainted));
 	EXPECT_FALSE(env3.mergeWith(env4));
+	EXPECT_TRUE(env4.strongUpdate(g, TaintLattice::Untainted));
+	EXPECT_TRUE(env3.mergeWith(env4));
 	EXPECT_TRUE(bool(env3.lookup(g)));
-	EXPECT_EQ(*env3.lookup(g), TaintLattice::Tainted);
+	EXPECT_EQ(*env3.lookup(g), TaintLattice::Either);
 
 	EXPECT_TRUE(env.mergeWith(env4));
 	EXPECT_TRUE(bool(env.lookup(g)));
@@ -79,7 +80,7 @@ TEST(TaintnessTest, EnvTest)
 	EXPECT_FALSE(bool(env.lookup(z)));
 	EXPECT_TRUE(env.mergeWith(env3));
 	EXPECT_TRUE(bool(env3.lookup(g)));
-	EXPECT_EQ(*env3.lookup(g), TaintLattice::Tainted);
+	EXPECT_EQ(*env3.lookup(g), TaintLattice::Either);
 	EXPECT_TRUE(bool(env3.lookup(z)));
 	EXPECT_EQ(*env3.lookup(z), TaintLattice::Untainted);
 

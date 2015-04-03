@@ -1,11 +1,10 @@
 
 set (ClientSourceCodes
-	Taintness/AdaptiveTaintAnalysisPass.cpp
-	Taintness/SourceSink.cpp
-	Taintness/TaintAnalysis.cpp
-	Taintness/TaintAnalysisPass.cpp
-	Taintness/TaintPrecisionMonitor.cpp
-	Taintness/TaintTransferFunction.cpp
+	Taintness/Analysis/TaintAnalysis.cpp
+	Taintness/DataFlow/SourceSink.cpp
+	Taintness/DataFlow/TaintPrecisionMonitor.cpp
+	Taintness/DataFlow/TaintTransferFunction.cpp
+	Taintness/Pass/TaintAnalysisPass.cpp
 )
 add_library (Clients SHARED ${ClientSourceCodes})
 target_link_libraries (Clients TPA)

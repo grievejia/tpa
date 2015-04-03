@@ -4,7 +4,7 @@
 namespace tpa
 {
 
-template <typename WorkListType>
+template <typename GraphType, typename EnvType, typename StoreType, typename MemoType>
 class DataFlowAnalysisEngine
 {
 private:

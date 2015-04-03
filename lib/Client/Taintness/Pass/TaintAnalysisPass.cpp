@@ -1,5 +1,5 @@
-#include "Client/Taintness/TaintAnalysis.h"
-#include "Client/Taintness/TaintAnalysisPass.h"
+#include "Client/Taintness/Analysis/TaintAnalysis.h"
+#include "Client/Taintness/Pass/TaintAnalysisPass.h"
 #include "PointerAnalysis/Analysis/ModRefModuleAnalysis.h"
 #include "PointerAnalysis/DataFlow/DefUseModuleBuilder.h"
 #include "PointerAnalysis/External/ExternalModTable.h"

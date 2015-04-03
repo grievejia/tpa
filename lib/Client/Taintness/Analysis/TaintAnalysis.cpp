@@ -1,4 +1,4 @@
-#include "Client/Taintness/TaintAnalysis.h"
+#include "Client/Taintness/Analysis/TaintAnalysis.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Precision/KLimitContext.h"
 #include "PointerAnalysis/DataFlow/DefUseModule.h"
@@ -87,8 +87,6 @@ void TaintAnalysis::applyFunction(const Context* oldCtx, const Context* newCtx, 
 		callerVals.push_back(argVal);
 	}
 
-	monitor.trackCallSite(ProgramLocation(oldCtx, cs.getInstruction()), f, newCtx, env, callerVals);
-
 	bool envChanged = false;
 	auto paramItr = f->arg_begin();
 	for (auto argVal: callerVals)
@@ -125,9 +123,7 @@ void TaintAnalysis::evalReturn(const tpa::Context* ctx, const llvm::Instruction*
 {
 	auto retInst = cast<ReturnInst>(inst);
 
-	auto itr = retMap.find(std::make_pair(ctx, inst->getParent()->getParent()));
-	assert(itr != retMap.end());
-	auto const& returnTgts = itr->second;
+	auto returnTgts = ptrAnalysis.getCallGraph().getCallSites(std::make_pair(ctx, inst->getParent()->getParent()));
 
 	auto hasReturnVal = false;
 	auto retVal = TaintLattice::Untainted;
@@ -227,7 +223,6 @@ void TaintAnalysis::evalFunction(const Context* ctx, const DefUseFunction* duFun
 				else
 				{
 					auto newCtx = KLimitContext::pushContext(ctx, inst, callee);
-					retMap[std::make_pair(newCtx, callee)].insert(std::make_pair(ctx, inst));
 					applyFunction(ctx, newCtx, cs, &duModule.getDefUseFunction(callee), store, funWorkList);
 				}
 			}

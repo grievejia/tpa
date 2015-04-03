@@ -5,6 +5,7 @@ set (TPASourceCodes
 	Analysis/TunableSparsePointerAnalysis.cpp
 	Analysis/TunableSparsePointerAnalysisWrapper.cpp
 	DataFlow/PointerAnalysisEngine.cpp
+	DataFlow/PointerCFGEvaluator.cpp
 	DataFlow/SparseAnalysisEngine.cpp
 	DataFlow/TransferFunction.cpp
 	Pass/CFGBuildingPass.cpp

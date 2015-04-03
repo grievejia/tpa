@@ -1,8 +1,7 @@
 #ifndef TPA_TAINT_ANALYSIS_H
 #define TPA_TAINT_ANALYSIS_H
 
-#include "Client/Taintness/TaintPrecisionMonitor.h"
-#include "Client/Taintness/TaintTransferFunction.h"
+#include "Client/Taintness/DataFlow/TaintTransferFunction.h"
 #include "MemoryModel/Precision/ProgramLocation.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 #include "PointerAnalysis/DataFlow/DefUseModule.h"
@@ -35,12 +34,7 @@ private:
 	TaintEnv env;
 	TaintTransferFunction transferFunction;
 
-	TaintPrecisionMonitor monitor;
 	std::unordered_set<tpa::ProgramLocation> visitedFuncs;
-
-	using CallSiteSet = tpa::VectorSet<std::pair<const tpa::Context*, const llvm::Instruction*>>;
-	using CallTgt = std::pair<const tpa::Context*, const llvm::Function*>;
-	llvm::DenseMap<CallTgt, CallSiteSet> retMap;
 
 	// Helper function to insert memo
 	template <typename StateType>
@@ -80,11 +74,6 @@ public:
 
 	// Return true if there is a info flow violation
 	bool runOnDefUseModule(const tpa::DefUseModule& m, bool reportError = true);
-
-	void adaptContextSensitivity() const
-	{
-		monitor.changeContextSensitivity();
-	}
 };
 
 }

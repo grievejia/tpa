@@ -3,9 +3,7 @@
 
 #include "MemoryModel/PtsSet/Store.h"
 
-#include <llvm/ADT/DenseMap.h>
-
-#include <experimental/optional>
+#include <unordered_map>
 
 namespace tpa
 {
@@ -17,7 +15,7 @@ class Memo
 {
 private:
 	using KeyType = std::pair<const Context*, const NodeType*>;
-	using MapType = llvm::DenseMap<KeyType, Store>;
+	using MapType = std::unordered_map<KeyType, Store, PairHasher<const Context*, const NodeType*>>;
 
 	MapType memo;
 public:
@@ -28,13 +26,14 @@ public:
 		return memo.count(std::make_pair(ctx, node));
 	}
 
-	std::experimental::optional<Store> lookup(const Context* ctx, const NodeType* node) const
+	// Return NULL if state not found
+	const Store* lookup(const Context* ctx, const NodeType* node) const
 	{
-		std::experimental::optional<Store> ret;
 		auto itr = memo.find(std::make_pair(ctx, node));
 		if (itr != memo.end())
-			ret = itr->second;
-		return ret;
+			return &itr->second;
+		else
+			return nullptr;
 	}
 
 	// Return true if the memo changes

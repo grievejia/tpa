@@ -108,13 +108,12 @@ void SparseAnalysisEngine::evalFunction(const Context* ctx, const DefUseGraph* d
 		{
 			case PointerCFGNodeType::Entry:
 			{
-				auto optStore = memo.lookup(ctx, node);
-				if (!optStore)
+				auto store = memo.lookup(ctx, node);
+				if (store == nullptr)
 					break;
-				auto& store = *optStore;
 
 				propagateTopLevel(node, workList);
-				propagateMemoryLevel(ctx, node, store, workList);
+				propagateMemoryLevel(ctx, node, *store, workList);
 				break;
 			}
 			case PointerCFGNodeType::Alloc:
@@ -145,20 +144,20 @@ void SparseAnalysisEngine::evalFunction(const Context* ctx, const DefUseGraph* d
 			{
 				auto loadNode = cast<LoadDefUseNode>(node);
 
-				auto optStore = memo.lookup(ctx, node);
-				if (!optStore)
+				auto store = memo.lookup(ctx, node);
+				if (store == nullptr)
 					break;
-				auto& store = *optStore;
+				auto newStore = *store;
 
 				bool isValid;
 				bool envChanged;
-				std::tie(isValid, envChanged) = transferFunction.evalLoad(ctx, loadNode, env, store);
+				std::tie(isValid, envChanged) = transferFunction.evalLoad(ctx, loadNode, env, newStore);
 
 				if (isValid)
 				{
 					if (envChanged)
 						propagateTopLevel(loadNode, workList);
-					propagateMemoryLevel(ctx, loadNode, store, workList);
+					propagateMemoryLevel(ctx, loadNode, newStore, workList);
 				}
 
 				break;
@@ -167,32 +166,32 @@ void SparseAnalysisEngine::evalFunction(const Context* ctx, const DefUseGraph* d
 			{
 				auto storeNode = cast<StoreDefUseNode>(node);
 				
-				auto optStore = memo.lookup(ctx, node);
-				if (!optStore)
+				auto store = memo.lookup(ctx, node);
+				if (store == nullptr)
 					break;
-				auto& store = *optStore;
+				auto newStore = *store;
 
 				bool isValid;
 				bool storeChanged;
-				std::tie(isValid, storeChanged) = transferFunction.evalStore(ctx, storeNode, env, store);
+				std::tie(isValid, storeChanged) = transferFunction.evalStore(ctx, storeNode, env, newStore);
 				
 				if (isValid)
-					propagateMemoryLevel(ctx, storeNode, store, workList);
+					propagateMemoryLevel(ctx, storeNode, newStore, workList);
 				break;
 			}
 			case PointerCFGNodeType::Call:
 			{
 				auto callNode = cast<CallDefUseNode>(node);
 				
-				auto optStore = memo.lookup(ctx, node);
-				if (!optStore)
+				auto store = memo.lookup(ctx, node);
+				if (store == nullptr)
 					break;
-				auto& store = *optStore;
+				auto newStore = *store;
 
 				auto callees = transferFunction.resolveCallTarget(ctx, callNode, env, prog.at_funs());
 
 				for (auto f: callees)
-					applyFunction(ctx, callNode, f, prog, env, store, funWorkList, workList);
+					applyFunction(ctx, callNode, f, prog, env, newStore, funWorkList, workList);
 
 				break;
 			}
@@ -207,10 +206,9 @@ void SparseAnalysisEngine::evalFunction(const Context* ctx, const DefUseGraph* d
 					break;
 				}
 
-				auto optStore = memo.lookup(ctx, node);
-				if (!optStore)
+				auto store = memo.lookup(ctx, node);
+				if (store == nullptr)
 					break;
-				auto& store = *optStore;
 
 				for (auto retSite: callGraph.getCallSites(std::make_pair(ctx, dug->getFunction())))
 				{
@@ -230,7 +228,7 @@ void SparseAnalysisEngine::evalFunction(const Context* ctx, const DefUseGraph* d
 					for (auto const& mapping: callNode->mem_succs())
 					{
 						auto loc = mapping.first;
-						auto pSet = store.lookup(loc);
+						auto pSet = store->lookup(loc);
 						if (!pSet.isEmpty())
 						{
 							for (auto succ: mapping.second)
