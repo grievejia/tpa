@@ -27,6 +27,8 @@ namespace client
 namespace taint
 {
 
+class TaintMemo;
+
 class TaintTransferFunction
 {
 private:
@@ -70,7 +72,7 @@ public:
 
 	std::tuple<bool, bool, bool> evalInst(const tpa::Context*, const llvm::Instruction*, TaintEnv&, TaintStore&);
 	std::tuple<bool, bool, bool> processLibraryCall(const tpa::Context* ctx, const llvm::Function* callee, llvm::ImmutableCallSite cs, TaintEnv&, TaintStore&);
-	bool checkMemoStates(const TaintEnv&, const std::unordered_map<tpa::ProgramLocation, TaintStore>&, bool);
+	bool checkMemoStates(const TaintEnv&, const TaintMemo&, bool);
 };
 
 }	// end of taint

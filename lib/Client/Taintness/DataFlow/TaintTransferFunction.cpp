@@ -1,3 +1,4 @@
+#include "Client/Taintness/DataFlow/TaintMemo.h"
 #include "Client/Taintness/DataFlow/TaintTransferFunction.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
@@ -454,7 +455,7 @@ bool TaintTransferFunction::checkValue(const TSummary& summary, const Context* c
 	return true;
 }
 
-bool TaintTransferFunction::checkMemoStates(const TaintEnv& env, const std::unordered_map<tpa::ProgramLocation, TaintStore>& memo, bool reportError)
+bool TaintTransferFunction::checkMemoStates(const TaintEnv& env, const TaintMemo& memo, bool reportError)
 {
 	for (auto const& record: sinkPoints)
 	{
@@ -466,8 +467,8 @@ bool TaintTransferFunction::checkMemoStates(const TaintEnv& env, const std::unor
 		if (summary == nullptr)
 			continue;
 
-		auto itr = memo.find(ProgramLocation(record.context, record.inst));
-		auto const& store = (itr == memo.end()) ? TaintStore() : itr->second;
+		auto optStore = memo.lookup(ProgramLocation(record.context, record.inst));
+		auto const& store = (optStore == nullptr) ? TaintStore() : *optStore;
 		if (!checkValue(*summary, record.context, cs, env, store))
 		{
 			if (reportError)

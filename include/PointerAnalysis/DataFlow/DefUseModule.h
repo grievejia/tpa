@@ -45,6 +45,11 @@ public:
 	DefUseInstruction(const llvm::Instruction& i): inst(&i), rpo(0) {}
 	const llvm::Instruction* getInstruction() const { return inst; }
 
+	const llvm::Function* getFunction() const;
+	bool isEntryInstruction() const;
+	bool isCallInstruction() const;
+	bool isReturnInstruction() const;
+
 	size_t getPriority() const
 	{
 		assert(rpo != 0);

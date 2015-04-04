@@ -2,6 +2,8 @@
 set (ClientSourceCodes
 	Taintness/Analysis/TaintAnalysis.cpp
 	Taintness/DataFlow/SourceSink.cpp
+	Taintness/DataFlow/DefUseFunctionEvaluator.cpp
+	Taintness/DataFlow/TaintAnalysisEngine.cpp
 	Taintness/DataFlow/TaintPrecisionMonitor.cpp
 	Taintness/DataFlow/TaintTransferFunction.cpp
 	Taintness/Pass/TaintAnalysisPass.cpp

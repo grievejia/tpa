@@ -23,7 +23,7 @@ void TunablePointerAnalysis::runOnProgram(const PointerProgram& prog, Store stor
 	auto ptrEngine = PointerAnalysisEngine(ptrManager, memManager, globalState, std::move(store), extTable);
 	ptrEngine.run();
 
-	errs() << env << '\n';
+	//errs() << env << '\n';
 }
 
 }

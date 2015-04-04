@@ -8,6 +8,26 @@ using namespace llvm;
 namespace tpa
 {
 
+const Function* DefUseInstruction::getFunction() const
+{
+	return inst->getParent()->getParent();
+}
+
+bool DefUseInstruction::isEntryInstruction() const
+{
+	return (inst == nullptr);
+}
+
+bool DefUseInstruction::isCallInstruction() const
+{
+	return (inst != nullptr) && (llvm::isa<CallInst>(inst) || llvm::isa<InvokeInst>(inst));
+}
+
+bool DefUseInstruction::isReturnInstruction() const
+{
+	return (inst != nullptr) && (llvm::isa<ReturnInst>(inst));
+}
+
 DefUseInstruction* DefUseFunction::getDefUseInstruction(const Instruction* inst)
 {
 	auto itr = instMap.find(inst);
