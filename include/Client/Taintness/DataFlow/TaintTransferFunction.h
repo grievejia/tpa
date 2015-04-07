@@ -1,7 +1,6 @@
 #ifndef INFOFLOW_TRANSFER_FUNCTION_H
 #define INFOFLOW_TRANSFER_FUNCTION_H
 
-#include "Client/Taintness/DataFlow/SourceSink.h"
 #include "Client/Taintness/DataFlow/TaintEnvStore.h"
 #include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 #include "Utils/Hashing.h"
@@ -27,52 +26,23 @@ namespace client
 namespace taint
 {
 
-class TaintMemo;
+class SourceSinkManager;
+class TaintGlobalState;
 
 class TaintTransferFunction
 {
 private:
-	SourceSinkManager ssManager;
-
 	const tpa::PointerAnalysis& ptrAnalysis;
 	const tpa::ExternalPointerEffectTable& extTable;
+	const SourceSinkManager& ssManager;
 
 	// Stash uloc and nloc here to grab them quickly during analysis
 	const tpa::MemoryLocation *uLoc, *nLoc;
-
-	struct SinkRecord
-	{
-		const tpa::Context* context;
-		const llvm::Instruction* inst;
-		const llvm::Function* callee;
-
-		bool operator==(const SinkRecord& rhs) const
-		{
-			return (context == rhs.context) && (inst == rhs.inst) && (callee == rhs.callee);
-		}
-	};
-	struct SinkRecordHasher
-	{
-		size_t operator()(const SinkRecord& s) const
-		{
-			size_t ret = 0;
-			tpa::hash_combine(ret, s.context);
-			tpa::hash_combine(ret, s.inst);
-			tpa::hash_combine(ret, s.callee);
-			return ret;
-		}
-	};
-	std::unordered_set<SinkRecord, SinkRecordHasher> sinkPoints;
-
-	// Return false if the check failed
-	bool checkValue(const TSummary& summary, const tpa::Context*, llvm::ImmutableCallSite cs, const TaintEnv& env, const TaintStore& store);
-	bool checkValue(const TEntry& entry, tpa::ProgramLocation pLoc, const TaintEnv& env, const TaintStore& store);
 public:
-	TaintTransferFunction(const tpa::PointerAnalysis& pa, const tpa::ExternalPointerEffectTable& e);
+	TaintTransferFunction(TaintGlobalState& g);
 
 	std::tuple<bool, bool, bool> evalInst(const tpa::Context*, const llvm::Instruction*, TaintEnv&, TaintStore&);
 	std::tuple<bool, bool, bool> processLibraryCall(const tpa::Context* ctx, const llvm::Function* callee, llvm::ImmutableCallSite cs, TaintEnv&, TaintStore&);
-	bool checkMemoStates(const TaintEnv&, const TaintMemo&, bool);
 };
 
 }	// end of taint

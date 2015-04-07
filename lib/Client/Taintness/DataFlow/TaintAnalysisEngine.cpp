@@ -15,43 +15,47 @@ namespace client
 namespace taint
 {
 
-TaintAnalysisEngine::TaintAnalysisEngine(TaintGlobalState& g, const ExternalPointerEffectTable& t): globalState(g), transferFunction(globalState.getPointerAnalysis(), t)
+TaintAnalysisEngine::TaintAnalysisEngine(TaintGlobalState& g): globalState(g)
 {
 	initializeWorkList();
 }
 
-void TaintAnalysisEngine::initializeWorkList()
+void TaintAnalysisEngine::initializeMainArgs(TaintEnv& env, TaintStore& store, const DefUseFunction& entryDuFunc)
 {
-	// Find the entry function
-	auto const& duModule = globalState.getProgram();
-	auto& entryDefUseFunc = duModule.getEntryFunction();
-	auto entryFunc = &entryDefUseFunc.getFunction();
-
-	// Set up the initial environment
-	auto const& ptrAnalysis = globalState.getPointerAnalysis();
+	auto entryFunc = &entryDuFunc.getFunction();
 	auto globalCtx = Context::getGlobalContext();
-	auto& env = globalState.getEnv();
-	auto initStore = TaintStore();
+	auto const& ptrAnalysis = globalState.getPointerAnalysis();
 
 	if (entryFunc->arg_size() > 0)
 	{
+		// Process argc
 		auto argcValue = entryFunc->arg_begin();
 		env.strongUpdate(ProgramLocation(globalCtx, argcValue), TaintLattice::Tainted);
+
+		// Process argv, *argv and **argv
 		if (entryFunc->arg_size() > 1)
 		{
+			// argv is not tainted
 			auto argvValue = (++entryFunc->arg_begin());
-			// TODO: is argv itself tainted or not? I would say no
 			env.strongUpdate(ProgramLocation(globalCtx, argvValue), TaintLattice::Untainted);
 
+			// *argv is tainted
 			auto& memManager = ptrAnalysis.getMemoryManager();
 			auto argvPtrLoc = memManager.getArgvPtrLoc();
+			store.strongUpdate(argvPtrLoc, TaintLattice::Tainted);
+
+			// **argv is definitely tainted
 			auto argvMemLoc = memManager.getArgvMemLoc();
-			initStore.strongUpdate(argvPtrLoc, TaintLattice::Tainted);
-			initStore.strongUpdate(argvMemLoc, TaintLattice::Tainted);
+			store.strongUpdate(argvMemLoc, TaintLattice::Tainted);
 		}
 	}
+}
 
-	// Initialize all externally-defined global values
+void TaintAnalysisEngine::initializeExternalGlobalValues(TaintEnv& env, TaintStore& store, const DefUseModule& duModule)
+{
+	auto globalCtx = Context::getGlobalContext();
+	auto const& ptrAnalysis = globalState.getPointerAnalysis();
+
 	for (auto const& global: duModule.getModule().globals())
 	{
 		if (global.isDeclaration())
@@ -59,18 +63,38 @@ void TaintAnalysisEngine::initializeWorkList()
 			env.strongUpdate(ProgramLocation(globalCtx, &global), TaintLattice::Untainted);
 			auto pSet = ptrAnalysis.getPtsSet(globalCtx, &global);
 			for (auto loc: pSet)
-				initStore.strongUpdate(loc, TaintLattice::Untainted);
+				store.strongUpdate(loc, TaintLattice::Untainted);
 		}
 	}
+}
 
-	auto entryDuInst = entryDefUseFunc.getEntryInst();
-	globalWorkList.enqueue(globalCtx, &entryDefUseFunc, entryDuInst);
-	globalState.getMemo().update(ProgramLocation(globalCtx, entryDuInst->getInstruction()), std::move(initStore));
+void TaintAnalysisEngine::enqueueEntryPoint(const DefUseFunction& entryDuFunc, TaintStore store)
+{
+	auto globalCtx = Context::getGlobalContext();
+	auto entryDuInst = entryDuFunc.getEntryInst();
+
+	globalWorkList.enqueue(globalCtx, &entryDuFunc, entryDuInst);
+	globalState.getMemo().update(ProgramLocation(globalCtx, entryDuInst->getInstruction()), std::move(store));
+}
+
+void TaintAnalysisEngine::initializeWorkList()
+{
+	// Find the entry function
+	auto const& duModule = globalState.getProgram();
+	auto& entryDefUseFunc = duModule.getEntryFunction();
+
+	// Set up the initial environment
+	auto& env = globalState.getEnv();
+	auto initStore = TaintStore();
+
+	initializeMainArgs(env, initStore, entryDefUseFunc);
+	initializeExternalGlobalValues(env, initStore, duModule);
+	enqueueEntryPoint(entryDefUseFunc, std::move(initStore));
 }
 
 void TaintAnalysisEngine::evalFunction(const Context* ctx, const DefUseFunction* duFunc)
 {
-	DefUseFunctionEvaluator evaluator(ctx, duFunc, globalState, globalWorkList, transferFunction);
+	DefUseFunctionEvaluator evaluator(ctx, duFunc, globalState, globalWorkList);
 	evaluator.eval();
 }
 
@@ -85,7 +109,8 @@ bool TaintAnalysisEngine::run()
 		evalFunction(ctx, duFunc);
 	}
 
-	return !transferFunction.checkMemoStates(globalState.getEnv(), globalState.getMemo(), true);
+	return false;
+	//return !transferFunction.checkMemoStates(globalState.getEnv(), globalState.getMemo(), true);
 }
 
 }

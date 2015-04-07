@@ -77,7 +77,7 @@ public:
 	SourceSinkManager() = default;
 
 	void readSummaryFromFile(const std::string& fileName);
-	const TSummary* getSummary(const std::string& name);
+	const TSummary* getSummary(const std::string& name) const;
 };
 
 }	// end of taint

@@ -100,7 +100,7 @@ void SourceSinkManager::readSummaryFromFile(const std::string& fileName)
 	}
 }
 
-const TSummary* SourceSinkManager::getSummary(const std::string& name)
+const TSummary* SourceSinkManager::getSummary(const std::string& name) const
 {
 	auto itr = summaryMap.find(name);
 	if (itr == summaryMap.end())

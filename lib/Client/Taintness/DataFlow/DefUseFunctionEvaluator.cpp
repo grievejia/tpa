@@ -16,7 +16,7 @@ namespace client
 namespace taint
 {
 
-DefUseFunctionEvaluator::DefUseFunctionEvaluator(const Context* c, const DefUseFunction* f, TaintGlobalState& g, GlobalWorkListType& gl, TaintTransferFunction& t): ctx(c), duFunc(f), globalState(g), globalWorkList(gl), localWorkList(globalWorkList.getLocalWorkList(ctx, duFunc)), transferFunction(t)
+DefUseFunctionEvaluator::DefUseFunctionEvaluator(const Context* c, const DefUseFunction* f, TaintGlobalState& g, GlobalWorkListType& gl): ctx(c), duFunc(f), globalState(g), globalWorkList(gl), localWorkList(globalWorkList.getLocalWorkList(ctx, duFunc))
 {
 }
 
@@ -123,7 +123,7 @@ void DefUseFunctionEvaluator::applyExternalCall(const DefUseInstruction* duInst,
 
 	bool isValid, envChanged, storeChanged;
 	auto newStore = store;
-	std::tie(isValid, envChanged, storeChanged) = transferFunction.processLibraryCall(ctx, callee, cs, globalState.getEnv(), newStore);
+	std::tie(isValid, envChanged, storeChanged) = TaintTransferFunction(globalState).processLibraryCall(ctx, callee, cs, globalState.getEnv(), newStore);
 	if (!isValid)
 		return;
 	propagateState(duInst, newStore, envChanged, storeChanged);
@@ -202,7 +202,7 @@ void DefUseFunctionEvaluator::evalInst(const DefUseInstruction* duInst, const Ta
 {
 	bool isValid, envChanged, storeChanged;
 	auto newStore = store;
-	std::tie(isValid, envChanged, storeChanged) = transferFunction.evalInst(ctx, duInst->getInstruction(), globalState.getEnv(), newStore);
+	std::tie(isValid, envChanged, storeChanged) = TaintTransferFunction(globalState).evalInst(ctx, duInst->getInstruction(), globalState.getEnv(), newStore);
 	if (!isValid)
 		return;
 	propagateState(duInst, newStore, envChanged, storeChanged);

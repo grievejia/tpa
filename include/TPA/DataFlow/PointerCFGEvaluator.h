@@ -35,6 +35,8 @@ private:
 
 	// Inter-proc processing
 	void applyCall(const CallNode* callNode, const llvm::Function* callee, const Store& store);
+	void applyExternalCall(const CallNode* callNode, const Context* newCtx, const llvm::Function* callee, const Store& store);
+	void applyNonExternalCall(const CallNode* callNode, const Context* newCtx, const llvm::Function* callee, const Store& store);
 	void applyReturn(const ReturnNode* retNode, const Context* oldCtx, const llvm::Instruction* oldInst, const Store& store);
 
 	// State propagations

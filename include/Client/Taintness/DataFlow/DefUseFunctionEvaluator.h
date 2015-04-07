@@ -19,7 +19,6 @@ namespace taint
 {
 
 class TaintGlobalState;
-class TaintTransferFunction;
 
 class DefUseFunctionEvaluator
 {
@@ -33,8 +32,6 @@ private:
 	using LocalWorkListType = typename GlobalWorkListType::LocalWorkList;
 	GlobalWorkListType& globalWorkList;
 	LocalWorkListType& localWorkList;
-
-	TaintTransferFunction& transferFunction;
 
 	void evalEntry(const tpa::DefUseInstruction*, const TaintStore&);
 	void evalCall(const tpa::DefUseInstruction*, const TaintStore&);
@@ -53,7 +50,7 @@ private:
 	void propagateTopLevelChange(const tpa::DefUseInstruction*, bool, LocalWorkListType& workList);
 	void propagateMemLevelChange(const tpa::DefUseInstruction*, const TaintStore&, bool, const tpa::Context*, LocalWorkListType& workList);
 public:
-	DefUseFunctionEvaluator(const tpa::Context* c, const tpa::DefUseFunction* f, TaintGlobalState& g, GlobalWorkListType& gl, TaintTransferFunction& t);
+	DefUseFunctionEvaluator(const tpa::Context* c, const tpa::DefUseFunction* f, TaintGlobalState& g, GlobalWorkListType& gl);
 	void eval();
 };
 

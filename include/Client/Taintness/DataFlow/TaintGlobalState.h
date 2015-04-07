@@ -8,6 +8,7 @@
 namespace tpa
 {
 	class DefUseModule;
+	class ExternalPointerEffectTable;
 	class PointerAnalysis;
 }
 
@@ -15,6 +16,8 @@ namespace client
 {
 namespace taint
 {
+
+class SourceSinkManager;
 
 class TaintGlobalState
 {
@@ -25,6 +28,12 @@ private:
 	// Pointer Analysis
 	const tpa::PointerAnalysis& ptrAnalysis;
 
+	// External table
+	const tpa::ExternalPointerEffectTable& extTable;
+
+	// SourceSink manager
+	const SourceSinkManager& ssManager;
+
 	// The environment
 	TaintEnv env;
 
@@ -33,11 +42,13 @@ private:
 
 	std::unordered_set<tpa::ProgramLocation> visitedFuncs;
 public:
-	TaintGlobalState(const tpa::DefUseModule& m, const tpa::PointerAnalysis& p): duModule(m), ptrAnalysis(p) {}
+	TaintGlobalState(const tpa::DefUseModule& m, const tpa::PointerAnalysis& p, const tpa::ExternalPointerEffectTable& e, const SourceSinkManager& s): duModule(m), ptrAnalysis(p), extTable(e), ssManager(s) {}
 
 	const tpa::DefUseModule& getProgram() const { return duModule; }
 
 	const tpa::PointerAnalysis& getPointerAnalysis() const { return ptrAnalysis; }
+	const tpa::ExternalPointerEffectTable& getExternalPointerEffectTable() const { return extTable; }
+	const SourceSinkManager& getSourceSinkManager() const { return ssManager; }
 
 	TaintEnv& getEnv() { return env; }
 	const TaintEnv& getEnv() const { return env; }

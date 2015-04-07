@@ -198,20 +198,13 @@ EvalStatus TransferFunction::evalMemcpy(const CallNode* callNode, size_t dstNum,
 	if (srcPtr == nullptr)
 		return EvalStatus::getInvalidStatus();
 
-	auto memcpyRes = evalMemcpyPointer(dstPtr, srcPtr);
-	if (!memcpyRes.isValid())
-		return memcpyRes;
-	else
+	auto result = evalMemcpyPointer(dstPtr, srcPtr);
+	if (auto retVal = callNode->getDest())
 	{
-		bool envChanged = false;
-		if (auto retVal = callNode->getDest())
-		{
-			auto retPtr = getOrCreatePointer(retVal);
-			auto ptrRes = copyPointerPtsSet(retPtr, dstPtr);
-			envChanged = ptrRes.hasEnvChanged();	
-		}	
-		return EvalStatus::getValidStatus(envChanged, memcpyRes.hasStoreChanged());
+		auto retPtr = getOrCreatePointer(retVal);
+		result = result || copyPointerPtsSet(retPtr, dstPtr);
 	}
+	return result;
 }
 
 std::vector<const MemoryLocation*> TransferFunction::findPointerCandidatesInStruct(const MemoryLocation* loc, StructType* stType, size_t baseOffset)
@@ -310,20 +303,13 @@ EvalStatus TransferFunction::evalMemset(const CallNode* callNode)
 	if (!setToNull)
 		return EvalStatus::getValidStatus(false, false);
 
-	auto memRes = fillPtsSetWithNull(dstPtr);
-	if (!memRes.isValid())
-		return memRes;
-	else
+	auto result = fillPtsSetWithNull(dstPtr);
+	if (auto retVal = callNode->getDest())
 	{
-		bool envChanged = false;
-		if (auto retVal = callNode->getDest())
-		{
-			auto retPtr = getOrCreatePointer(retVal);
-			auto ptrRes = copyPointerPtsSet(retPtr, dstPtr);
-			envChanged = ptrRes.hasEnvChanged();	
-		}	
-		return EvalStatus::getValidStatus(envChanged, memRes.hasStoreChanged());
+		auto retPtr = getOrCreatePointer(retVal);
+		result = result || copyPointerPtsSet(retPtr, dstPtr);
 	}
+	return result;
 }
 
 EvalStatus TransferFunction::evalExternalCall(const CallNode* callNode, const Function* callee)

@@ -17,14 +17,17 @@ class TaintAnalysisEngine
 private:
 	TaintGlobalState& globalState;
 
-	TaintTransferFunction transferFunction;
-
 	tpa::TPAWorkList<tpa::DefUseFunction> globalWorkList;
 
 	void initializeWorkList();
 	void evalFunction(const tpa::Context*, const tpa::DefUseFunction*);
+
+	// initializeWorkList helpers
+	void initializeMainArgs(TaintEnv& env, TaintStore& store, const tpa::DefUseFunction& entryDuFunc);
+	void initializeExternalGlobalValues(TaintEnv& env, TaintStore& store, const tpa::DefUseModule& duModule);
+	void enqueueEntryPoint(const tpa::DefUseFunction& entryDuFunc, TaintStore store);
 public:
-	TaintAnalysisEngine(TaintGlobalState& g, const tpa::ExternalPointerEffectTable& t);
+	TaintAnalysisEngine(TaintGlobalState& g);
 
 	bool run();
 };

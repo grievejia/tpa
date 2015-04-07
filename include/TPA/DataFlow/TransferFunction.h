@@ -31,7 +31,6 @@ private:
 
 	// evalAlloc helpers
 	EvalStatus evalMemoryAllocation(const Pointer*, llvm::Type*, bool);
-	EvalStatus evalExternalReturnsArg(const CallNode*, size_t);
 
 	// evalCopy helpers
 	EvalStatus evalCopyNodeWithZeroOffset(const CopyNode*);
@@ -50,6 +49,7 @@ private:
 	EvalStatus evalMallocWithSizeValue(const CallNode*, const llvm::Value*);
 	EvalStatus evalRealloc(const CallNode*);
 	EvalStatus copyPointerPtsSet(const Pointer*, const Pointer*);
+	EvalStatus evalExternalReturnsArg(const CallNode*, size_t);
 	EvalStatus evalExternalReturnsStatic(const CallNode*);
 	EvalStatus evalExternalStore(const CallNode*, size_t, size_t);
 	EvalStatus evalMemcpy(const CallNode*, size_t, size_t);

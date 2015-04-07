@@ -1,4 +1,5 @@
-#include "Client/Taintness/DataFlow/TaintMemo.h"
+#include "Client/Taintness/DataFlow/SourceSink.h"
+#include "Client/Taintness/DataFlow/TaintGlobalState.h"
 #include "Client/Taintness/DataFlow/TaintTransferFunction.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
@@ -15,9 +16,8 @@ namespace client
 namespace taint
 {
 
-TaintTransferFunction::TaintTransferFunction(const PointerAnalysis& pa, const tpa::ExternalPointerEffectTable& e): ptrAnalysis(pa), extTable(e)
+TaintTransferFunction::TaintTransferFunction(TaintGlobalState& g): ptrAnalysis(g.getPointerAnalysis()), extTable(g.getExternalPointerEffectTable()), ssManager(g.getSourceSinkManager())
 {
-	ssManager.readSummaryFromFile("source_sink.conf");
 	uLoc = ptrAnalysis.getMemoryManager().getUniversalLocation();
 	nLoc = ptrAnalysis.getMemoryManager().getNullLocation();
 }
@@ -287,7 +287,6 @@ std::tuple<bool, bool, bool> TaintTransferFunction::processLibraryCall(const Con
 		{
 			if (entry.end == TEnd::Sink)
 			{
-				sinkPoints.insert({ctx, cs.getInstruction(), callee});
 				continue;
 			}
 			switch (entry.pos)
@@ -350,138 +349,6 @@ std::tuple<bool, bool, bool> TaintTransferFunction::processLibraryCall(const Con
 		envChanged |= env.weakUpdate(ProgramLocation(ctx, cs.getInstruction()), TaintLattice::Untainted);
 
 	return std::make_tuple(true, envChanged, storeChanged);
-}
-
-bool TaintTransferFunction::checkValue(const TEntry& entry, ProgramLocation pLoc, const TaintEnv& env, const TaintStore& store)
-{
-	if (entry.what == TClass::ValueOnly)
-	{
-		auto sinkVal = env.lookup(pLoc);
-		if (sinkVal && *sinkVal != entry.val)
-		{
-			return false;
-		}
-	}
-	else if (entry.what == TClass::DirectMemory)
-	{
-		auto pSet = ptrAnalysis.getPtsSet(pLoc.getContext(), pLoc.getInstruction());
-		for (auto loc: pSet)
-		{
-			auto optVal = store.lookup(loc);
-			if (optVal && *optVal != entry.val)
-			{
-				return false;
-			}
-		}
-	}
-	else if (entry.what == TClass::ReachableMemory)
-	{
-		llvm_unreachable("not implemented yet");
-	}
-	return true;
-}
-
-bool TaintTransferFunction::checkValue(const TSummary& summary, const Context* ctx, llvm::ImmutableCallSite cs, const TaintEnv& env, const TaintStore& store)
-{
-	auto pLoc = ProgramLocation(ctx, cs.getInstruction());
-	for (auto const& entry: summary)
-	{
-		if (entry.end == TEnd::Source)
-			continue;
-
-		switch (entry.pos)
-		{
-			case TPosition::Ret:
-			{
-				if (!checkValue(entry, pLoc, env, store))
-					return false;
-				break;
-			}
-			case TPosition::Arg0:
-			{
-				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(0)), env, store))
-					return false;
-				break;
-			}
-			case TPosition::Arg1:
-			{
-				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(1)), env, store))
-					return false;
-				break;
-			}
-			case TPosition::Arg2:
-			{
-				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(2)), env, store))
-					return false;
-				break;
-			}
-			case TPosition::Arg3:
-			{
-				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(3)), env, store))
-					return false;
-				break;
-			}
-			case TPosition::Arg4:
-			{
-				if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(4)), env, store))
-					return false;
-				break;
-			}
-			case TPosition::AfterArg0:
-			{
-				for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-					if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(i)), env, store))
-						return false;
-				break;
-			}
-			case TPosition::AfterArg1:
-			{
-				for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-					if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(i)), env, store))
-						return false;
-				break;
-			}
-			case TPosition::AllArgs:
-			{
-				for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
-					if (!checkValue(entry, ProgramLocation(ctx, cs.getArgument(i)), env, store))
-						return false;
-
-				break;
-			}
-		}
-	}
-
-	return true;
-}
-
-bool TaintTransferFunction::checkMemoStates(const TaintEnv& env, const TaintMemo& memo, bool reportError)
-{
-	for (auto const& record: sinkPoints)
-	{
-		//errs() << *record.context << ", " << *record.inst << ", " << record.callee->getName() << "\n";
-		ImmutableCallSite cs(record.inst);
-		assert(cs);
-
-		auto summary = ssManager.getSummary(record.callee->getName());
-		if (summary == nullptr)
-			continue;
-
-		auto optStore = memo.lookup(ProgramLocation(record.context, record.inst));
-		auto const& store = (optStore == nullptr) ? TaintStore() : *optStore;
-		if (!checkValue(*summary, record.context, cs, env, store))
-		{
-			if (reportError)
-			{
-				errs().changeColor(raw_ostream::Colors::RED);
-				errs() << "Sink violation at callsite " << *record.inst << "\n";
-				errs().resetColor();
-			}
-			return false;
-		}
-	}
-
-	return true;
 }
 
 }

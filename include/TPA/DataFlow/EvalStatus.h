@@ -30,6 +30,14 @@ public:
 		return (*result).second;
 	}
 
+	EvalStatus operator||(const EvalStatus& rhs) const
+	{
+		if (!isValid() || !rhs.isValid())
+			return EvalStatus();
+		else
+			return EvalStatus(hasEnvChanged() || rhs.hasEnvChanged(), hasStoreChanged() || rhs.hasStoreChanged());
+	}
+
 	static EvalStatus getInvalidStatus()
 	{
 		return EvalStatus();

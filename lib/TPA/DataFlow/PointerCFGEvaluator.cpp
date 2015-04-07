@@ -121,34 +121,28 @@ void PointerCFGEvaluator::visitReturnNode(const ReturnNode* retNode)
 	}
 }
 
-void PointerCFGEvaluator::applyCall(const CallNode* callNode, const Function* callee, const Store& store)
+void PointerCFGEvaluator::applyExternalCall(const CallNode* callNode, const Context* newCtx, const llvm::Function* callee, const Store& store)
 {
-	// Update call graph first
-	auto newCtx = KLimitContext::pushContext(ctx, callNode->getInstruction(), callee);
-	globalState.getCallGraph().insertCallEdge(std::make_pair(ctx, callNode->getInstruction()), std::make_pair(newCtx, callee));
-
-	// Handle external function call here
-	if (callee->isDeclaration() || callee->isIntrinsic())
-	{
-		// Ask transferFunction to compute the side effect of callee
-		auto newStore = store;
-
-		auto evalResult = TransferFunction(ctx, newStore, globalState).evalExternalCall(callNode, callee);
-
-		if (!evalResult.isValid())
-			return;
-
-		// There are some special cases where there is no need to keep propagating info. e.g. calling exit() or abort().
-		if (callee->getName() == "exit" || callee->getName() == "_exit" || callee->getName() == "abort")
-			return;
-
-		// External calls are treated as language primitives. There is no need to redirect control flow to another function. Hence we just need to progress as usual
-		if (evalResult.hasEnvChanged())
-			propagateTopLevel(callNode);
-		propagateMemLevel(callNode, newStore);
+	// There are some special cases where there is no need to keep propagating info. e.g. calling exit() or abort().
+	if (callee->getName() == "exit" || callee->getName() == "_exit" || callee->getName() == "abort")
 		return;
-	}
 
+	// Ask transferFunction to compute the side effect of callee
+	auto newStore = store;
+
+	auto evalResult = TransferFunction(ctx, newStore, globalState).evalExternalCall(callNode, callee);
+
+	if (!evalResult.isValid())
+		return;
+
+	// External calls are treated as language primitives. There is no need to redirect control flow to another function. Hence we just need to progress as usual
+	if (evalResult.hasEnvChanged())
+		propagateTopLevel(callNode);
+	propagateMemLevel(callNode, newStore);
+}
+
+void PointerCFGEvaluator::applyNonExternalCall(const CallNode* callNode, const Context* newCtx, const llvm::Function* callee, const Store& store)
+{
 	auto tgtCFG = globalState.getProgram().getPointerCFG(callee);
 	assert(tgtCFG != nullptr);
 	auto tgtEntryNode = tgtCFG->getEntryNode();
@@ -166,6 +160,19 @@ void PointerCFGEvaluator::applyCall(const CallNode* callNode, const Function* ca
 	// We enqueue the callee's return node rather than caller's successors of the call node. The reason is that if the callee reaches its fixpoint, the call node's lhs won't get updated
 	// FIXME: should only propagate once for each non-external callsite
 	globalWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getExitNode());
+}
+
+void PointerCFGEvaluator::applyCall(const CallNode* callNode, const Function* callee, const Store& store)
+{
+	// Update call graph first
+	auto newCtx = KLimitContext::pushContext(ctx, callNode->getInstruction(), callee);
+	globalState.getCallGraph().insertCallEdge(std::make_pair(ctx, callNode->getInstruction()), std::make_pair(newCtx, callee));
+
+	// Handle external function call here
+	if (callee->isDeclaration())
+		applyExternalCall(callNode, newCtx, callee, store);
+	else
+		applyNonExternalCall(callNode, newCtx, callee, store);
 }
 
 void PointerCFGEvaluator::applyReturn(const ReturnNode* retNode, const Context* oldCtx, const Instruction* oldInst, const Store& store)
