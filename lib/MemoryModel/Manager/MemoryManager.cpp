@@ -5,8 +5,6 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include <limits>
-
 using namespace llvm;
 
 static cl::opt<bool> OutOfBoundWarning("oob-warning", cl::desc("Warn the user when out-of-bound pointer arithmetic is performed"), cl::init(false));

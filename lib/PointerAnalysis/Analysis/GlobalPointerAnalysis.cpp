@@ -3,7 +3,6 @@
 #include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
 
 #include <llvm/IR/Constants.h>
-#include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/raw_ostream.h>
 

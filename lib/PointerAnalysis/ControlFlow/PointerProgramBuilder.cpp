@@ -1,7 +1,6 @@
 #include "PointerAnalysis/ControlFlow/PointerProgramBuilder.h"
 #include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 
-#include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Module.h>
@@ -236,7 +235,7 @@ PointerCFGNode* PointerProgramBuilder::translateInstruction(PointerCFG& cfg, con
 			if (numOps != 2 && numOps != 3)
 				llvm_unreachable("Found a non-canonicalized GEP. Please run -expand-gep pass first!");
 
-			auto offset = dataLayout->getPointerSize();
+			size_t offset = dataLayout->getPointerSize();
 			if (numOps == 2)
 				offset = dataLayout->getTypeAllocSize(cast<SequentialType>(src->getType())->getElementType());
 			else
@@ -252,7 +251,6 @@ PointerCFGNode* PointerProgramBuilder::translateInstruction(PointerCFG& cfg, con
 		{
 			// We should not see those instructions here because they should have been removed by prepasses
 			llvm_unreachable("vararg instruction not supported!");
-			return nullptr;
 		}
 		case Instruction::ExtractValue:
 		case Instruction::InsertValue:
@@ -269,14 +267,12 @@ PointerCFGNode* PointerProgramBuilder::translateInstruction(PointerCFG& cfg, con
 		{
 			errs() << inst << "\n";
 			llvm_unreachable("We have no intention to support those instructions");
-			return nullptr;
 		}
 		//No other ops should affect pointer values.
 		default:
 			// Do nothing
 			return nullptr;
 	}
-	return nullptr;
 }
 
 void PointerProgramBuilder::buildPointerCFG(PointerCFG& cfg)

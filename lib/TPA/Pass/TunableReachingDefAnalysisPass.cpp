@@ -7,8 +7,6 @@
 #include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 #include "TPA/Pass/TunableReachingDefAnalysisPass.h"
 
-#include <llvm/Support/raw_ostream.h>
-
 using namespace llvm;
 
 namespace tpa

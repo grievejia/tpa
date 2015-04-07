@@ -14,7 +14,7 @@ namespace
 
 TEST(TaintnessTest, SourceSinkTest)
 {
-	auto ssManager = SourceSinkManager();
+	auto ssManager = SourceSinkLookupTable();
 	EXPECT_EQ(ssManager.getSummary("read"), nullptr);
 	EXPECT_EQ(ssManager.getSummary("printf"), nullptr);
 

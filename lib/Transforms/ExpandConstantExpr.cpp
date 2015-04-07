@@ -21,10 +21,7 @@
 #include "ExpandConstantExpr.h"
 #include "ExpandUtils.h"
 
-#include "llvm/IR/Function.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/Pass.h"
 
 using namespace llvm;
 

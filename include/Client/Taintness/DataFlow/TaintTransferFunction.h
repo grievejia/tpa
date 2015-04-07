@@ -26,7 +26,7 @@ namespace client
 namespace taint
 {
 
-class SourceSinkManager;
+class SourceSinkLookupTable;
 class TaintGlobalState;
 
 class TaintTransferFunction
@@ -34,7 +34,7 @@ class TaintTransferFunction
 private:
 	const tpa::PointerAnalysis& ptrAnalysis;
 	const tpa::ExternalPointerEffectTable& extTable;
-	const SourceSinkManager& ssManager;
+	const SourceSinkLookupTable& sourceSinkLookupTable;
 
 	// Stash uloc and nloc here to grab them quickly during analysis
 	const tpa::MemoryLocation *uLoc, *nLoc;

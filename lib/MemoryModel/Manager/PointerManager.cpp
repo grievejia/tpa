@@ -1,7 +1,6 @@
 #include "MemoryModel/Pointer/PointerManager.h"
 
 #include <llvm/IR/Constants.h>
-#include <llvm/IR/Type.h>
 
 using namespace llvm;
 

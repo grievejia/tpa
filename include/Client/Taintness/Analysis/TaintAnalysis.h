@@ -18,7 +18,7 @@ namespace taint
 class TaintAnalysis
 {
 private:
-	SourceSinkManager ssManager;
+	SourceSinkLookupTable sourceSinkLookupTable;
 	const tpa::PointerAnalysis& ptrAnalysis;
 	const tpa::ExternalPointerEffectTable& extTable;
 public:

@@ -22,14 +22,9 @@
 #include "ExpandGetElementPtr.h"
 #include "ExpandUtils.h"
 
-#include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DataLayout.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/InstrTypes.h"
-#include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
-#include "llvm/IR/Type.h"
 #include "llvm/Analysis/ValueTracking.h"
 
 using namespace llvm;

@@ -5,8 +5,6 @@
 
 #include <llvm/Support/FileSystem.h>
 
-#include <unordered_map>
-
 using namespace llvm;
 
 namespace tpa

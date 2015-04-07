@@ -5,7 +5,6 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/Regex.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/ErrorHandling.h>
 
 using namespace llvm;
 
@@ -78,7 +77,7 @@ TEntry wordsToTEntry(const SmallVectorImpl<StringRef>& words)
 
 }	// end of anonymous namespace
 
-void SourceSinkManager::readSummaryFromFile(const std::string& fileName)
+void SourceSinkLookupTable::readSummaryFromFile(const std::string& fileName)
 {
 	auto memBuf = readFileIntoBuffer(fileName);
 
@@ -100,7 +99,7 @@ void SourceSinkManager::readSummaryFromFile(const std::string& fileName)
 	}
 }
 
-const TSummary* SourceSinkManager::getSummary(const std::string& name) const
+const TSummary* SourceSinkLookupTable::getSummary(const std::string& name) const
 {
 	auto itr = summaryMap.find(name);
 	if (itr == summaryMap.end())

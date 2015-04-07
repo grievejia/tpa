@@ -1,6 +1,5 @@
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
-#include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
 
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/Function.h"

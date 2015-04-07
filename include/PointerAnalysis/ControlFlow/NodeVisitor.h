@@ -22,7 +22,6 @@ public:
 				return static_cast<SubClass*>(this)->visitAllocNode(static_cast<const AllocNodeMixin<NodeType>*>(node));
 			case PointerCFGNodeType::Copy:
 				return static_cast<SubClass*>(this)->visitCopyNode(static_cast<const CopyNodeMixin<NodeType>*>(node));
-				break;
 			case PointerCFGNodeType::Load:
 				return static_cast<SubClass*>(this)->visitLoadNode(static_cast<const LoadNodeMixin<NodeType>*>(node));
 			case PointerCFGNodeType::Store:

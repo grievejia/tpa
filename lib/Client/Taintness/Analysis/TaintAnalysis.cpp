@@ -12,13 +12,13 @@ namespace taint
 
 TaintAnalysis::TaintAnalysis(const tpa::PointerAnalysis& p, const ExternalPointerEffectTable& t): ptrAnalysis(p), extTable(t)
 {
-	ssManager.readSummaryFromFile("source_sink.conf");
+	sourceSinkLookupTable.readSummaryFromFile("source_sink.conf");
 }
 
 // Return true if there is a info flow violation
 bool TaintAnalysis::runOnDefUseModule(const DefUseModule& duModule, bool reportError)
 {
-	TaintGlobalState globalState(duModule, ptrAnalysis, extTable, ssManager);
+	TaintGlobalState globalState(duModule, ptrAnalysis, extTable, sourceSinkLookupTable);
 	TaintAnalysisEngine engine(globalState);
 	return engine.run();
 }

@@ -2,8 +2,6 @@
 #include "MemoryModel/PtsSet/PtsSet.h"
 #include "PointerAnalysis/Analysis/AliasAnalysis.h"
 
-#include <llvm/IR/Value.h>
-
 using namespace llvm;
 
 namespace tpa

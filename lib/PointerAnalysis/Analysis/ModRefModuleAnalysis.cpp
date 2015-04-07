@@ -6,7 +6,6 @@
 #include "Utils/WorkList.h"
 
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/Module.h>
 
 using namespace llvm;
 

@@ -17,7 +17,7 @@ namespace client
 namespace taint
 {
 
-class SourceSinkManager;
+class SourceSinkLookupTable;
 
 class TaintGlobalState
 {
@@ -32,7 +32,7 @@ private:
 	const tpa::ExternalPointerEffectTable& extTable;
 
 	// SourceSink manager
-	const SourceSinkManager& ssManager;
+	const SourceSinkLookupTable& sourceSinkLookupTable;
 
 	// The environment
 	TaintEnv env;
@@ -42,13 +42,13 @@ private:
 
 	std::unordered_set<tpa::ProgramLocation> visitedFuncs;
 public:
-	TaintGlobalState(const tpa::DefUseModule& m, const tpa::PointerAnalysis& p, const tpa::ExternalPointerEffectTable& e, const SourceSinkManager& s): duModule(m), ptrAnalysis(p), extTable(e), ssManager(s) {}
+	TaintGlobalState(const tpa::DefUseModule& m, const tpa::PointerAnalysis& p, const tpa::ExternalPointerEffectTable& e, const SourceSinkLookupTable& s): duModule(m), ptrAnalysis(p), extTable(e), sourceSinkLookupTable(s) {}
 
 	const tpa::DefUseModule& getProgram() const { return duModule; }
 
 	const tpa::PointerAnalysis& getPointerAnalysis() const { return ptrAnalysis; }
 	const tpa::ExternalPointerEffectTable& getExternalPointerEffectTable() const { return extTable; }
-	const SourceSinkManager& getSourceSinkManager() const { return ssManager; }
+	const SourceSinkLookupTable&getSourceSinkLookupTable() const { return sourceSinkLookupTable; }
 
 	TaintEnv& getEnv() { return env; }
 	const TaintEnv& getEnv() const { return env; }

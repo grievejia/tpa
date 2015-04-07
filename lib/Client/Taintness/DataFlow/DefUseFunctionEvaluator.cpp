@@ -1,6 +1,5 @@
 #include "Client/Taintness/DataFlow/DefUseFunctionEvaluator.h"
 #include "Client/Taintness/DataFlow/TaintGlobalState.h"
-#include "Client/Taintness/DataFlow/TaintMemo.h"
 #include "Client/Taintness/DataFlow/TaintTransferFunction.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 

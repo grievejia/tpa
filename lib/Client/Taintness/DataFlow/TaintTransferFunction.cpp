@@ -5,7 +5,6 @@
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 
 #include <llvm/IR/Function.h>
-#include <llvm/IR/Instructions.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
@@ -16,7 +15,8 @@ namespace client
 namespace taint
 {
 
-TaintTransferFunction::TaintTransferFunction(TaintGlobalState& g): ptrAnalysis(g.getPointerAnalysis()), extTable(g.getExternalPointerEffectTable()), ssManager(g.getSourceSinkManager())
+TaintTransferFunction::TaintTransferFunction(TaintGlobalState& g): ptrAnalysis(g.getPointerAnalysis()), extTable(g.getExternalPointerEffectTable()), sourceSinkLookupTable(
+		g.getSourceSinkLookupTable())
 {
 	uLoc = ptrAnalysis.getMemoryManager().getUniversalLocation();
 	nLoc = ptrAnalysis.getMemoryManager().getNullLocation();
@@ -260,7 +260,7 @@ std::tuple<bool, bool, bool> TaintTransferFunction::processLibraryCall(const Con
 		storeChanged |= store.strongUpdate(*dstSet.begin(), TaintLattice::Untainted);
 		envChanged |= env.strongUpdate(ProgramLocation(ctx, cs.getInstruction()), TaintLattice::Untainted);
 	}
-	if (auto summary = ssManager.getSummary(funName))
+	if (auto summary = sourceSinkLookupTable.getSummary(funName))
 	{
 		auto taintValue = [this, ctx, &env, &store, &envChanged, &storeChanged] (const TEntry& entry, const llvm::Value* val)
 		{

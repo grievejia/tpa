@@ -5,7 +5,6 @@
 #include "TPA/DataFlow/TransferFunction.h"
 
 #include "PointerAnalysis/ControlFlow/PointerCFGNodePrint.h"
-#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 

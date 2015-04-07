@@ -4,7 +4,6 @@
 #include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 #include "TPA/Pass/TunableModuleModRefAnalysisPass.h"
 
-#include <llvm/IR/Function.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;

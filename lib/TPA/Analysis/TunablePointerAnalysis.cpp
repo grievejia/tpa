@@ -3,10 +3,6 @@
 #include "TPA/DataFlow/GlobalState.h"
 #include "TPA/DataFlow/PointerAnalysisEngine.h"
 
-#include <llvm/IR/CallSite.h>
-#include <llvm/IR/DataLayout.h>
-#include <llvm/Support/raw_ostream.h>
-
 using namespace llvm;
 
 namespace tpa

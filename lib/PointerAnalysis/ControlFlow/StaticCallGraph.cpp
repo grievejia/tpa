@@ -1,7 +1,5 @@
 #include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
 
-#include <iterator>
-
 using namespace llvm;
 
 namespace tpa

@@ -69,12 +69,12 @@ public:
 	const_iterator end() const { return effects.end(); }
 };
 
-class SourceSinkManager
+class SourceSinkLookupTable
 {
 private:
 	std::unordered_map<std::string, TSummary> summaryMap;
 public:
-	SourceSinkManager() = default;
+	SourceSinkLookupTable() = default;
 
 	void readSummaryFromFile(const std::string& fileName);
 	const TSummary* getSummary(const std::string& name) const;

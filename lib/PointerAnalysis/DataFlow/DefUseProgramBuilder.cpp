@@ -6,7 +6,6 @@
 #include "PointerAnalysis/DataFlow/ModRefSummary.h"
 #include "PointerAnalysis/External/ExternalRefTable.h"
 
-#include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/CallSite.h>
 
 using namespace llvm;

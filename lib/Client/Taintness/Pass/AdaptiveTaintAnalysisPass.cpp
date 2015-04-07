@@ -1,13 +1,3 @@
-#include "Client/Taintness/Analysis/TaintAnalysis.h"
-#include "Client/Taintness/Pass/AdaptiveTaintAnalysisPass.h"
-#include "PointerAnalysis/Analysis/ModRefModuleAnalysis.h"
-#include "PointerAnalysis/DataFlow/DefUseModuleBuilder.h"
-#include "PointerAnalysis/External/ExternalModTable.h"
-#include "PointerAnalysis/External/ExternalRefTable.h"
-#include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
-
-#include <llvm/Support/raw_ostream.h>
-
 using namespace llvm;
 using namespace tpa;
 
