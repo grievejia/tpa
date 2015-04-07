@@ -8,7 +8,7 @@ using namespace llvm;
 namespace tpa
 {
 
-PointerAnalysisEngine::PointerAnalysisEngine(PointerManager& p, MemoryManager& m, GlobalState<PointerProgram>& g, Store st, const ExternalPointerEffectTable& t): globalState(g), transferFunction(p, m, t)
+PointerAnalysisEngine::PointerAnalysisEngine(SemiSparseGlobalState& g, Store st): globalState(g)
 {
 	initializeWorkList(std::move(st));
 }
@@ -26,7 +26,7 @@ void PointerAnalysisEngine::initializeWorkList(Store store)
 
 void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* cfg)
 {
-	PointerCFGEvaluator evaluator(ctx, cfg, globalState, globalWorkList, transferFunction);
+	PointerCFGEvaluator evaluator(ctx, cfg, globalState, globalWorkList);
 	evaluator.eval();
 }
 

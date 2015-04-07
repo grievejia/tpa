@@ -2,6 +2,7 @@
 #include "PointerAnalysis/ControlFlow/PointerCFG.h"
 #include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
 #include "TPA/DataFlow/PointerCFGEvaluator.h"
+#include "TPA/DataFlow/TransferFunction.h"
 
 #include "PointerAnalysis/ControlFlow/PointerCFGNodePrint.h"
 #include <llvm/Support/raw_ostream.h>
@@ -11,7 +12,7 @@ using namespace llvm;
 namespace tpa
 {
 
-PointerCFGEvaluator::PointerCFGEvaluator(const Context* c, const PointerCFG* p, GlobalStateType& gs, GlobalWorkListType& wl, TransferFunction<PointerCFG>& tf): ctx(c), cfg(p), globalState(gs), globalWorkList(wl), localWorkList(globalWorkList.getLocalWorkList(ctx, cfg)), transferFunction(tf)
+PointerCFGEvaluator::PointerCFGEvaluator(const Context* c, const PointerCFG* p, SemiSparseGlobalState& gs, GlobalWorkListType& wl): ctx(c), cfg(p), globalState(gs), globalWorkList(wl), localWorkList(globalWorkList.getLocalWorkList(ctx, cfg))
 {
 }
 
@@ -42,19 +43,17 @@ void PointerCFGEvaluator::visitEntryNode(const EntryNode* entryNode)
 
 void PointerCFGEvaluator::visitAllocNode(const AllocNode* allocNode)
 {
-	auto envChanged = transferFunction.evalAlloc(ctx, allocNode, globalState.getEnv());
+	auto evalResult = TransferFunction(ctx, globalState).evalAllocNode(allocNode);
 
-	if (envChanged)
+	if (evalResult.isValid() && evalResult.hasEnvChanged())
 		propagateTopLevel(allocNode);
 }
 
 void PointerCFGEvaluator::visitCopyNode(const CopyNode* copyNode)
 {
-	bool isValid;
-	bool envChanged;
-	std::tie(isValid, envChanged) = transferFunction.evalCopy(ctx, copyNode, globalState.getEnv());
+	auto evalResult = TransferFunction(ctx, globalState).evalCopyNode(copyNode);
 
-	if (isValid && envChanged)
+	if (evalResult.isValid() && evalResult.hasEnvChanged())
 		propagateTopLevel(copyNode);
 }
 
@@ -65,13 +64,11 @@ void PointerCFGEvaluator::visitLoadNode(const LoadNode* loadNode)
 		return;
 	auto newStore = *store;
 
-	bool isValid;
-	bool envChanged;
-	std::tie(isValid, envChanged) = transferFunction.evalLoad(ctx, loadNode, globalState.getEnv(), newStore);
+	auto evalResult = TransferFunction(ctx, newStore, globalState).evalLoadNode(loadNode);
 
-	if (isValid)
+	if (evalResult.isValid())
 	{
-		if (envChanged)
+		if (evalResult.hasEnvChanged())
 			propagateTopLevel(loadNode);
 		propagateMemLevel(loadNode, newStore);
 	}
@@ -84,11 +81,9 @@ void PointerCFGEvaluator::visitStoreNode(const StoreNode* storeNode)
 		return;
 	auto newStore = *store;
 
-	bool isValid;
-	bool storeChanged;
-	std::tie(isValid, storeChanged) = transferFunction.evalStore(ctx, storeNode, globalState.getEnv(), newStore);
+	auto evalResult = TransferFunction(ctx, newStore, globalState).evalStoreNode(storeNode);
 	
-	if (isValid)
+	if (evalResult.isValid())
 		propagateMemLevel(storeNode, newStore);
 }
 
@@ -98,7 +93,7 @@ void PointerCFGEvaluator::visitCallNode(const CallNode* callNode)
 	if (store == nullptr)
 		return;
 
-	auto callees = transferFunction.resolveCallTarget(ctx, callNode, globalState.getEnv(), globalState.getProgram().at_funs());
+	auto callees = TransferFunction(ctx, globalState).resolveCallTarget(callNode);
 
 	for (auto f: callees)
 		applyCall(callNode, f, *store);
@@ -135,11 +130,12 @@ void PointerCFGEvaluator::applyCall(const CallNode* callNode, const Function* ca
 	// Handle external function call here
 	if (callee->isDeclaration() || callee->isIntrinsic())
 	{
-		// Ask transferFunction compute the side effect of callee
-		bool isValid, envChanged;
+		// Ask transferFunction to compute the side effect of callee
 		auto newStore = store;
-		std::tie(isValid, envChanged, std::ignore) = transferFunction.applyExternal(ctx, callNode, globalState.getEnv(), newStore, callee);
-		if (!isValid)
+
+		auto evalResult = TransferFunction(ctx, newStore, globalState).evalExternalCall(callNode, callee);
+
+		if (!evalResult.isValid())
 			return;
 
 		// There are some special cases where there is no need to keep propagating info. e.g. calling exit() or abort().
@@ -147,7 +143,7 @@ void PointerCFGEvaluator::applyCall(const CallNode* callNode, const Function* ca
 			return;
 
 		// External calls are treated as language primitives. There is no need to redirect control flow to another function. Hence we just need to progress as usual
-		if (envChanged)
+		if (evalResult.hasEnvChanged())
 			propagateTopLevel(callNode);
 		propagateMemLevel(callNode, newStore);
 		return;
@@ -157,14 +153,13 @@ void PointerCFGEvaluator::applyCall(const CallNode* callNode, const Function* ca
 	assert(tgtCFG != nullptr);
 	auto tgtEntryNode = tgtCFG->getEntryNode();
 
-	bool isValid, envChanged;
-	std::tie(isValid, envChanged) = transferFunction.evalCall(ctx, callNode, newCtx, *tgtCFG, globalState.getEnv());
-	if (!isValid)
+	auto evalResult = TransferFunction(ctx, globalState).evalCallArguments(callNode, newCtx, callee);
+	if (!evalResult.isValid())
 		return;
 
 	auto storeChanged = globalState.getMemo().updateMemo(newCtx, tgtEntryNode, store);
 	// The reason why we could put envChanged into the if condition is we know that the only change in env that may affect the callee are the bindings for global values, yet those bindings won't change. 
-	if (envChanged || storeChanged)
+	if (evalResult.hasEnvChanged() || storeChanged)
 		globalWorkList.enqueue(newCtx, tgtCFG, tgtEntryNode);
 
 	// Prevent premature fixpoint
@@ -180,9 +175,8 @@ void PointerCFGEvaluator::applyReturn(const ReturnNode* retNode, const Context* 
 	auto callSiteNode = oldCFG->getNodeFromInstruction(oldInst);
 	assert(callSiteNode != nullptr);
 
-	bool isValid, envChanged;
-	std::tie(isValid, envChanged) = transferFunction.evalReturn(ctx, retNode, oldCtx, cast<CallNode>(callSiteNode), globalState.getEnv());
-	if (!isValid)
+	auto evalResult = TransferFunction(ctx, globalState).evalReturnValue(retNode, oldCtx, cast<CallNode>(callSiteNode));
+	if (!evalResult.isValid())
 		return;
 
 	for (auto succ: callSiteNode->succs())
@@ -191,7 +185,7 @@ void PointerCFGEvaluator::applyReturn(const ReturnNode* retNode, const Context* 
 		if (storeChanged)
 			globalWorkList.enqueue(oldCtx, oldCFG, succ);
 	}
-	if (envChanged)
+	if (evalResult.hasEnvChanged())
 		for (auto succ: callSiteNode->uses())
 			globalWorkList.enqueue(oldCtx, oldCFG, succ);
 }

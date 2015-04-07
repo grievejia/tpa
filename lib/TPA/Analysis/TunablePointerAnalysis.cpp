@@ -19,8 +19,8 @@ TunablePointerAnalysis::~TunablePointerAnalysis() = default;
 
 void TunablePointerAnalysis::runOnProgram(const PointerProgram& prog, Store store)
 {
-	GlobalState<PointerProgram> globalState(prog, callGraph, env);
-	auto ptrEngine = PointerAnalysisEngine(ptrManager, memManager, globalState, std::move(store), extTable);
+	GlobalState<PointerProgram> globalState(ptrManager, memManager, prog, callGraph, env, extTable);
+	auto ptrEngine = PointerAnalysisEngine(globalState, std::move(store));
 	ptrEngine.run();
 
 	//errs() << env << '\n';

@@ -18,6 +18,8 @@ const Pointer* PointerManager::getPointer(const Context* ctx, const llvm::Value*
 
 	if (isa<ConstantPointerNull>(val))
 		return &nullPtr;
+	else if (isa<UndefValue>(val))
+		return &universalPtr;
 
 	auto ptr = Pointer(ctx, val);
 	auto itr = ptrSet.find(ptr);

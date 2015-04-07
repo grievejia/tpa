@@ -12,7 +12,7 @@ class NodeVisitor
 private:
 public:
 	template <typename NodeType>
-	void visit(const NodeType* node)
+	RetType visit(const NodeType* node)
 	{
 		switch (node->getType())
 		{

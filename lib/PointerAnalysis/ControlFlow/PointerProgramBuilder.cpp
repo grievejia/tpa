@@ -118,8 +118,6 @@ PointerCFGNode* PointerProgramBuilder::translateInstruction(PointerCFG& cfg, con
 
 				if (!argVal->getType()->isPointerTy())
 					continue;
-				if (isa<UndefValue>(argVal))
-					continue;
 
 				callNode->addArgument(argVal);
 			}

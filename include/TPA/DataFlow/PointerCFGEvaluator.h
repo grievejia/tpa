@@ -2,10 +2,8 @@
 #define TPA_POINTER_CFG_EVALUATOR_H
 
 #include "PointerAnalysis/ControlFlow/NodeVisitor.h"
-#include "PointerAnalysis/ControlFlow/PointerProgram.h"
-#include "TPA/DataFlow/GlobalState.h"
+#include "TPA/DataFlow/SemiSparseGlobalState.h"
 #include "TPA/DataFlow/TPAWorkList.h"
-#include "TPA/DataFlow/TransferFunction.h"
 
 namespace tpa
 {
@@ -19,15 +17,12 @@ private:
 	const Context* ctx;
 	const PointerCFG* cfg;
 
-	using GlobalStateType = GlobalState<PointerProgram>;
-	GlobalStateType& globalState;
+	SemiSparseGlobalState& globalState;
 
 	using GlobalWorkListType = TPAWorkList<PointerCFG>;
 	using LocalWorkListType = typename GlobalWorkListType::LocalWorkList;
 	GlobalWorkListType& globalWorkList;
 	LocalWorkListType& localWorkList;
-
-	TransferFunction<PointerCFG>& transferFunction;
 
 	// NodeVisitor implementations
 	void visitEntryNode(const EntryNode*);
@@ -51,7 +46,7 @@ private:
 	// Make sure NodeVisitor can access the private members of this class
 	friend class NodeVisitor<PointerCFGEvaluator>;
 public:
-	PointerCFGEvaluator(const Context* c, const PointerCFG* p, GlobalStateType& gs, GlobalWorkListType& wl, TransferFunction<PointerCFG>& tf);
+	PointerCFGEvaluator(const Context* c, const PointerCFG* p, SemiSparseGlobalState& gs, GlobalWorkListType& wl);
 
 	void eval();
 };

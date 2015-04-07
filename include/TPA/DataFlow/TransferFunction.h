@@ -3,52 +3,83 @@
 
 #include "MemoryModel/PtsSet/Env.h"
 #include "MemoryModel/PtsSet/Store.h"
-#include "PointerAnalysis/ControlFlow/NodeMixins.h"
+#include "PointerAnalysis/ControlFlow/PointerCFG.h"
+#include "TPA/DataFlow/EvalStatus.h"
 
-#include <llvm/ADT/ArrayRef.h>
-
-#include <utility>
+#include <tuple>
 
 namespace tpa
 {
 
-class PointerManager;
-class MemoryManager;
-
-class ExternalPointerEffectTable;
-
-class PointerProgram;
-
 class Context;
+class MemoryManager;
+class PointerManager;
 
-template <typename GraphType>
 class TransferFunction
 {
 private:
-	using NodeType = typename GraphType::NodeType;
+	const Context* ctx;
+	Store* store;
 
-	PointerManager& ptrManager;
-	MemoryManager& memManager;
+	SemiSparseGlobalState& globalState;
 
-	const ExternalPointerEffectTable& extTable;
+	// General helpers
+	bool isSpecialLocation(const MemoryLocation*) const;
+	const Pointer* getPointer(const llvm::Value*);
+	const Pointer* getOrCreatePointer(const llvm::Value*);
+	const Pointer* getOrCreatePointer(const Context*, const llvm::Value*);
 
-	const Pointer* getPointer(const Context*, const llvm::Value*);
-	bool evalMalloc(const Pointer* dst, const llvm::Instruction*, const llvm::Value* size, Env&, Store&);
-	std::pair<bool, bool> evalStore(const Pointer* dst, const Pointer* src, const Env&, Store&);
-	std::pair<bool, bool> evalCopy(const Pointer* dst, const Pointer* src, Env&);
+	// evalAlloc helpers
+	EvalStatus evalMemoryAllocation(const Pointer*, llvm::Type*, bool);
+	EvalStatus evalExternalReturnsArg(const CallNode*, size_t);
+
+	// evalCopy helpers
+	EvalStatus evalCopyNodeWithZeroOffset(const CopyNode*);
+	EvalStatus evalCopyNodeWithNonZeroOffset(const CopyNode*);
+	EvalStatus copyWithOffset(const Pointer*, const Pointer*, size_t, bool);
+	PtsSet updateOffsetLocation(PtsSet, const MemoryLocation*, size_t, bool);
+
+	// evalStore helpers
+	EvalStatus evalStore(const Pointer*, const Pointer*);
+	EvalStatus strongUpdateStore(const MemoryLocation*, PtsSet);
+	EvalStatus weakUpdateStore(PtsSet, PtsSet);
+
+	// evalExternalCall helpers
+	EvalStatus evalMalloc(const CallNode*);
+	size_t getMallocSize(llvm::Type*, const llvm::Value*);
+	EvalStatus evalMallocWithSizeValue(const CallNode*, const llvm::Value*);
+	EvalStatus evalRealloc(const CallNode*);
+	EvalStatus copyPointerPtsSet(const Pointer*, const Pointer*);
+	EvalStatus evalExternalReturnsStatic(const CallNode*);
+	EvalStatus evalExternalStore(const CallNode*, size_t, size_t);
+	EvalStatus evalMemcpy(const CallNode*, size_t, size_t);
+	EvalStatus evalMemcpyPointer(const Pointer*, const Pointer*);
+	bool copyMemoryPtsSet(const MemoryLocation*, const std::vector<const MemoryLocation*>&, size_t);
+	EvalStatus evalMemset(const CallNode*);
+	EvalStatus fillPtsSetWithNull(const Pointer*);
+	bool setMemoryLocationToNull(const MemoryLocation*, llvm::Type*);
+	std::vector<const MemoryLocation*> findPointerCandidates(const MemoryLocation*, llvm::Type*);
+	std::vector<const MemoryLocation*> findPointerCandidatesInStruct(const MemoryLocation*, llvm::StructType*, size_t);
+
+	// resolveCallTargets helpers
+	std::vector<const llvm::Function*> findFunctionsInPtsSet(PtsSet, const CallNode*);
+
+	// evalCallArgumets helpers
+	std::vector<PtsSet> collectArgumentPtsSets(const CallNode*, size_t);
+	bool updateParameterPtsSets(const Context*, const PointerCFG&, const std::vector<PtsSet>&);
 public:
-	TransferFunction(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& t): ptrManager(p), memManager(m), extTable(t) {}
+	TransferFunction(const Context*, SemiSparseGlobalState&);
+	TransferFunction(const Context*, Store&, SemiSparseGlobalState&);
 
-	// Return true if env changes
-	bool evalAlloc(const Context*, const AllocNodeMixin<NodeType>*, Env&);
-	// The first returned boolean indicates whether the evaluation succeeded or not. The second (and third, if exists) returned boolean indicates wheter the env/store changes or not
-	std::pair<bool, bool> evalCopy(const Context*, const CopyNodeMixin<NodeType>*, Env&);
-	std::pair<bool, bool> evalLoad(const Context*, const LoadNodeMixin<NodeType>*, Env&, const Store&);
-	std::pair<bool, bool> evalStore(const Context*, const StoreNodeMixin<NodeType>*, const Env&, Store&);
-	std::vector<const llvm::Function*> resolveCallTarget(const Context*, const CallNodeMixin<NodeType>*, const Env&, const llvm::ArrayRef<const llvm::Function*>);
-	std::pair<bool, bool> evalCall(const Context*, const CallNodeMixin<NodeType>*, const Context*, const GraphType&, Env&);
-	std::pair<bool, bool> evalReturn(const Context*, const ReturnNodeMixin<NodeType>*, const Context*, const CallNodeMixin<NodeType>*, Env&);
-	std::tuple<bool, bool, bool> applyExternal(const Context*, const CallNodeMixin<NodeType>*, Env&, Store&, const llvm::Function* callee);
+	EvalStatus evalAllocNode(const AllocNode*);
+	EvalStatus evalCopyNode(const CopyNode*);
+	EvalStatus evalLoadNode(const LoadNode*);
+	EvalStatus evalStoreNode(const StoreNode*);
+	EvalStatus evalExternalCall(const CallNode*, const llvm::Function*);
+	EvalStatus evalCallArguments(const CallNode*, const Context*, const llvm::Function*);
+	EvalStatus evalReturnValue(const ReturnNode*, const Context*, const CallNode*);
+
+	std::vector<const llvm::Function*> resolveCallTarget(const CallNode*);
 };
 
 }
