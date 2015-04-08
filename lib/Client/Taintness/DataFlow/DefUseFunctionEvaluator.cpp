@@ -36,13 +36,13 @@ void DefUseFunctionEvaluator::propagateMemLevelChange(const DefUseInstruction* d
 		for (auto const& mapping: duInst->mem_succs())
 		{
 			auto usedLoc = mapping.first;
-			auto optLocVal = store.lookup(usedLoc);
-			if (!optLocVal)
+			auto locVal = store.lookup(usedLoc);
+			if (locVal == TaintLattice::Unknown)
 				continue;
 			
 			for (auto succ: mapping.second)
 			{
-				if (memo.insert(ProgramLocation(ctx, succ->getInstruction()), usedLoc, *optLocVal))
+				if (memo.insert(ProgramLocation(ctx, succ->getInstruction()), usedLoc, locVal))
 					workList.enqueue(succ);
 			}
 		}
@@ -64,68 +64,26 @@ void DefUseFunctionEvaluator::propagateGlobalState(const Context* ctx, const Def
 	propagateMemLevelChange(duInst, store, true, ctx, oldLocalWorkList);
 }
 
-std::vector<TaintLattice> DefUseFunctionEvaluator::collectArgumentTaintValue(ImmutableCallSite cs, const Function* callee)
-{
-	std::vector<TaintLattice> callerVals;
-	callerVals.reserve(callee->arg_size());
-	for (auto i = 0ul, e = callee->arg_size(); i < e; ++i)
-	{
-		auto arg = cs.getArgument(i);
-		auto argVal = TaintLattice::Untainted;
-		if (!isa<Constant>(arg))
-		{
-			auto optArgVal = globalState.getEnv().lookup(ProgramLocation(ctx, arg));
-			if (!optArgVal)
-				break;
-			argVal = *optArgVal;
-		}
-
-		callerVals.push_back(argVal);
-	}
-	return callerVals;
-}
-
-bool DefUseFunctionEvaluator::updateParamTaintValue(const Context* newCtx, const Function* callee, const std::vector<TaintLattice>& argVals)
-{
-	auto ret = false;
-	auto paramItr = callee->arg_begin();
-	for (auto argVal: argVals)
-	{
-		ret |= globalState.getEnv().weakUpdate(ProgramLocation(newCtx, paramItr), argVal);
-		++paramItr;
-	}
-	return ret;
-}
-
 void DefUseFunctionEvaluator::applyCall(const DefUseInstruction* duInst, const Context* newCtx, const Function* callee, const TaintStore& store)
 {
-	ImmutableCallSite cs(duInst->getInstruction());
-	assert(cs);
-	assert(cs.arg_size() >= callee->arg_size());
+	auto evalStatus = TaintTransferFunction(ctx, globalState).evalCallArguments(duInst->getInstruction(), newCtx, callee);
+	if (evalStatus.isValid())
+	{
+		auto envChanged = evalStatus.hasEnvChanged();
+		envChanged |= globalState.insertVisitedFunction(ProgramLocation(newCtx, callee));
 
-	auto argVals = collectArgumentTaintValue(cs, callee);
-	if (argVals.size() < callee->arg_size())
-		return;
-	bool envChanged = false;
-	envChanged |= updateParamTaintValue(newCtx, callee, argVals);
-	envChanged |= globalState.insertVisitedFunction(ProgramLocation(newCtx, callee));
-
-	auto& duFunc = globalState.getProgram().getDefUseFunction(callee);
-	auto entryDuInst = duFunc.getEntryInst();
-	propagateGlobalState(newCtx, &duFunc, entryDuInst, store, envChanged);
+		auto& duFunc = globalState.getProgram().getDefUseFunction(callee);
+		auto entryDuInst = duFunc.getEntryInst();
+		propagateGlobalState(newCtx, &duFunc, entryDuInst, store, envChanged);
+	}
 }
 
 void DefUseFunctionEvaluator::applyExternalCall(const DefUseInstruction* duInst, const Function* callee, const TaintStore& store)
 {
-	ImmutableCallSite cs(duInst->getInstruction());
-	assert(cs);
-
-	bool isValid, envChanged, storeChanged;
 	auto newStore = store;
-	std::tie(isValid, envChanged, storeChanged) = TaintTransferFunction(globalState).processLibraryCall(ctx, callee, cs, globalState.getEnv(), newStore);
-	if (!isValid)
-		return;
-	propagateState(duInst, newStore, envChanged, storeChanged);
+	auto evalStatus = TaintTransferFunction(ctx, newStore, globalState).evalExternalCall(duInst->getInstruction(), callee);
+	if (evalStatus.isValid())
+		propagateState(duInst, newStore, evalStatus.hasEnvChanged(), evalStatus.hasStoreChanged());
 }
 
 void DefUseFunctionEvaluator::evalCall(const DefUseInstruction* duInst, const TaintStore& store)
@@ -156,8 +114,8 @@ std::experimental::optional<TaintLattice> DefUseFunctionEvaluator::getReturnTain
 		else
 		{
 			auto optRetVal = globalState.getEnv().lookup(ProgramLocation(ctx, ret));
-			if (optRetVal)
-				retVal = *optRetVal;
+			if (optRetVal != TaintLattice::Unknown)
+				retVal = optRetVal;
 		}
 	}
 	return retVal;
@@ -199,12 +157,92 @@ void DefUseFunctionEvaluator::evalReturn(const DefUseInstruction* duInst, const 
 
 void DefUseFunctionEvaluator::evalInst(const DefUseInstruction* duInst, const TaintStore& store)
 {
-	bool isValid, envChanged, storeChanged;
-	auto newStore = store;
-	std::tie(isValid, envChanged, storeChanged) = TaintTransferFunction(globalState).evalInst(ctx, duInst->getInstruction(), globalState.getEnv(), newStore);
-	if (!isValid)
-		return;
-	propagateState(duInst, newStore, envChanged, storeChanged);
+	auto inst = duInst->getInstruction();
+	EvalStatus evalStatus = EvalStatus::getInvalidStatus();
+	TaintStore newStore;
+	switch (inst->getOpcode())
+	{
+		case Instruction::Alloca:
+			evalStatus = TaintTransferFunction(ctx, globalState).evalAlloca(inst);
+			break;
+		case Instruction::Trunc:
+		case Instruction::ZExt:
+		case Instruction::SExt:
+		case Instruction::FPTrunc:
+		case Instruction::FPExt:
+		case Instruction::FPToUI:
+		case Instruction::FPToSI:
+		case Instruction::UIToFP:
+		case Instruction::SIToFP:
+		case Instruction::IntToPtr:
+		case Instruction::PtrToInt:
+		case Instruction::BitCast:
+		case Instruction::AddrSpaceCast:
+		case Instruction::ExtractElement:
+		case Instruction::ExtractValue:
+			// Binary operators
+		case Instruction::And:
+		case Instruction::Or:
+		case Instruction::Xor:
+		case Instruction::Shl:
+		case Instruction::LShr:
+		case Instruction::AShr:
+		case Instruction::Add:
+		case Instruction::FAdd:
+		case Instruction::Sub:
+		case Instruction::FSub:
+		case Instruction::Mul:
+		case Instruction::FMul:
+		case Instruction::UDiv:
+		case Instruction::SDiv:
+		case Instruction::FDiv:
+		case Instruction::URem:
+		case Instruction::SRem:
+		case Instruction::FRem:
+		case Instruction::ICmp:
+		case Instruction::FCmp:
+		case Instruction::ShuffleVector:
+		case Instruction::InsertElement:
+		case Instruction::InsertValue:
+			// Ternary operators
+		case Instruction::Select:
+			// N-ary operators
+		case Instruction::GetElementPtr:
+			evalStatus = TaintTransferFunction(ctx, globalState).evalAllOperands(inst);
+			break;
+		case Instruction::PHI:
+			evalStatus = TaintTransferFunction(ctx, globalState).evalPhiNode(inst);
+			break;
+		case Instruction::Store:
+			newStore = store;
+			evalStatus = TaintTransferFunction(ctx, newStore, globalState).evalStore(inst);
+			break;
+		case Instruction::Load:
+			newStore = store;
+			evalStatus = TaintTransferFunction(ctx, newStore, globalState).evalLoad(inst);
+			break;
+		// TODO: Add implicit flow detection for Br
+		case Instruction::Br:
+			evalStatus = EvalStatus::getValidStatus(false, false);
+			break;
+		case Instruction::Invoke:
+		case Instruction::Call:
+		case Instruction::Ret:
+		case Instruction::Switch:
+		case Instruction::IndirectBr:
+		case Instruction::AtomicCmpXchg:
+		case Instruction::AtomicRMW:
+		case Instruction::Fence:
+		case Instruction::VAArg:
+		case Instruction::LandingPad:
+		case Instruction::Resume:
+		case Instruction::Unreachable:
+		{
+			errs() << "Insruction not handled :" << *inst << "\n";
+		}
+	}
+	if (evalStatus.isValid())
+		propagateState(duInst, newStore, evalStatus.hasEnvChanged(), evalStatus.hasStoreChanged());
 }
 
 void DefUseFunctionEvaluator::evalEntry(const DefUseInstruction* duInst, const TaintStore& store)

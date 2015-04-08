@@ -7,6 +7,8 @@
 
 #include <llvm/IR/CallSite.h>
 
+#include <experimental/optional>
+
 namespace tpa
 {
 	class Context;
@@ -42,8 +44,6 @@ private:
 	void evalInst(const tpa::DefUseInstruction*, const TaintStore&);
 
 	std::experimental::optional<TaintLattice> getReturnTaintValue(const tpa::DefUseInstruction*);
-	std::vector<TaintLattice> collectArgumentTaintValue(llvm::ImmutableCallSite, const llvm::Function*);
-	bool updateParamTaintValue(const tpa::Context*, const llvm::Function*, const std::vector<TaintLattice>&);
 
 	void propagateGlobalState(const tpa::Context*, const tpa::DefUseFunction*, const tpa::DefUseInstruction*, const TaintStore&, bool);
 	void propagateState(const tpa::DefUseInstruction*, const TaintStore&, bool, bool);

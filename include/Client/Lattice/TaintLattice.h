@@ -6,8 +6,9 @@
 namespace client
 {
 
-enum class TaintLattice
+enum class TaintLattice: uint8_t
 {
+	Unknown,
 	Untainted,
 	Tainted,
 	Either
@@ -19,19 +20,26 @@ template<> struct Lattice<TaintLattice>
 	{
 		if (lhs == rhs)
 			return LatticeCompareResult::Equal;
-		else if (rhs == TaintLattice::Either)
+		else if (rhs == TaintLattice::Either || lhs == TaintLattice::Unknown)
 			return LatticeCompareResult::LessThan;
-		else if (lhs == TaintLattice::Either)
+		else if (lhs == TaintLattice::Either || rhs == TaintLattice::Unknown)
 			return LatticeCompareResult::GreaterThan;
 		else
 			return LatticeCompareResult::Incomparable;
 	}
 	static TaintLattice merge(const TaintLattice& lhs, const TaintLattice& rhs)
 	{
-		if (lhs == rhs)
-			return lhs;
-		else
-			return TaintLattice::Either;
+		auto cmpResult = compare(lhs, rhs);
+		switch (cmpResult)
+		{
+			case LatticeCompareResult::Equal:
+			case LatticeCompareResult::GreaterThan:
+				return rhs;
+			case LatticeCompareResult::LessThan:
+				return lhs;
+			case LatticeCompareResult::Incomparable:
+				return TaintLattice::Either;
+		}
 	}
 };
 

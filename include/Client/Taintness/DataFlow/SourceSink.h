@@ -4,8 +4,8 @@
 #include "Client/Lattice/TaintLattice.h"
 
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 namespace client
 {
@@ -14,7 +14,7 @@ namespace taint
 {
 
 // TPosition specify where the position of the taintness is
-enum class TPosition
+enum class TPosition: std::uint8_t
 {
 	Ret,
 	Arg0,
@@ -27,14 +27,13 @@ enum class TPosition
 	AllArgs,
 };
 
-enum class TClass
+enum class TClass: bool
 {
 	ValueOnly,
 	DirectMemory,
-	ReachableMemory
 };
 
-enum class TEnd
+enum class TEnd: bool
 {
 	Source,
 	Sink

@@ -6,8 +6,6 @@
 
 #include <llvm/ADT/DenseMap.h>
 
-#include <experimental/optional>
-
 namespace llvm
 {
 	class Value;
@@ -33,14 +31,13 @@ public:
 
 	TaintMap() = default;
 
-	std::experimental::optional<TaintLattice> lookup(KeyType key) const
+	TaintLattice lookup(KeyType key) const
 	{
-		std::experimental::optional<TaintLattice> ret;
 		auto itr = taintMap.find(key);
 		if (itr != taintMap.end())
-			ret = itr->second;
-		
-		return ret;
+			return itr->second;
+		else
+			return TaintLattice::Unknown;
 	}
 
 	bool weakUpdate(KeyType key, TaintLattice l)

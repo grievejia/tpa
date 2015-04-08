@@ -224,7 +224,7 @@ std::vector<const MemoryLocation*> TransferFunction::findPointerCandidatesInStru
 		if (elemType->isPointerTy())
 		{
 			auto tgtLoc = memManager.offsetMemory(loc, baseOffset + offset);
-			if (!isSpecialLocation(tgtLoc))
+			if (!memManager.isSpecialMemoryLocation(tgtLoc))
 				candidates.push_back(tgtLoc);
 		}
 		else if (auto subStType = dyn_cast<StructType>(elemType))

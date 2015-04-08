@@ -38,7 +38,12 @@ MemoryManager::MemoryManager(DataLayout& d):
 	universalObj.arrayLayout.push_back(MemoryObject::ArrayTriple{0, std::numeric_limits<size_t>::max(), 1});
 
 	universalLoc = getMemoryLocation(&universalObj, 0, true);
-	nullLoc = getMemoryLocation(&nullObj, 0, false);
+	nullLoc = getMemoryLocation(&nullObj, 0, true);
+}
+
+bool MemoryManager::isSpecialMemoryLocation(const MemoryLocation* loc) const
+{
+	return loc == universalLoc || loc == nullLoc;
 }
 
 const MemoryObject* MemoryManager::createMemoryObjectForFunction(const Function* f)

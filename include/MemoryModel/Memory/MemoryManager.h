@@ -42,6 +42,8 @@ public:
 	const MemoryLocation* getNullLocation() const { return nullLoc; }
 	const llvm::DataLayout& getDataLayout() const { return dataLayout; }
 
+	bool isSpecialMemoryLocation(const MemoryLocation* loc) const;
+
 	// FIXME: MemoryManager has to trust GlobalPointerAnalysis to set argv correctly. This is bad design
 	void setArgv(const MemoryLocation* ptrLoc, const MemoryLocation* memLoc);
 	const MemoryLocation* getArgvPtrLoc() const

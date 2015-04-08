@@ -24,11 +24,6 @@ static inline size_t countPointerArguments(const Function* f)
 TransferFunction::TransferFunction(const Context* c, SemiSparseGlobalState& g): ctx(c), store(nullptr), globalState(g) {}
 TransferFunction::TransferFunction(const Context* c, Store& s, SemiSparseGlobalState& g): ctx(c), store(&s), globalState(g) {}
 
-bool TransferFunction::isSpecialLocation(const MemoryLocation* loc) const
-{
-	return (loc == globalState.getMemoryManager().getUniversalLocation()) || (loc == globalState.getMemoryManager().getNullLocation());
-}
-
 // Return NULL if no pointer found
 const Pointer* TransferFunction::getPointer(const Value* val)
 {
@@ -194,7 +189,7 @@ EvalStatus TransferFunction::weakUpdateStore(PtsSet dstSet, PtsSet srcSet)
 	bool storeChanged = false;
 	for (auto updateLoc: dstSet)
 	{
-		if (isSpecialLocation(updateLoc))
+		if (globalState.getMemoryManager().isSpecialMemoryLocation(updateLoc))
 		{
 			// We won't process stores into unknown/null location
 			// This is an kind of unsound behavior
@@ -218,7 +213,7 @@ EvalStatus TransferFunction::evalStore(const Pointer* dst, const Pointer* src)
 
 	auto dstLoc = *dstSet.begin();
 	// If the store target is precise and the target location is not unknown/null
-	if (dstSet.getSize() == 1 && !dstLoc->isSummaryLocation() && !isSpecialLocation(dstLoc))
+	if (dstSet.getSize() == 1 && !dstLoc->isSummaryLocation())
 		return strongUpdateStore(dstLoc, srcSet);
 	return weakUpdateStore(dstSet, srcSet);
 }

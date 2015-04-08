@@ -61,8 +61,6 @@ TEntry wordsToTEntry(const SmallVectorImpl<StringRef>& words)
 	auto tClass = TClass::ValueOnly;
 	if (words[4] == "D")
 		tClass = TClass::DirectMemory;
-	//else if (words[4] == "R")
-	//	tClass = TClass::ReachableMemory;
 	else if (words[4] != "V")
 		report_fatal_error("SourceSink config file format error: class?");
 

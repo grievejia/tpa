@@ -24,7 +24,6 @@ private:
 	SemiSparseGlobalState& globalState;
 
 	// General helpers
-	bool isSpecialLocation(const MemoryLocation*) const;
 	const Pointer* getPointer(const llvm::Value*);
 	const Pointer* getOrCreatePointer(const llvm::Value*);
 	const Pointer* getOrCreatePointer(const Context*, const llvm::Value*);
