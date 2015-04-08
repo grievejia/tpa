@@ -22,5 +22,9 @@ set (PointerAnalysisSourceCodes
 	External/ExternalModTable.cpp
 	External/ExternalRefTable.cpp
 )
-add_library (PointerAnalysis SHARED ${PointerAnalysisSourceCodes})
+add_library (PointerAnalysisObj OBJECT ${PointerAnalysisSourceCodes})
+add_library (PointerAnalysis SHARED $<TARGET_OBJECTS:PointerAnalysisObj>)
+add_library (PointerAnalysisStatic STATIC $<TARGET_OBJECTS:PointerAnalysisObj>)
+
 target_link_libraries (PointerAnalysis MemoryModel)
+target_link_libraries (PointerAnalysisStatic MemoryModelStatic LLVMAnalysis)

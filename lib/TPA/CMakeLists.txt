@@ -18,6 +18,11 @@ set (TPASourceCodes
 	Pass/TunableReachingDefAnalysisPass.cpp
 )
 
-add_library (TPA SHARED ${TPASourceCodes})
+add_library (TPAObj OBJECT ${TPASourceCodes})
+add_library (TPA SHARED $<TARGET_OBJECTS:TPAObj>)
+add_library (TPAStatic STATIC $<TARGET_OBJECTS:TPAObj>)
+
 target_link_libraries (TPA PointerAnalysis)
 target_link_libraries (TPA MemoryModel)
+target_link_libraries (TPAStatic PointerAnalysisStatic)
+target_link_libraries (TPAStatic MemoryModelStatic)
