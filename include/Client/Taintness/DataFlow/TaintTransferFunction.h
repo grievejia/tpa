@@ -1,7 +1,7 @@
 #ifndef INFOFLOW_TRANSFER_FUNCTION_H
 #define INFOFLOW_TRANSFER_FUNCTION_H
 
-#include "Client/Taintness/DataFlow/SourceSink.h"
+#include "Client/Taintness/SourceSink/SourceSinkLookupTable.h"
 #include "Client/Taintness/DataFlow/TaintEnvStore.h"
 #include "MemoryModel/PtsSet/PtsSet.h"
 #include "TPA/DataFlow/EvalStatus.h"

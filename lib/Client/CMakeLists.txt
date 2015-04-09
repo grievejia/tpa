@@ -1,11 +1,14 @@
 
 set (ClientSourceCodes
 	Taintness/Analysis/TaintAnalysis.cpp
-	Taintness/DataFlow/SourceSink.cpp
 	Taintness/DataFlow/DefUseFunctionEvaluator.cpp
 	Taintness/DataFlow/TaintAnalysisEngine.cpp
 	Taintness/DataFlow/TaintTransferFunction.cpp
 	Taintness/Pass/TaintAnalysisPass.cpp
+	Taintness/Precision/TaintPrecisionMonitor.cpp
+	Taintness/PrettyPrint.cpp
+	Taintness/SourceSink/SinkViolationChecker.cpp
+	Taintness/SourceSink/SourceSinkLookupTable.cpp
 )
 
 add_library (ClientsObj OBJECT ${ClientSourceCodes})

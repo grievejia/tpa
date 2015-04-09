@@ -1,7 +1,7 @@
 #ifndef TPA_TAINT_ANALYSIS_H
 #define TPA_TAINT_ANALYSIS_H
 
-#include "Client/Taintness/DataFlow/SourceSink.h"
+#include "Client/Taintness/SourceSink/SourceSinkLookupTable.h"
 
 namespace tpa
 {

@@ -1,4 +1,4 @@
-#include "Client/Taintness/DataFlow/SourceSink.h"
+#include "Client/Taintness/SourceSink/SourceSinkLookupTable.h"
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringExtras.h>

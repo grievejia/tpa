@@ -2,6 +2,7 @@
 #define TPA_TAINT_SOURCE_SINK_H
 
 #include "Client/Lattice/TaintLattice.h"
+#include "Client/Taintness/SourceSink/TaintDescriptor.h"
 
 #include <string>
 #include <unordered_map>
@@ -12,32 +13,6 @@ namespace client
 
 namespace taint
 {
-
-// TPosition specify where the position of the taintness is
-enum class TPosition: std::uint8_t
-{
-	Ret,
-	Arg0,
-	Arg1,
-	Arg2,
-	Arg3,
-	Arg4,
-	AfterArg0,
-	AfterArg1,
-	AllArgs,
-};
-
-enum class TClass: bool
-{
-	ValueOnly,
-	DirectMemory,
-};
-
-enum class TEnd: bool
-{
-	Source,
-	Sink
-};
 
 struct TEntry
 {

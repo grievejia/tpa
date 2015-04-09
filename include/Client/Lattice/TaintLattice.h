@@ -3,6 +3,11 @@
 
 #include "Client/Lattice/Lattice.h"
 
+namespace llvm
+{
+	class raw_ostream;
+}
+
 namespace client
 {
 
@@ -16,7 +21,7 @@ enum class TaintLattice: uint8_t
 
 template<> struct Lattice<TaintLattice>
 {
-	static LatticeCompareResult compare(const TaintLattice& lhs, const TaintLattice& rhs)
+	static LatticeCompareResult compare(TaintLattice lhs, TaintLattice rhs)
 	{
 		if (lhs == rhs)
 			return LatticeCompareResult::Equal;
@@ -27,21 +32,37 @@ template<> struct Lattice<TaintLattice>
 		else
 			return LatticeCompareResult::Incomparable;
 	}
-	static TaintLattice merge(const TaintLattice& lhs, const TaintLattice& rhs)
+
+	static TaintLattice merge(TaintLattice lhs, TaintLattice rhs)
 	{
 		auto cmpResult = compare(lhs, rhs);
 		switch (cmpResult)
 		{
 			case LatticeCompareResult::Equal:
 			case LatticeCompareResult::GreaterThan:
-				return rhs;
-			case LatticeCompareResult::LessThan:
 				return lhs;
+			case LatticeCompareResult::LessThan:
+				return rhs;
 			case LatticeCompareResult::Incomparable:
 				return TaintLattice::Either;
 		}
 	}
+
+	static bool willMergeSmearTaintness(TaintLattice lhs, TaintLattice rhs)
+	{
+		if (lhs == TaintLattice::Either && rhs == TaintLattice::Either)
+			return false;
+		else if (lhs == TaintLattice::Unknown || rhs == TaintLattice::Unknown)
+			return false;
+		else
+			return lhs != rhs;
+	}
 };
+
+namespace taint
+{
+	llvm::raw_ostream& operator<<(llvm::raw_ostream&, TaintLattice);
+}
 
 }
 

@@ -19,5 +19,5 @@ target_link_libraries(InterpreterTest TPAStatic LLVMAsmParser gtest_main)
 add_executable(GlobalAnalysisTest GlobalAnalysisUnitTest/GlobalAnalysisTest.cpp)
 target_link_libraries(GlobalAnalysisTest PointerAnalysisStatic LLVMAsmParser gtest_main)
 
-add_executable(TaintnessTest TaintnessUnitTest/TaintnessTest.cpp)
+add_executable(TaintnessTest TaintnessUnitTest/TaintnessTest.cpp TaintnessUnitTest/PrecisionTest.cpp)
 target_link_libraries(TaintnessTest ClientsStatic LLVMAsmParser gtest_main)
