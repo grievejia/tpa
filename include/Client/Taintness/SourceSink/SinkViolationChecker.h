@@ -25,12 +25,11 @@ struct SinkViolationRecord
 	TaintLattice expectVal;
 	TaintLattice actualVal;
 };
+using SinkViolationRecords = std::vector<SinkViolationRecord>;
 
 class SinkViolationChecker
 {
 private:
-	using SinkViolationRecords = std::vector<SinkViolationRecord>;
-
 	const TaintEnv& env;
 	const TaintStore& store;
 	const SourceSinkLookupTable& table;

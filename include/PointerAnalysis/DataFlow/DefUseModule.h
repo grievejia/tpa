@@ -30,10 +30,10 @@ private:
 	size_t rpo;
 
 	using NodeSet = VectorSet<DefUseInstruction*>;
-	NodeSet topSucc;
+	NodeSet topSucc, topPred;
 
 	using NodeMap = std::unordered_map<const MemoryLocation*, NodeSet>;
-	NodeMap memSucc;
+	NodeMap memSucc, memPred;
 
 	DefUseInstruction(): inst(nullptr), rpo(std::numeric_limits<size_t>::max()) {}
 public:
@@ -62,15 +62,17 @@ public:
 		rpo = o;
 	}
 
-	bool insertTopLevelEdge(DefUseInstruction* node)
+	void insertTopLevelEdge(DefUseInstruction* node)
 	{
 		assert(node != nullptr);
-		return topSucc.insert(node);
+		topSucc.insert(node);
+		node->topPred.insert(this);
 	}
 	void insertMemLevelEdge(const MemoryLocation* loc, DefUseInstruction* node)
 	{
 		assert(loc != nullptr && node != nullptr);
 		memSucc[loc].insert(node);
+		node->memPred[loc].insert(this);
 	}
 
 	llvm::iterator_range<iterator> top_succs()
@@ -88,6 +90,23 @@ public:
 	llvm::iterator_range<const_mem_succ_iterator> mem_succs() const
 	{
 		return llvm::iterator_range<const_mem_succ_iterator>(memSucc.begin(), memSucc.end());
+	}
+
+	llvm::iterator_range<iterator> top_preds()
+	{
+		return llvm::iterator_range<iterator>(topPred.begin(), topPred.end());
+	}
+	llvm::iterator_range<const_iterator> top_preds() const
+	{
+		return llvm::iterator_range<const_iterator>(topPred.begin(), topPred.end());
+	}
+	llvm::iterator_range<mem_succ_iterator> mem_preds()
+	{
+		return llvm::iterator_range<mem_succ_iterator>(memPred.begin(), memPred.end());
+	}
+	llvm::iterator_range<const_mem_succ_iterator> mem_preds() const
+	{
+		return llvm::iterator_range<const_mem_succ_iterator>(memPred.begin(), memPred.end());
 	}
 
 	friend class DefUseFunction;

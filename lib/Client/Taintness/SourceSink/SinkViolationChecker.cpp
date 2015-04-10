@@ -39,7 +39,7 @@ TaintLattice SinkViolationChecker::lookupTaint(const tpa::ProgramLocation& pLoc,
 	}
 }
 
-SinkViolationChecker::SinkViolationRecords SinkViolationChecker::checkCallSiteWithSummary(const ProgramLocation& pLoc, const TSummary& summary)
+SinkViolationRecords SinkViolationChecker::checkCallSiteWithSummary(const ProgramLocation& pLoc, const TSummary& summary)
 {
 	SinkViolationRecords violations;
 	ImmutableCallSite cs(pLoc.getInstruction());
@@ -120,7 +120,7 @@ SinkViolationChecker::SinkViolationRecords SinkViolationChecker::checkCallSiteWi
 	return violations;
 }
 
-SinkViolationChecker::SinkViolationRecords SinkViolationChecker::checkSinkViolation(const SinkSignature& sig)
+SinkViolationRecords SinkViolationChecker::checkSinkViolation(const SinkSignature& sig)
 {
 	SinkViolationRecords violations;
 	

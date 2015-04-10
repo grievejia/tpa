@@ -5,9 +5,10 @@ set (ClientSourceCodes
 	Taintness/DataFlow/TaintAnalysisEngine.cpp
 	Taintness/DataFlow/TaintTransferFunction.cpp
 	Taintness/Pass/TaintAnalysisPass.cpp
-	Taintness/Precision/TaintPrecisionMonitor.cpp
+	Taintness/Precision/PrecisionLossTracker.cpp
 	Taintness/PrettyPrint.cpp
 	Taintness/SourceSink/SinkViolationChecker.cpp
+	Taintness/SourceSink/SinkViolationClassifier.cpp
 	Taintness/SourceSink/SourceSinkLookupTable.cpp
 )
 

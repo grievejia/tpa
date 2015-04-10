@@ -41,8 +41,7 @@ bool TaintAnalysis::checkSinkViolation(const TaintGlobalState& globalState)
 		auto optStore = globalState.getMemo().lookup(sinkSignature.getCallSite());
 		auto const& store = (optStore == nullptr) ? TaintStore() : *optStore;
 
-		SinkViolationChecker checker(globalState.getEnv(), store, sourceSinkLookupTable, ptrAnalysis);
-		auto checkResult = checker.checkSinkViolation(sinkSignature);
+		auto checkResult = SinkViolationChecker(globalState.getEnv(), store, sourceSinkLookupTable, ptrAnalysis).checkSinkViolation(sinkSignature);
 
 		if (!checkResult.empty())
 		{
