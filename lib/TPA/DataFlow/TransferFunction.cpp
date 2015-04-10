@@ -117,13 +117,12 @@ EvalStatus TransferFunction::copyWithOffset(const Pointer* dst, const Pointer* s
 	auto resSet = PtsSet::getEmptySet();
 	for (auto srcLoc: srcSet)
 	{
-		if (srcLoc == globalState.getMemoryManager().getUniversalLocation() || srcLoc == globalState.getMemoryManager().getNullLocation())
+		if (globalState.getMemoryManager().isSpecialMemoryLocation(srcLoc))
 		{
 			// For unknown location, we are unable to track its points-to set
 			// For null location, doing pointer arithmetic on it result in undefined behavior
-			// In either case, we need to give up 
-			resSet = PtsSet::getSingletonSet(srcLoc);
-			break;
+			// TODO: report this to the user
+			continue;
 		}
 
 		resSet = updateOffsetLocation(resSet, srcLoc, offset, isArrayRef);

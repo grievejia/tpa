@@ -81,7 +81,6 @@ void PointerCFGEvaluator::visitStoreNode(const StoreNode* storeNode)
 	auto newStore = *store;
 
 	auto evalResult = TransferFunction(ctx, newStore, globalState).evalStoreNode(storeNode);
-	
 	if (evalResult.isValid())
 		propagateMemLevel(storeNode, newStore);
 }

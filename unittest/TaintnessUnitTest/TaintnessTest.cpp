@@ -1,4 +1,5 @@
 #include "Client/Taintness/DataFlow/TaintEnvStore.h"
+#include "Client/Taintness/SourceSink/SinkSignature.h"
 #include "Client/Taintness/SourceSink/SinkViolationChecker.h"
 #include "Client/Taintness/SourceSink/SourceSinkLookupTable.h"
 #include "MemoryModel/Memory/MemoryManager.h"
@@ -150,32 +151,32 @@ TEST(TaintnessTest, ViolationCheckerTest)
 	auto ssLookupTable = SourceSinkLookupTable();
 	ssLookupTable.readSummaryFromFile("source_sink.conf");
 
-	// The test actually starts here...
+	// The real test actually starts here...
 	SinkViolationChecker checker(env, store, ssLookupTable, ptrAnalysis);
-	auto checkRes0 = checker.checkSinkViolation(sink0, mallocFunc);
+	auto checkRes0 = checker.checkSinkViolation(SinkSignature(sink0, mallocFunc));
 	ASSERT_EQ(checkRes0.size(), 1u);
-	EXPECT_EQ(checkRes0.front().pos, TPosition::Arg0);
+	EXPECT_EQ(checkRes0.front().argPos, 0u);
 	EXPECT_EQ(checkRes0.front().what, TClass::ValueOnly);
 	EXPECT_EQ(checkRes0.front().expectVal, TaintLattice::Untainted);
 	EXPECT_EQ(checkRes0.front().actualVal, TaintLattice::Tainted);
 
-	auto checkRes1 = checker.checkSinkViolation(sink1, mallocFunc);
+	auto checkRes1 = checker.checkSinkViolation(SinkSignature(sink1, mallocFunc));
 	ASSERT_TRUE(checkRes1.empty());
 
-	auto checkRes2 = checker.checkSinkViolation(sink2, readFunc);
+	auto checkRes2 = checker.checkSinkViolation(SinkSignature(sink2, readFunc));
 	ASSERT_EQ(checkRes2.size(), 2u);
-	EXPECT_EQ(checkRes2[0].pos, TPosition::Arg0);
+	EXPECT_EQ(checkRes2[0].argPos, 0u);
 	EXPECT_EQ(checkRes2[0].what, TClass::ValueOnly);
 	EXPECT_EQ(checkRes2[0].expectVal, TaintLattice::Untainted);
 	EXPECT_EQ(checkRes2[0].actualVal, TaintLattice::Tainted);
-	EXPECT_EQ(checkRes2[1].pos, TPosition::Arg2);
+	EXPECT_EQ(checkRes2[1].argPos, 2u);
 	EXPECT_EQ(checkRes2[1].what, TClass::ValueOnly);
 	EXPECT_EQ(checkRes2[1].expectVal, TaintLattice::Untainted);
 	EXPECT_EQ(checkRes2[1].actualVal, TaintLattice::Either);
 
-	auto checkRes3 = checker.checkSinkViolation(sink3, printfFunc);
+	auto checkRes3 = checker.checkSinkViolation(SinkSignature(sink3, printfFunc));
 	ASSERT_EQ(checkRes3.size(), 1u);
-	EXPECT_EQ(checkRes3.front().pos, TPosition::Arg0);
+	EXPECT_EQ(checkRes3.front().argPos, 0u);
 	EXPECT_EQ(checkRes3.front().what, TClass::DirectMemory);
 	EXPECT_EQ(checkRes3.front().expectVal, TaintLattice::Untainted);
 	EXPECT_EQ(checkRes3.front().actualVal, TaintLattice::Either);

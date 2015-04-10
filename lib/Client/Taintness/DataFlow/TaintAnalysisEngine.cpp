@@ -98,7 +98,7 @@ void TaintAnalysisEngine::evalFunction(const Context* ctx, const DefUseFunction*
 	evaluator.eval();
 }
 
-bool TaintAnalysisEngine::run()
+void TaintAnalysisEngine::run()
 {
 	while (!globalWorkList.isEmpty())
 	{
@@ -108,9 +108,6 @@ bool TaintAnalysisEngine::run()
 
 		evalFunction(ctx, duFunc);
 	}
-
-	return false;
-	//return !transferFunction.checkMemoStates(globalState.getEnv(), globalState.getMemo(), true);
 }
 
 }

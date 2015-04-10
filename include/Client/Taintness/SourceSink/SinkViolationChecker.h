@@ -14,12 +14,13 @@ namespace client
 namespace taint
 {
 
+class SinkSignature;
 class SourceSinkLookupTable;
 class TSummary;
 
 struct SinkViolationRecord
 {
-	TPosition pos;
+	unsigned argPos;
 	TClass what;
 	TaintLattice expectVal;
 	TaintLattice actualVal;
@@ -41,7 +42,7 @@ public:
 	SinkViolationChecker(const TaintEnv& e, const TaintStore& s, const SourceSinkLookupTable& t, const tpa::PointerAnalysis&);
 
 	// Return all prog location whose sink policy is violated
-	SinkViolationRecords checkSinkViolation(const tpa::ProgramLocation&, const llvm::Function*);
+	SinkViolationRecords checkSinkViolation(const SinkSignature&);
 };
 
 }

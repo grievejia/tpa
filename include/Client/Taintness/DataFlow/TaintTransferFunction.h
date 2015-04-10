@@ -44,7 +44,7 @@ private:
 
 	tpa::EvalStatus evalMemcpy(const llvm::Instruction*);
 	tpa::EvalStatus evalMalloc(const llvm::Instruction*);
-	tpa::EvalStatus evalCallBySummary(const llvm::Instruction*, const TSummary&);
+	tpa::EvalStatus evalCallBySummary(const llvm::Instruction*, const llvm::Function*, const TSummary&);
 
 	tpa::EvalStatus strongUpdateStore(const tpa::MemoryLocation*, TaintLattice);
 	tpa::EvalStatus weakUpdateStore(tpa::PtsSet, TaintLattice);

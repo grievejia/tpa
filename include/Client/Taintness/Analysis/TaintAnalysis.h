@@ -15,17 +15,21 @@ namespace client
 namespace taint
 {
 
+class TaintGlobalState;
+
 class TaintAnalysis
 {
 private:
 	SourceSinkLookupTable sourceSinkLookupTable;
 	const tpa::PointerAnalysis& ptrAnalysis;
 	const tpa::ExternalPointerEffectTable& extTable;
+
+	bool checkSinkViolation(const TaintGlobalState& globalState);
 public:
 	TaintAnalysis(const tpa::PointerAnalysis& p, const tpa::ExternalPointerEffectTable& t);
 
 	// Return true if there is a info flow violation
-	bool runOnDefUseModule(const tpa::DefUseModule& m, bool reportError = true);
+	bool runOnDefUseModule(const tpa::DefUseModule& m);
 };
 
 }

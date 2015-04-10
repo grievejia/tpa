@@ -1,3 +1,4 @@
+#include "Client/Taintness/SourceSink/SinkSignature.h"
 #include "Client/Taintness/SourceSink/SinkViolationChecker.h"
 #include "Client/Taintness/SourceSink/SourceSinkLookupTable.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
@@ -41,8 +42,6 @@ TaintLattice SinkViolationChecker::lookupTaint(const tpa::ProgramLocation& pLoc,
 SinkViolationChecker::SinkViolationRecords SinkViolationChecker::checkCallSiteWithSummary(const ProgramLocation& pLoc, const TSummary& summary)
 {
 	SinkViolationRecords violations;
-
-	auto ctx = pLoc.getContext();
 	ImmutableCallSite cs(pLoc.getInstruction());
 
 	for (auto const& entry: summary)
@@ -51,13 +50,15 @@ SinkViolationChecker::SinkViolationRecords SinkViolationChecker::checkCallSiteWi
 		if (entry.end == TEnd::Source)
 			continue;
 
-		auto checkProgramLocation = [this, &entry, &violations] (const ProgramLocation& pLoc)
+		auto checkArgument = [this, &entry, &violations, &pLoc, cs] (unsigned argPos)
 		{
-			auto currVal = lookupTaint(pLoc, entry.what);
+			auto argPLoc = ProgramLocation(pLoc.getContext(), cs.getArgument(argPos));
+
+			auto currVal = lookupTaint(argPLoc, entry.what);
 			auto cmpRes = Lattice<TaintLattice>::compare(entry.val, currVal);
 			if (cmpRes != LatticeCompareResult::Equal && cmpRes != LatticeCompareResult::GreaterThan)
 			{
-				violations.push_back({ entry.pos, entry.what, entry.val, currVal });
+				violations.push_back({ argPos, entry.what, entry.val, currVal });
 			}
 		};
 
@@ -65,50 +66,51 @@ SinkViolationChecker::SinkViolationRecords SinkViolationChecker::checkCallSiteWi
 		{
 			case TPosition::Ret:
 			{
-				checkProgramLocation(pLoc);
+				llvm_unreachable("Return value cannot be a sink");
+				//checkProgramLocation(pLoc);
 				break;
 			}
 			case TPosition::Arg0:
 			{
-				checkProgramLocation(ProgramLocation(ctx, cs.getArgument(0)));
+				checkArgument(0);
 				break;
 			}
 			case TPosition::Arg1:
 			{
-				checkProgramLocation(ProgramLocation(ctx, cs.getArgument(1)));
+				checkArgument(1);
 				break;
 			}
 			case TPosition::Arg2:
 			{
-				checkProgramLocation(ProgramLocation(ctx, cs.getArgument(2)));
+				checkArgument(2);
 				break;
 			}
 			case TPosition::Arg3:
 			{
-				checkProgramLocation(ProgramLocation(ctx, cs.getArgument(3)));
+				checkArgument(3);
 				break;
 			}
 			case TPosition::Arg4:
 			{
-				checkProgramLocation(ProgramLocation(ctx, cs.getArgument(4)));
+				checkArgument(4);
 				break;
 			}
 			case TPosition::AfterArg0:
 			{
 				for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-					checkProgramLocation(ProgramLocation(ctx, cs.getArgument(i)));
+					checkArgument(i);
 				break;
 			}
 			case TPosition::AfterArg1:
 			{
 				for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-					checkProgramLocation(ProgramLocation(ctx, cs.getArgument(i)));
+					checkArgument(i);
 				break;
 			}
 			case TPosition::AllArgs:
 			{
 				for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
-					checkProgramLocation(ProgramLocation(ctx, cs.getArgument(i)));
+					checkArgument(i);
 
 				break;
 			}
@@ -118,12 +120,12 @@ SinkViolationChecker::SinkViolationRecords SinkViolationChecker::checkCallSiteWi
 	return violations;
 }
 
-SinkViolationChecker::SinkViolationRecords SinkViolationChecker::checkSinkViolation(const ProgramLocation& pLoc, const Function* callee)
+SinkViolationChecker::SinkViolationRecords SinkViolationChecker::checkSinkViolation(const SinkSignature& sig)
 {
 	SinkViolationRecords violations;
 	
-	if (auto taintSummary = table.getSummary(callee->getName()))
-		violations = checkCallSiteWithSummary(pLoc, *taintSummary);
+	if (auto taintSummary = table.getSummary(sig.getCallee()->getName()))
+		violations = checkCallSiteWithSummary(sig.getCallSite(), *taintSummary);
 
 	return violations;
 }

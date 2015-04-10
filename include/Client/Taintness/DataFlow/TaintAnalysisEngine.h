@@ -29,7 +29,7 @@ private:
 public:
 	TaintAnalysisEngine(TaintGlobalState& g);
 
-	bool run();
+	void run();
 };
 
 }

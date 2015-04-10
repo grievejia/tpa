@@ -6,6 +6,7 @@
 
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 
@@ -291,7 +292,7 @@ EvalStatus TransferFunction::evalMemset(const CallNode* callNode)
 
 	ImmutableCallSite cs(callNode->getInstruction());
 	assert(cs && cs.arg_size() >= 2);
-	auto dstPtr = getPointer(cs.getArgument(0));
+	auto dstPtr = getPointer(callNode->getArgument(0));
 	if (dstPtr == nullptr)
 		return EvalStatus::getInvalidStatus();
 

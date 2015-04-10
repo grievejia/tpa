@@ -344,14 +344,17 @@ EvalStatus TaintTransferFunction::taintCallByEntry(const Instruction* inst, cons
 	}
 }
 
-EvalStatus TaintTransferFunction::evalCallBySummary(const Instruction* inst, const TSummary& summary)
+EvalStatus TaintTransferFunction::evalCallBySummary(const Instruction* inst, const Function* callee, const TSummary& summary)
 {
 	auto res = EvalStatus::getValidStatus(false, false);
 	for (auto const& entry: summary)
 	{
-		// We only care about taint source here
+		// We only care about taint source, but we need to record all taint sinks for future examination
 		if (entry.end == TEnd::Sink)
+		{
+			globalState.insertSink(ProgramLocation(ctx, inst), callee);
 			continue;
+		}
 
 		res = res || taintCallByEntry(inst, entry);
 	}
@@ -363,21 +366,26 @@ EvalStatus TaintTransferFunction::evalExternalCall(const Instruction* inst, cons
 	assert(store != nullptr);
 
 	auto funName = callee->getName();
-	auto ptrEffect = globalState.getExternalPointerEffectTable().lookup(funName);
+	EvalStatus res = EvalStatus::getValidStatus(false, false);
+	if (auto summary = globalState.getSourceSinkLookupTable().getSummary(funName))
+		res = evalCallBySummary(inst, callee, *summary);
 
+	auto ptrEffect = globalState.getExternalPointerEffectTable().lookup(funName);
 	if (ptrEffect == PointerEffect::MemcpyArg1ToArg0 || funName == "strcpy" || funName == "strncpy")
-		return evalMemcpy(inst);
+	{
+		res = res || evalMemcpy(inst);
+	}
 	else if (ptrEffect == PointerEffect::Malloc)
-		return evalMalloc(inst);
-	else if (auto summary = globalState.getSourceSinkLookupTable().getSummary(funName))
-		return evalCallBySummary(inst, *summary);
+	{
+		res = res || evalMalloc(inst);
+	}
 	else if (!callee->getReturnType()->isVoidTy())
 	{
 		auto envChanged = globalState.getEnv().weakUpdate(ProgramLocation(ctx, inst), TaintLattice::Untainted);
-		return EvalStatus::getValidStatus(envChanged, false);
+		res = res || EvalStatus::getValidStatus(envChanged, false);
 	}
-	else
-		return EvalStatus::getValidStatus(false, false);
+	
+	return res;
 }
 
 }
