@@ -1,11 +1,14 @@
 
 set (ClientSourceCodes
+	Taintness/Analysis/PrecisionLossTrackingAnalysis.cpp
 	Taintness/Analysis/TaintAnalysis.cpp
 	Taintness/DataFlow/DefUseFunctionEvaluator.cpp
 	Taintness/DataFlow/TaintAnalysisEngine.cpp
 	Taintness/DataFlow/TaintTransferFunction.cpp
+	Taintness/Pass/PrecisionLossTrackingPass.cpp
 	Taintness/Pass/TaintAnalysisPass.cpp
 	Taintness/Precision/PrecisionLossTracker.cpp
+	Taintness/Precision/TrackingTransferFunction.cpp
 	Taintness/PrettyPrint.cpp
 	Taintness/SourceSink/SinkViolationChecker.cpp
 	Taintness/SourceSink/SinkViolationClassifier.cpp

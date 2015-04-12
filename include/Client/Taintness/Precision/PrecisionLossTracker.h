@@ -24,7 +24,7 @@ private:
 	const tpa::DefUseFunction* duFunc;
 
 	using ValueSet = llvm::SmallPtrSet<const llvm::Value*, 8>;
-	using MemorySet = llvm::SmallPtrSet<const tpa::MemoryLocation*, 16>;
+	using MemorySet = llvm::SmallPtrSet<const tpa::MemoryLocation*, 8>;
 	using ArgumentSet = llvm::SmallPtrSet<const llvm::Argument*, 8>;
 	using DefUseInstructionSet = llvm::SmallPtrSet<const tpa::DefUseInstruction*, 64>;
 
@@ -38,6 +38,9 @@ private:
 	void trackSource(const tpa::DefUseInstruction*);
 	void trackValues(const tpa::DefUseInstruction*, const ValueSet&);
 	void trackMemory(const tpa::DefUseInstruction*, const MemorySet&);
+
+	CallSiteSet trackCallSite();
+	void trackCallSiteByValue(const CallSiteSet&, CallSiteSet&);
 public:
 	PrecisionLossTracker(const ContextDefUseFunction&, const FunctionSinkViolationRecords&, const TaintGlobalState&);
 

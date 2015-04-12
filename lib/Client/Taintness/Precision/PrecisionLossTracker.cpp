@@ -4,6 +4,8 @@
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 
 #include <llvm/IR/CallSite.h>
+#include <llvm/IR/Function.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace tpa;
@@ -101,9 +103,10 @@ void PrecisionLossTracker::PrecisionLossTracker::trackMemory(const DefUseInstruc
 
 void PrecisionLossTracker::trackSource(const DefUseInstruction* duInst)
 {
+	errs() << "track " << *duInst->getInstruction() << "\n";
 	ValueSet values;
 	MemorySet locs;
-	TrackingTransferFunction(globalState, values, locs).eval(duInst);
+	TrackingTransferFunction(globalState, ctx, values, locs).eval(duInst);
 
 	if (!values.empty())
 		trackValues(duInst, values);
@@ -111,10 +114,15 @@ void PrecisionLossTracker::trackSource(const DefUseInstruction* duInst)
 		trackMemory(duInst, locs);
 }
 
+PrecisionLossTracker::CallSiteSet PrecisionLossTracker::trackCallSite()
+{
+	CallSiteSet retSet;
+
+	return retSet;
+}
+
 PrecisionLossTracker::CallSiteSet PrecisionLossTracker::trackPrecisionLossSource()
 {
-	CallSiteSet callsiteSet;
-
 	while (!workList.isEmpty())
 	{
 		auto duInst = workList.dequeue();
@@ -127,7 +135,12 @@ PrecisionLossTracker::CallSiteSet PrecisionLossTracker::trackPrecisionLossSource
 		trackSource(duInst);
 	}
 
-	return callsiteSet;
+	for (auto arg: trackedArguments)
+		errs() << "\ttracked arg: " << *arg << "\n";
+	for (auto loc: trackedExternalLocations)
+		errs() << "\ttracked loc: " << *loc << "\n";
+
+	return trackCallSite();
 }
 
 }
