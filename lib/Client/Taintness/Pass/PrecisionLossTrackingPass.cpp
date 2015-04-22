@@ -29,7 +29,7 @@ bool PrecisionLossTrackingPass::runOnModule(Module& module)
 	DefUseModuleBuilder duBuilder(tpa, summaryMap, extModTable, extRefTable);
 	auto duModule = duBuilder.buildDefUseModule(module);
 
-	PrecisionLossTrackingAnalysis analysis(tpa, extTable);
+	PrecisionLossTrackingAnalysis analysis(tpa);
 
 	analysis.runOnDefUseModule(duModule);
 	

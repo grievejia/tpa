@@ -1,7 +1,7 @@
 #ifndef TPA_TAINT_PRECISION_LOSS_TRACKING_ANALYSIS_H
 #define TPA_TAINT_PRECISION_LOSS_TRACKING_ANALYSIS_H
 
-#include "Client/Taintness/SourceSink/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
 
 namespace tpa
 {
@@ -22,11 +22,10 @@ class PrecisionLossTrackingAnalysis
 private:
 	SourceSinkLookupTable sourceSinkLookupTable;
 	const tpa::PointerAnalysis& ptrAnalysis;
-	const tpa::ExternalPointerEffectTable& extTable;
 
 	void checkSinkViolation(const TaintGlobalState& globalState);
 public:
-	PrecisionLossTrackingAnalysis(const tpa::PointerAnalysis& p, const tpa::ExternalPointerEffectTable& t);
+	PrecisionLossTrackingAnalysis(const tpa::PointerAnalysis& p);
 
 	// Return true if there is a info flow violation
 	void runOnDefUseModule(const tpa::DefUseModule& m);

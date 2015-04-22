@@ -1,7 +1,7 @@
 #ifndef TPA_TAINT_SINK_SIGNATURE_H
 #define TPA_TAINT_SINK_SIGNATURE_H
 
-#include "MemoryModel/Precision/ProgramLocation.h"
+#include "PointerAnalysis/DataFlow/DefUseProgramLocation.h"
 
 namespace llvm
 {
@@ -16,12 +16,12 @@ namespace taint
 class SinkSignature
 {
 private:
-	tpa::ProgramLocation callsite;
+	tpa::DefUseProgramLocation callsite;
 	const llvm::Function* callee;
 public:
-	SinkSignature(const tpa::ProgramLocation& p, const llvm::Function* f): callsite(p), callee(f) {}
+	SinkSignature(const tpa::DefUseProgramLocation& p, const llvm::Function* f): callsite(p), callee(f) {}
 
-	const tpa::ProgramLocation& getCallSite() const
+	const tpa::DefUseProgramLocation& getCallSite() const
 	{
 		return callsite;
 	}

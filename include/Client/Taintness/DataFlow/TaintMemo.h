@@ -1,8 +1,8 @@
 #ifndef TPA_TAINT_MEMO_H
 #define TPA_TAINT_MEMO_H
 
-#include "Client/Taintness/DataFlow/TaintEnvStore.h"
-#include "MemoryModel/Precision/ProgramLocation.h"
+#include "Client/Taintness/DataFlow/TaintStore.h"
+#include "PointerAnalysis/DataFlow/DefUseProgramLocation.h"
 
 #include <unordered_map>
 
@@ -19,14 +19,14 @@ namespace taint
 class TaintMemo
 {
 private:
-	std::unordered_map<tpa::ProgramLocation, TaintStore> memo;
+	std::unordered_map<tpa::DefUseProgramLocation, TaintStore> memo;
 public:
 	using const_iterator = decltype(memo)::const_iterator;
 
 	TaintMemo() = default;
 
 	// Return NULL if key not found
-	const TaintStore* lookup(const tpa::ProgramLocation& pLoc) const
+	const TaintStore* lookup(const tpa::DefUseProgramLocation& pLoc) const
 	{
 		auto itr = memo.find(pLoc);
 		if (itr == memo.end())
@@ -35,7 +35,7 @@ public:
 			return &itr->second;
 	}
 
-	bool insert(const tpa::ProgramLocation& pLoc, const tpa::MemoryLocation* loc, TaintLattice tVal)
+	bool insert(const tpa::DefUseProgramLocation& pLoc, const tpa::MemoryLocation* loc, TaintLattice tVal)
 	{
 		auto itr = memo.find(pLoc);
 		if (itr == memo.end())
@@ -46,7 +46,7 @@ public:
 		return itr->second.weakUpdate(loc, tVal);
 	}
 
-	void update(const tpa::ProgramLocation& pLoc, TaintStore&& store)
+	void update(const tpa::DefUseProgramLocation& pLoc, TaintStore&& store)
 	{
 		memo[pLoc] = std::move(store);
 	}

@@ -2,21 +2,18 @@
 #define TPA_TAINT_TRACKING_TRANSFER_FUNCTION_H
 
 #include "Client/Lattice/TaintLattice.h"
-
-#include <llvm/ADT/SmallPtrSet.h>
+#include "Client/Taintness/Precision/TrackerTypes.h"
 
 namespace llvm
 {
 	class Function;
 	class Instruction;
-	class Value;
 }
 
 namespace tpa
 {
 	class Context;
 	class DefUseInstruction;
-	class MemoryLocation;
 	class PtsSet;
 }
 
@@ -30,32 +27,18 @@ class TaintGlobalState;
 class TrackingTransferFunction
 {
 private:
-	using ValueSet = llvm::SmallPtrSet<const llvm::Value*, 8>;
-	using MemorySet = llvm::SmallPtrSet<const tpa::MemoryLocation*, 8>;
-
 	const TaintGlobalState& globalState;
 	const tpa::Context* ctx;
-	ValueSet& valueSet;
-	MemorySet& memSet;
 
 	TaintLattice getTaintForValue(const llvm::Value*);
 
-	void evalAllOperands(const llvm::Instruction*);
-	void evalStore(const llvm::Instruction*);
-	void evalLoad(const llvm::Instruction*);
-
-	template <typename SetType>
-	void evalPtsSet(const llvm::Instruction*, const SetType&);
-
-	void evalCall(const tpa::DefUseInstruction*);
-	void evalExternalCall(const tpa::DefUseInstruction*, const llvm::Function*);
-	void evalNonExternalCall(const tpa::DefUseInstruction*);
-
-	void evalMemcpy(const tpa::DefUseInstruction* duInst);
+	MemorySet evalPtsSet(const tpa::DefUseInstruction*, const tpa::PtsSet&);
 public:
-	TrackingTransferFunction(const TaintGlobalState&, const tpa::Context*, ValueSet&, MemorySet&);
+	TrackingTransferFunction(const TaintGlobalState&, const tpa::Context*);
 
-	void eval(const tpa::DefUseInstruction*);
+	ValueSet evalAllOperands(const tpa::DefUseInstruction*);
+	ValueSet evalStore(const tpa::DefUseInstruction*);
+	MemorySet evalLoad(const tpa::DefUseInstruction*);
 };
 
 }

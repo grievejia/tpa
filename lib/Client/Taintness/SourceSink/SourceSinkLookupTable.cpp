@@ -1,19 +1,15 @@
-#include "Client/Taintness/SourceSink/SourceSinkLookupTable.h"
+#include "Utils/pcomb/pcomb.h"
+#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
 
-#include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/Regex.h>
-#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
+using namespace pcomb;
 
 namespace client
 {
 namespace taint
-{
-
-namespace
 {
 
 std::unique_ptr<MemoryBuffer> readFileIntoBuffer(const std::string& fileName)
@@ -28,83 +24,153 @@ std::unique_ptr<MemoryBuffer> readFileIntoBuffer(const std::string& fileName)
 	return std::move(fileOrErr.get());
 }
 
-TEntry wordsToTEntry(const SmallVectorImpl<StringRef>& words)
+void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 {
-	static auto const posNameMap = std::unordered_map<std::string, TPosition> {
-		{ "Ret", TPosition::Ret},
-		{ "Arg0", TPosition::Arg0},
-		{ "Arg1", TPosition::Arg1},
-		{ "Arg2", TPosition::Arg2},
-		{ "Arg3", TPosition::Arg3},
-		{ "Arg4", TPosition::Arg4},
-		{ "AfterArg0", TPosition::AfterArg0},
-		{ "AfterArg1", TPosition::AfterArg1},
-		{ "AllArgs", TPosition::AllArgs},
-	};
+	auto idx = rule(
+		regex("\\d+"),
+		[] (auto const& digits) -> uint8_t
+		{
+			auto num = std::stoul(digits);
+			assert(num < 256);
+			return num;
+		}
+	);
 
-	if (words.size() != 6)
-		report_fatal_error("SourceSink config file format error: missing column");
-	if (words[1] != ":")
-		report_fatal_error("SourceSink config file format error: missing colon");
+	auto id = token(regex("[\\w\\.]+"));
 
-	auto tEnd = TEnd::Sink;
-	if (words[2] == "src")
-		tEnd = TEnd::Source;
-	else if (words[2] != "sink")
-		report_fatal_error("SourceSink config file format error: source or sink?");
+	auto tret = rule(
+		token(str("Ret")),
+		[] (auto const&)
+		{
+			return TPosition::getReturnPosition();
+		}
+	);
 
-	auto itr = posNameMap.find(words[3]);
-	if (itr == posNameMap.end())
-		report_fatal_error("SourceSink config file format error: pos?");
-	auto tPos = itr->second;
+	auto targ = rule(
+		token(seq(str("Arg"), idx)),
+		[] (auto const& pair)
+		{
+			return TPosition::getArgPosition(std::get<1>(pair));
+		}
+	);
 
-	auto tClass = TClass::ValueOnly;
-	if (words[4] == "D")
-		tClass = TClass::DirectMemory;
-	else if (words[4] != "V")
-		report_fatal_error("SourceSink config file format error: class?");
+	auto tafterarg = rule(
+		token(seq(str("AfterArg"), idx)),
+		[] (auto const& pair)
+		{
+			return TPosition::getAfterArgPosition(std::get<1>(pair));
+		}
+	);
 
-	auto tVal = TaintLattice::Untainted;
-	if (words[5] == "TAINT")
-		tVal = TaintLattice::Tainted;
-	else if (words[5] != "UNTAINT")
-		report_fatal_error("SourceSink config file format error: lattice val?");
+	auto vclass = rule(
+		token(ch('V')),
+		[] (char)
+		{
+			return TClass::ValueOnly;
+		}
+	);
+	auto dclass = rule(
+		token(ch('D')),
+		[] (char)
+		{
+			return TClass::DirectMemory;
+		}
+	);
+	auto rclass = rule(
+		token(ch('R')),
+		[] (char)
+		{
+			return TClass::ReachableMemory;
+		}
+	);
 
-	return TEntry{ tPos, tClass, tEnd, tVal };
+	auto srcEntry = rule(
+		seq(
+			rule(token(str("SOURCE")), [] (auto const&) { return TEnd::Source; }),
+			id,
+			alt(tret, targ, tafterarg)
+		),
+		[this] (auto const& tuple)
+		{
+			auto entry = std::make_unique<SourceTaintEntry>(std::get<2>(tuple));
+			summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
+			return true;
+		}
+	);
+
+	auto pipeEntry = rule(
+		seq(
+			rule(token(str("PIPE")), [] (auto const&) { return TEnd::Pipe; }),
+			id,
+			alt(tret, targ),
+			alt(vclass, dclass, rclass),
+			targ,
+			alt(vclass, dclass, rclass)
+		),
+		[this] (auto const& tuple)
+		{
+			auto entry = std::make_unique<PipeTaintEntry>(std::get<2>(tuple), std::get<3>(tuple), std::get<4>(tuple), std::get<5>(tuple));
+			summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
+			return true;
+		}
+	);
+
+	auto sinkEntry = rule(
+		seq(
+			rule(token(str("SINK")), [] (auto const&) { return TEnd::Sink; }),
+			id,
+			alt(targ, tafterarg),
+			alt(vclass, dclass)
+		),
+		[this] (auto const& tuple)
+		{
+			auto entry = std::make_unique<SinkTaintEntry>(std::get<2>(tuple), std::get<3>(tuple));
+			summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
+			return true;
+		}
+	);
+
+	// Ignoring a function is the same as inserting an mapping into summaryMap without adding any entry for it
+	auto ignoreEntry = rule(
+		seq(
+			token(str("IGNORE")),
+			id
+		),
+		[this] (auto const& tuple)
+		{
+			summaryMap.insert(std::make_pair(std::get<1>(tuple), TaintSummary()));
+			return false;
+		}
+	);
+
+	auto tentry = alt(srcEntry, pipeEntry, sinkEntry, ignoreEntry);
+	auto tsummary = many(tentry, true);
+
+	auto parseResult = tsummary.parse(fileContent);
+	if (parseResult.hasError() || !StringRef(parseResult.getInputStream().getRawBuffer()).ltrim().empty())
+	{
+		auto& stream = parseResult.getInputStream();
+		auto lineStr = std::to_string(stream.getLineNumber());
+		auto colStr = std::to_string(stream.getColumnNumber());
+		auto errMsg = Twine("Parsing taint config file failed at line ") + lineStr + ", column " + colStr;
+		report_fatal_error(errMsg);
+	}
 }
-
-}	// end of anonymous namespace
 
 void SourceSinkLookupTable::readSummaryFromFile(const std::string& fileName)
 {
 	auto memBuf = readFileIntoBuffer(fileName);
-
-	auto lines = SmallVector<StringRef, 16>();
-	SplitString(memBuf->getBuffer(), lines, "\n\r");
-
-	auto words = SmallVector<StringRef, 16>();
-	for (auto& line: lines)
-	{
-		if (line.empty() || line.startswith("#"))
-			continue;
-
-		line.split(words, " ", -1, false);
-		auto entry = wordsToTEntry(words);
-
-		summaryMap[words[0]].addEntry(entry);
-
-		words.clear();
-	}
+	parseLines(memBuf->getBuffer());
 }
 
-const TSummary* SourceSinkLookupTable::getSummary(const std::string& name) const
+const TaintSummary* SourceSinkLookupTable::getSummary(const std::string& name) const
 {
 	auto itr = summaryMap.find(name);
 	if (itr == summaryMap.end())
 		return nullptr;
 	else
-		return &(itr->second);
+		return &itr->second;
 }
 
-}	// end of taint
-}	// end of client
+}
+}

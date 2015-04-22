@@ -6,9 +6,9 @@ namespace client
 namespace taint
 {
 
-static bool doTaintAnalysis(const PointerAnalysis& pa, const ExternalPointerEffectTable& extTable, const DefUseModule& duModule, bool report = true)
+static bool doTaintAnalysis(const PointerAnalysis& pa, const DefUseModule& duModule, bool report = true)
 {
-	TaintAnalysis taintAnalysis(pa, extTable);
+	TaintAnalysis taintAnalysis(pa);
 	auto hasError = taintAnalysis.runOnDefUseModule(duModule, report);
 	if (!hasError)
 	{
@@ -36,10 +36,10 @@ bool AdaptiveTaintAnalysisPass::runOnModule(Module& module)
 	DefUseModuleBuilder duBuilder(tpa, summaryMap, extModTable, extRefTable);
 	auto duModule = duBuilder.buildDefUseModule(module);
 	
-	if (doTaintAnalysis(tpa, extTable, duModule, false))
+	if (doTaintAnalysis(tpa, duModule, false))
 	{
 		errs() << "--- second round ---\n";
-		doTaintAnalysis(tpa, extTable, duModule, true);
+		doTaintAnalysis(tpa, duModule, true);
 	}
 
 	return false;

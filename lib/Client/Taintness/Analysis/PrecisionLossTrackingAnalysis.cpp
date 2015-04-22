@@ -2,8 +2,7 @@
 #include "Client/Taintness/DataFlow/TaintAnalysisEngine.h"
 #include "Client/Taintness/DataFlow/TaintGlobalState.h"
 #include "Client/Taintness/Precision/PrecisionLossTracker.h"
-#include "Client/Taintness/SourceSink/SinkViolationChecker.h"
-#include "Client/Taintness/SourceSink/SinkViolationClassifier.h"
+#include "Client/Taintness/SourceSink/Checker/SinkViolationChecker.h"
 
 #include <llvm/IR/Function.h>
 #include <llvm/Support/raw_ostream.h>
@@ -16,14 +15,13 @@ namespace client
 namespace taint
 {
 
-PrecisionLossTrackingAnalysis::PrecisionLossTrackingAnalysis(const tpa::PointerAnalysis& p, const ExternalPointerEffectTable& t): ptrAnalysis(p), extTable(t)
+PrecisionLossTrackingAnalysis::PrecisionLossTrackingAnalysis(const tpa::PointerAnalysis& p): ptrAnalysis(p)
 {
-	sourceSinkLookupTable.readSummaryFromFile("source_sink.conf");
 }
 
 void PrecisionLossTrackingAnalysis::checkSinkViolation(const TaintGlobalState& globalState)
 {
-	SinkViolationClassifier classifier(globalState.getProgram());
+	PrecisionLossTracker tracker(globalState);
 	for (auto const& sinkSignature: globalState.getSinkSignatures())
 	{
 		auto optStore = globalState.getMemo().lookup(sinkSignature.getCallSite());
@@ -33,24 +31,20 @@ void PrecisionLossTrackingAnalysis::checkSinkViolation(const TaintGlobalState& g
 
 		if (!checkResult.empty())
 		{
-			classifier.addSinkSignature(sinkSignature.getCallSite(), checkResult);
+			tracker.addSinkViolation(sinkSignature.getCallSite(), checkResult);
 		}
 	}
 
-	for (auto const& mapping: classifier)
+	auto impSources = tracker.trackImprecisionSource();
+	for (auto const& pLoc: impSources)
 	{
-		auto const& ctxDuFunc = mapping.first;
-		auto const& funRecords = mapping.second;
-		errs() << "Tracking " << *ctxDuFunc.getContext() << "::" << ctxDuFunc.getDefUseFunction()->getFunction().getName() << "...\n";
-
-		PrecisionLossTracker tracker(ctxDuFunc, funRecords, globalState);
-		tracker.trackPrecisionLossSource();
+		errs() << *pLoc.getContext() << "::" << *pLoc.getDefUseInstruction()->getInstruction() << "\n";
 	}
 }
 
 void PrecisionLossTrackingAnalysis::runOnDefUseModule(const DefUseModule& duModule)
 {
-	TaintGlobalState globalState(duModule, ptrAnalysis, extTable, sourceSinkLookupTable);
+	TaintGlobalState globalState(duModule, ptrAnalysis);
 	TaintAnalysisEngine engine(globalState);
 	engine.run();
 

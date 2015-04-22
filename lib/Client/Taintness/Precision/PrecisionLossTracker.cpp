@@ -1,6 +1,7 @@
 #include "Client/Taintness/DataFlow/TaintGlobalState.h"
+#include "Client/Taintness/Precision/LocalDataFlowTracker.h"
 #include "Client/Taintness/Precision/PrecisionLossTracker.h"
-#include "Client/Taintness/Precision/TrackingTransferFunction.h"
+#include "Client/Taintness/Precision/FunctionPrecisionLossTracker.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 
 #include <llvm/IR/CallSite.h>
@@ -15,8 +16,13 @@ namespace client
 namespace taint
 {
 
-void PrecisionLossTracker::processSinkViolationRecords(const DefUseInstruction* duInst, const SinkViolationRecords& records)
+PrecisionLossTracker::PrecisionLossTracker(const TaintGlobalState& g): globalState(g)
 {
+}
+
+void PrecisionLossTracker::addSinkViolation(const DefUseProgramLocation& pLoc, const SinkViolationRecords& records)
+{
+	auto duInst = pLoc.getDefUseInstruction();
 	ImmutableCallSite cs(duInst->getInstruction());
 	auto const& ptrAnalysis = globalState.getPointerAnalysis();
 
@@ -35,112 +41,37 @@ void PrecisionLossTracker::processSinkViolationRecords(const DefUseInstruction* 
 		}
 		else
 		{
-			auto pSet = ptrAnalysis.getPtsSet(ctx, argVal);
+			auto pSet = ptrAnalysis.getPtsSet(pLoc.getContext(), argVal);
 			assert(!pSet.isEmpty());
 
 			locs.insert(pSet.begin(), pSet.end());
 		}
 	}
 
-	if (!values.empty())
-		trackValues(duInst, values);
-	if (!locs.empty())
-		trackMemory(duInst, locs);
-}
-
-PrecisionLossTracker::PrecisionLossTracker(const ContextDefUseFunction& cf, const FunctionSinkViolationRecords& funRecords, const TaintGlobalState& g): globalState(g), ctx(cf.getContext()), duFunc(cf.getDefUseFunction())
-{
-	for (auto const& funRecord: funRecords)
-	{
-		auto duInst = funRecord.getDefUseInstruction();
-		auto const& records = funRecord.getSinkViolationRecords();
-		processSinkViolationRecords(duInst, records);
-	}
-}
-
-void PrecisionLossTracker::PrecisionLossTracker::trackValues(const DefUseInstruction* duInst, const ValueSet& values)
-{
-	assert(!duInst->isEntryInstruction());
-
-	// Detect tainted arguments first
-	for (auto value: values)
-	{
-		if (auto arg = dyn_cast<Argument>(value))
-			trackedArguments.insert(arg);
-	}
-
-	// Enqueue all affected operands
-	for (auto predDuInst: duInst->top_preds())
-	{
-		if (predDuInst->isEntryInstruction())
-			continue;
-		
-		auto predInst = predDuInst->getInstruction();
-		if (values.count(predInst))
-			workList.enqueue(predDuInst);
-	}
-}
-
-void PrecisionLossTracker::PrecisionLossTracker::trackMemory(const DefUseInstruction* duInst, const MemorySet& locs)
-{
-	assert(!duInst->isEntryInstruction());
-
-	// Enqueue all affected operands
-	for (auto const& mapping: duInst->mem_preds())
-	{
-		if (!locs.count(mapping.first))
-			continue;
-		
-		for (auto predDuInst: mapping.second)
-		{
-			if (predDuInst->isEntryInstruction())
-				trackedExternalLocations.insert(mapping.first);
-			else
-				workList.enqueue(predDuInst);
-		}
-	}
-}
-
-void PrecisionLossTracker::trackSource(const DefUseInstruction* duInst)
-{
-	errs() << "track " << *duInst->getInstruction() << "\n";
-	ValueSet values;
-	MemorySet locs;
-	TrackingTransferFunction(globalState, ctx, values, locs).eval(duInst);
+	auto duFunc = &globalState.getProgram().getDefUseFunction(duInst->getFunction());
+	auto& localWorkList = globalWorkList.enqueueAndGetLocalWorkList(pLoc.getContext(), duFunc);
 
 	if (!values.empty())
-		trackValues(duInst, values);
+		LocalDataFlowTracker(localWorkList).trackValues(pLoc.getDefUseInstruction(), values);
 	if (!locs.empty())
-		trackMemory(duInst, locs);
+		LocalDataFlowTracker(localWorkList).trackMemory(pLoc.getDefUseInstruction(), locs);
 }
 
-PrecisionLossTracker::CallSiteSet PrecisionLossTracker::trackCallSite()
+DefUseProgramLocationSet PrecisionLossTracker::trackImprecisionSource()
 {
-	CallSiteSet retSet;
+	DefUseProgramLocationSet retSet;
+	PrecisionLossGlobalState precGlobalState(retSet);
+
+	while (!globalWorkList.isEmpty())
+	{
+		const Context* ctx;
+		const DefUseFunction* duFunc;
+		std::tie(ctx, duFunc) = globalWorkList.dequeue();
+
+		FunctionPrecisionLossTracker(ctx, duFunc, globalState, precGlobalState, globalWorkList).track();
+	}
 
 	return retSet;
-}
-
-PrecisionLossTracker::CallSiteSet PrecisionLossTracker::trackPrecisionLossSource()
-{
-	while (!workList.isEmpty())
-	{
-		auto duInst = workList.dequeue();
-		assert(!duInst->isEntryInstruction());
-
-		auto visited = visitedDuInstructions.insert(duInst).second;
-		if (!visited)
-			continue;
-
-		trackSource(duInst);
-	}
-
-	for (auto arg: trackedArguments)
-		errs() << "\ttracked arg: " << *arg << "\n";
-	for (auto loc: trackedExternalLocations)
-		errs() << "\ttracked loc: " << *loc << "\n";
-
-	return trackCallSite();
 }
 
 }

@@ -1,7 +1,7 @@
-#include "Client/Taintness/DataFlow/TaintEnvStore.h"
-#include "Client/Taintness/SourceSink/SinkSignature.h"
-#include "Client/Taintness/SourceSink/SinkViolationChecker.h"
-#include "Client/Taintness/SourceSink/SourceSinkLookupTable.h"
+#include "Client/Taintness/DataFlow/TaintEnv.h"
+#include "Client/Taintness/SourceSink/Checker/SinkSignature.h"
+#include "Client/Taintness/SourceSink/Checker/SinkViolationChecker.h"
+#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/External/ExternalPointerEffectTable.h"
@@ -20,14 +20,14 @@ namespace
 
 TEST(TaintnessTest, SourceSinkTest)
 {
-	auto ssManager = SourceSinkLookupTable();
-	EXPECT_EQ(ssManager.getSummary("read"), nullptr);
-	EXPECT_EQ(ssManager.getSummary("printf"), nullptr);
+	auto ssTable = SourceSinkLookupTable();
+	EXPECT_EQ(ssTable.getSummary("read"), nullptr);
+	EXPECT_EQ(ssTable.getSummary("printf"), nullptr);
 
-	ssManager.readSummaryFromFile("source_sink.conf");
-	EXPECT_NE(ssManager.getSummary("read"), nullptr);
-	EXPECT_NE(ssManager.getSummary("printf"), nullptr);
-	EXPECT_EQ(ssManager.getSummary("scanf")->getSize(), 2u);
+	ssTable.readSummaryFromFile("source_sink.conf");
+	ASSERT_TRUE(ssTable.getSize() > 0);
+	EXPECT_NE(ssTable.getSummary("read"), nullptr);
+	EXPECT_NE(ssTable.getSummary("printf"), nullptr);
 }
 
 TEST(TaintnessTest, EnvTest)
@@ -39,6 +39,7 @@ TEST(TaintnessTest, EnvTest)
 		"  %x = alloca i32*, align 4\n"
 		"  %y = alloca i32*, align 4\n"
 		"  %z = alloca i32*, align 8\n"
+		"  %g = alloca i32*, align 8\n"
 		"  ret i32 0\n"
 		"}\n"
 	);
@@ -48,7 +49,7 @@ TEST(TaintnessTest, EnvTest)
 	auto x = ProgramLocation(globalCtx, itr);
 	auto y = ProgramLocation(globalCtx, ++itr);
 	auto z = ProgramLocation(globalCtx, ++itr);
-	auto g = ProgramLocation(globalCtx, testModule->global_begin());
+	auto g = ProgramLocation(globalCtx, ++itr);
 
 	auto env = TaintEnv();
 	EXPECT_TRUE(env.weakUpdate(x, TaintLattice::Untainted));
@@ -117,10 +118,14 @@ TEST(TaintnessTest, ViolationCheckerTest)
 	auto x = ProgramLocation(globalCtx, itr);
 	auto y = ProgramLocation(globalCtx, ++itr);
 	auto z = ProgramLocation(globalCtx, ++itr);
-	auto sink0 = ProgramLocation(globalCtx, ++itr);
-	auto sink1 = ProgramLocation(globalCtx, ++itr);
-	auto sink2 = ProgramLocation(globalCtx, ++itr);
-	auto sink3 = ProgramLocation(globalCtx, ++itr);
+	auto du0 = DefUseInstruction(*++itr);
+	auto du1 = DefUseInstruction(*++itr);
+	auto du2 = DefUseInstruction(*++itr);
+	auto du3 = DefUseInstruction(*++itr);
+	auto sink0 = DefUseProgramLocation(globalCtx, &du0);
+	auto sink1 = DefUseProgramLocation(globalCtx, &du1);
+	auto sink2 = DefUseProgramLocation(globalCtx, &du2);
+	auto sink3 = DefUseProgramLocation(globalCtx, &du3);
 	auto g3 = testModule->getGlobalVariable("g3");
 	ASSERT_NE(g3, nullptr);
 

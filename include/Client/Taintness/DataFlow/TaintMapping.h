@@ -1,20 +1,9 @@
-#ifndef TPA_TAINT_ENV_STORE_H
-#define TPA_TAINT_ENV_STORE_H
+#ifndef TPA_TAINT_MAPPING_H
+#define TPA_TAINT_MAPPING_H
 
 #include "Client/Lattice/TaintLattice.h"
-#include "MemoryModel/Precision/ProgramLocation.h"
 
 #include <llvm/ADT/DenseMap.h>
-
-namespace llvm
-{
-	class Value;
-}
-
-namespace tpa
-{
-	class MemoryLocation;
-}
 
 namespace client
 {
@@ -83,9 +72,6 @@ public:
 	const_iterator end() const { return taintMap.end(); }
 	size_t getSize() const { return taintMap.size(); }
 };
-
-using TaintEnv = TaintMap<std::pair<const tpa::Context*, const llvm::Value*>>;
-using TaintStore = TaintMap<const tpa::MemoryLocation*>;
 
 }
 }

@@ -1,7 +1,7 @@
 #ifndef TPA_DEF_USE_FUNCTION_EVALUATOR_H
 #define TPA_DEF_USE_FUNCTION_EVALUATOR_H
 
-#include "Client/Taintness/DataFlow/TaintEnvStore.h"
+#include "Client/Taintness/DataFlow/TaintStore.h"
 #include "PointerAnalysis/DataFlow/DefUseModule.h"
 #include "TPA/DataFlow/TPAWorkList.h"
 

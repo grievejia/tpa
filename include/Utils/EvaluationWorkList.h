@@ -37,11 +37,6 @@ public:
 		return funWorkList.isEmpty();
 	}
 
-	void enqueue(const Context* ctx, const ElemListType* g)
-	{
-		funWorkList.enqueue(std::make_pair(ctx, g));
-	}
-
 	void enqueue(const Context* ctx, const ElemListType* g, const ElemType* node)
 	{
 		auto pair = std::make_pair(ctx, g);
@@ -69,6 +64,12 @@ public:
 		// The dequeued worklist may be empty if recursive call is involved
 		//assert(!itr->second.isEmpty());
 		return itr->second;
+	}
+
+	LocalWorkList& enqueueAndGetLocalWorkList(const Context* ctx, const ElemListType* g)
+	{
+		funWorkList.enqueue(std::make_pair(ctx, g));
+		return getLocalWorkList(ctx, g);
 	}
 };
 

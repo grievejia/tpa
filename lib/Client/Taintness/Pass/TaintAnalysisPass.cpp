@@ -31,7 +31,7 @@ bool TaintAnalysisPass::runOnModule(Module& module)
 	DefUseModuleBuilder duBuilder(tpa, summaryMap, extModTable, extRefTable);
 	auto duModule = duBuilder.buildDefUseModule(module);
 
-	TaintAnalysis taintAnalysis(tpa, extTable);
+	TaintAnalysis taintAnalysis(tpa);
 
 	auto hasError = taintAnalysis.runOnDefUseModule(duModule);
 	if (!hasError)

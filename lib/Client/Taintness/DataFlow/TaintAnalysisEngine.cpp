@@ -60,7 +60,6 @@ void TaintAnalysisEngine::initializeExternalGlobalValues(TaintEnv& env, TaintSto
 	{
 		if (global.isDeclaration())
 		{
-			env.strongUpdate(ProgramLocation(globalCtx, &global), TaintLattice::Untainted);
 			auto pSet = ptrAnalysis.getPtsSet(globalCtx, &global);
 			for (auto loc: pSet)
 				store.strongUpdate(loc, TaintLattice::Untainted);
@@ -74,7 +73,7 @@ void TaintAnalysisEngine::enqueueEntryPoint(const DefUseFunction& entryDuFunc, T
 	auto entryDuInst = entryDuFunc.getEntryInst();
 
 	globalWorkList.enqueue(globalCtx, &entryDuFunc, entryDuInst);
-	globalState.getMemo().update(ProgramLocation(globalCtx, entryDuInst->getInstruction()), std::move(store));
+	globalState.getMemo().update(DefUseProgramLocation(globalCtx, entryDuInst), std::move(store));
 }
 
 void TaintAnalysisEngine::initializeWorkList()
@@ -92,12 +91,6 @@ void TaintAnalysisEngine::initializeWorkList()
 	enqueueEntryPoint(entryDefUseFunc, std::move(initStore));
 }
 
-void TaintAnalysisEngine::evalFunction(const Context* ctx, const DefUseFunction* duFunc)
-{
-	DefUseFunctionEvaluator evaluator(ctx, duFunc, globalState, globalWorkList);
-	evaluator.eval();
-}
-
 void TaintAnalysisEngine::run()
 {
 	while (!globalWorkList.isEmpty())
@@ -106,7 +99,7 @@ void TaintAnalysisEngine::run()
 		const DefUseFunction* duFunc;
 		std::tie(ctx, duFunc) = globalWorkList.dequeue();
 
-		evalFunction(ctx, duFunc);
+		DefUseFunctionEvaluator(ctx, duFunc, globalState, globalWorkList).eval();
 	}
 }
 

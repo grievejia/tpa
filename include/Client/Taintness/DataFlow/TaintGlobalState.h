@@ -1,10 +1,10 @@
 #ifndef TPA_TAINT_GLOBAL_STATE_H
 #define TPA_TAINT_GLOBAL_STATE_H
 
-#include "Client/Taintness/DataFlow/TaintEnvStore.h"
+#include "Client/Taintness/DataFlow/TaintEnv.h"
 #include "Client/Taintness/DataFlow/TaintMemo.h"
-#include "Client/Taintness/SourceSink/SinkSignature.h"
-#include "MemoryModel/Precision/ProgramLocation.h"
+#include "Client/Taintness/SourceSink/Checker/SinkSignature.h"
+#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
 
 namespace tpa
 {
@@ -18,8 +18,6 @@ namespace client
 namespace taint
 {
 
-class SourceSinkLookupTable;
-
 class TaintGlobalState
 {
 private:
@@ -29,11 +27,8 @@ private:
 	// Pointer Analysis
 	const tpa::PointerAnalysis& ptrAnalysis;
 
-	// External table
-	const tpa::ExternalPointerEffectTable& extTable;
-
-	// SourceSink manager
-	const SourceSinkLookupTable& sourceSinkLookupTable;
+	// External taink annotations
+	SourceSinkLookupTable sourceSinkLookupTable;
 
 	// The environment
 	TaintEnv env;
@@ -46,13 +41,15 @@ private:
 
 	std::unordered_set<tpa::ProgramLocation> visitedFuncs;
 public:
-	TaintGlobalState(const tpa::DefUseModule& m, const tpa::PointerAnalysis& p, const tpa::ExternalPointerEffectTable& e, const SourceSinkLookupTable& s): duModule(m), ptrAnalysis(p), extTable(e), sourceSinkLookupTable(s) {}
+	TaintGlobalState(const tpa::DefUseModule& m, const tpa::PointerAnalysis& p): duModule(m), ptrAnalysis(p)
+	{
+		sourceSinkLookupTable.readSummaryFromFile("source_sink.conf");
+	}
 
 	const tpa::DefUseModule& getProgram() const { return duModule; }
 
 	const tpa::PointerAnalysis& getPointerAnalysis() const { return ptrAnalysis; }
-	const tpa::ExternalPointerEffectTable& getExternalPointerEffectTable() const { return extTable; }
-	const SourceSinkLookupTable&getSourceSinkLookupTable() const { return sourceSinkLookupTable; }
+	const SourceSinkLookupTable& getSourceSinkLookupTable() const { return sourceSinkLookupTable; }
 
 	TaintEnv& getEnv() { return env; }
 	const TaintEnv& getEnv() const { return env; }
@@ -60,7 +57,7 @@ public:
 	TaintMemo& getMemo() { return memo; }
 	const TaintMemo& getMemo() const { return memo; }
 
-	bool insertSink(const tpa::ProgramLocation& pLoc, const llvm::Function* f)
+	bool insertSink(const tpa::DefUseProgramLocation& pLoc, const llvm::Function* f)
 	{
 		return sinkSet.insert(SinkSignature(pLoc, f)).second;
 	}

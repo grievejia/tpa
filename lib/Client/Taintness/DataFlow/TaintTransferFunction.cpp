@@ -2,10 +2,8 @@
 #include "Client/Taintness/DataFlow/TaintTransferFunction.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 
 #include <llvm/IR/Function.h>
-#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace tpa;
@@ -24,8 +22,6 @@ TaintTransferFunction::TaintTransferFunction(const Context* c, TaintStore& s, Ta
 
 TaintLattice TaintTransferFunction::getTaintForValue(const Value* val)
 {
-	if (isa<Constant>(val))
-		return TaintLattice::Untainted;
 	return globalState.getEnv().lookup(ProgramLocation(ctx, val));
 }
 
@@ -205,187 +201,6 @@ EvalStatus TaintTransferFunction::evalCallArguments(const Instruction* inst, con
 
 	auto envChanged = updateParamTaintValue(newCtx, callee, argSets);
 	return EvalStatus::getValidStatus(envChanged, false);
-}
-
-bool TaintTransferFunction::memcpyTaint(PtsSet dstSet, PtsSet srcSet)
-{
-	bool changed = false;
-	auto& memManager = globalState.getPointerAnalysis().getMemoryManager();
-
-	for (auto srcLoc: srcSet)
-	{
-		auto srcLocs = memManager.getAllOffsetLocations(srcLoc);
-		auto startingOffset = srcLoc->getOffset();
-		for (auto oLoc: srcLocs)
-		{
-			auto oVal = store->lookup(oLoc);
-			if (oVal == TaintLattice::Unknown)
-				continue;
-
-			auto offset = oLoc->getOffset() - startingOffset;
-			for (auto updateLoc: dstSet)
-			{
-				auto tgtLoc = memManager.offsetMemory(updateLoc, offset);
-				if (memManager.isSpecialMemoryLocation(tgtLoc))
-					break;
-				changed |= store->weakUpdate(tgtLoc, oVal);
-			}
-		}
-	}
-
-	return changed;
-}
-
-bool TaintTransferFunction::copyTaint(const Value* dst, const Value* src)
-{
-	bool changed = false;
-	auto& env = globalState.getEnv();
-
-	auto srcVal = env.lookup(ProgramLocation(ctx, src));
-	if (srcVal != TaintLattice::Unknown)
-		changed = env.strongUpdate(ProgramLocation(ctx, dst), srcVal);
-
-	return changed;
-}
-
-EvalStatus TaintTransferFunction::evalMemcpy(const Instruction* inst)
-{
-	ImmutableCallSite cs(inst);
-
-	auto const& ptrAnalysis = globalState.getPointerAnalysis();
-
-	auto dstSet = ptrAnalysis.getPtsSet(ctx, cs.getArgument(0));
-	auto srcSet = ptrAnalysis.getPtsSet(ctx, cs.getArgument(1));
-	assert(!dstSet.isEmpty() && !srcSet.isEmpty());
-
-	auto storeChanged = memcpyTaint(dstSet, srcSet);
-	auto envChanged = copyTaint(inst, cs.getArgument(0));
-	return EvalStatus::getValidStatus(envChanged, storeChanged);
-}
-
-EvalStatus TaintTransferFunction::evalMalloc(const Instruction* inst)
-{
-	auto dstSet = globalState.getPointerAnalysis().getPtsSet(ctx, inst);
-	assert(dstSet.getSize() == 1);
-	auto envChanged = globalState.getEnv().strongUpdate(ProgramLocation(ctx, inst), TaintLattice::Untainted);
-	return EvalStatus::getValidStatus(envChanged, false);
-}
-
-EvalStatus TaintTransferFunction::taintValueByTClass(const Value* val, TClass taintClass, TaintLattice taintVal)
-{
-	auto envChanged = false, storeChanged = false;
-	switch (taintClass)
-	{
-		case TClass::ValueOnly:
-		{
-			envChanged |= globalState.getEnv().strongUpdate(ProgramLocation(ctx, val), taintVal);
-			break;
-		}
-		case TClass::DirectMemory:
-		{
-			auto const& ptrAnalysis = globalState.getPointerAnalysis();
-			auto const& memManager = ptrAnalysis.getMemoryManager();
-			auto pSet = ptrAnalysis.getPtsSet(ctx, val);
-			for (auto loc: pSet)
-			{
-				if (memManager.isSpecialMemoryLocation(loc))
-					continue;
-				if (loc->isSummaryLocation())
-					storeChanged |= store->weakUpdate(loc, taintVal);
-				else
-					storeChanged |= store->strongUpdate(loc, taintVal);
-			}
-		}
-	}
-	return EvalStatus::getValidStatus(envChanged, storeChanged);
-}
-
-EvalStatus TaintTransferFunction::taintCallByEntry(const Instruction* inst, const TEntry& entry)
-{
-	ImmutableCallSite cs(inst);
-	switch (entry.pos)
-	{
-		case TPosition::Ret:
-			return taintValueByTClass(inst, entry.what, entry.val);
-		case TPosition::Arg0:
-			return taintValueByTClass(cs.getArgument(0), entry.what, entry.val);
-		case TPosition::Arg1:
-			return taintValueByTClass(cs.getArgument(1), entry.what, entry.val);
-		case TPosition::Arg2:
-			return taintValueByTClass(cs.getArgument(2), entry.what, entry.val);
-		case TPosition::Arg3:
-			return taintValueByTClass(cs.getArgument(3), entry.what, entry.val);
-		case TPosition::Arg4:
-			return taintValueByTClass(cs.getArgument(4), entry.what, entry.val);
-		case TPosition::AfterArg0:
-		{
-			auto res = EvalStatus::getValidStatus(false, false);
-			for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-				res = res || taintValueByTClass(cs.getArgument(i), entry.what, entry.val);
-
-			return res;
-		}
-		case TPosition::AfterArg1:
-		{
-			auto res = EvalStatus::getValidStatus(false, false);
-			for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-				res = res || taintValueByTClass(cs.getArgument(i), entry.what, entry.val);
-
-			return res;
-		}
-		case TPosition::AllArgs:
-		{
-			auto res = EvalStatus::getValidStatus(false, false);
-			for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
-				res = res || taintValueByTClass(cs.getArgument(i), entry.what, entry.val);
-
-			return res;
-		}
-	}
-}
-
-EvalStatus TaintTransferFunction::evalCallBySummary(const Instruction* inst, const Function* callee, const TSummary& summary)
-{
-	auto res = EvalStatus::getValidStatus(false, false);
-	for (auto const& entry: summary)
-	{
-		// We only care about taint source, but we need to record all taint sinks for future examination
-		if (entry.end == TEnd::Sink)
-		{
-			globalState.insertSink(ProgramLocation(ctx, inst), callee);
-			continue;
-		}
-
-		res = res || taintCallByEntry(inst, entry);
-	}
-	return res;
-}
-
-EvalStatus TaintTransferFunction::evalExternalCall(const Instruction* inst, const Function* callee)
-{
-	assert(store != nullptr);
-
-	auto funName = callee->getName();
-	EvalStatus res = EvalStatus::getValidStatus(false, false);
-	if (auto summary = globalState.getSourceSinkLookupTable().getSummary(funName))
-		res = evalCallBySummary(inst, callee, *summary);
-
-	auto ptrEffect = globalState.getExternalPointerEffectTable().lookup(funName);
-	if (ptrEffect == PointerEffect::MemcpyArg1ToArg0 || funName == "strcpy" || funName == "strncpy")
-	{
-		res = res || evalMemcpy(inst);
-	}
-	else if (ptrEffect == PointerEffect::Malloc)
-	{
-		res = res || evalMalloc(inst);
-	}
-	else if (!callee->getReturnType()->isVoidTy())
-	{
-		auto envChanged = globalState.getEnv().weakUpdate(ProgramLocation(ctx, inst), TaintLattice::Untainted);
-		res = res || EvalStatus::getValidStatus(envChanged, false);
-	}
-	
-	return res;
 }
 
 }

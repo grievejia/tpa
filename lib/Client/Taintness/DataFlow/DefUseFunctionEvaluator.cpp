@@ -42,7 +42,7 @@ void DefUseFunctionEvaluator::propagateMemLevelChange(const DefUseInstruction* d
 			
 			for (auto succ: mapping.second)
 			{
-				if (memo.insert(ProgramLocation(ctx, succ->getInstruction()), usedLoc, locVal))
+				if (memo.insert(DefUseProgramLocation(ctx, succ), usedLoc, locVal))
 					workList.enqueue(succ);
 			}
 		}
@@ -57,8 +57,7 @@ void DefUseFunctionEvaluator::propagateState(const DefUseInstruction* duInst, co
 
 void DefUseFunctionEvaluator::propagateGlobalState(const Context* ctx, const DefUseFunction* duFunc, const DefUseInstruction* duInst, const TaintStore& store, bool envChanged)
 {
-	globalWorkList.enqueue(ctx, duFunc);
-	auto& oldLocalWorkList = globalWorkList.getLocalWorkList(ctx, duFunc);
+	auto& oldLocalWorkList = globalWorkList.enqueueAndGetLocalWorkList(ctx, duFunc);
 
 	propagateTopLevelChange(duInst, envChanged, oldLocalWorkList);
 	propagateMemLevelChange(duInst, store, true, ctx, oldLocalWorkList);
@@ -81,7 +80,7 @@ void DefUseFunctionEvaluator::applyCall(const DefUseInstruction* duInst, const C
 void DefUseFunctionEvaluator::applyExternalCall(const DefUseInstruction* duInst, const Function* callee, const TaintStore& store)
 {
 	auto newStore = store;
-	auto evalStatus = TaintTransferFunction(ctx, newStore, globalState).evalExternalCall(duInst->getInstruction(), callee);
+	auto evalStatus = TaintTransferFunction(ctx, newStore, globalState).evalExternalCall(duInst, callee);
 	if (evalStatus.isValid())
 		propagateState(duInst, newStore, evalStatus.hasEnvChanged(), evalStatus.hasStoreChanged());
 }
@@ -264,7 +263,7 @@ void DefUseFunctionEvaluator::eval()
 		//	errs() << "inst = " << *inst << "\n";
 
 		// Retrieve the corresponding store from memo
-		auto optStore = globalState.getMemo().lookup(ProgramLocation(ctx, duInst->getInstruction()));
+		auto optStore = globalState.getMemo().lookup(DefUseProgramLocation(ctx, duInst));
 		auto const& store = (optStore == nullptr) ? TaintStore() : *optStore;
 
 		if (duInst->isEntryInstruction())

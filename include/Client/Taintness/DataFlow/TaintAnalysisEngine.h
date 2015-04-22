@@ -10,6 +10,8 @@ namespace client
 namespace taint
 {
 
+class TaintEnv;
+
 class TaintGlobalState;
 
 class TaintAnalysisEngine
@@ -20,7 +22,6 @@ private:
 	tpa::TPAWorkList<tpa::DefUseFunction> globalWorkList;
 
 	void initializeWorkList();
-	void evalFunction(const tpa::Context*, const tpa::DefUseFunction*);
 
 	// initializeWorkList helpers
 	void initializeMainArgs(TaintEnv& env, TaintStore& store, const tpa::DefUseFunction& entryDuFunc);
