@@ -297,7 +297,6 @@ void CallDataFlowTracker::trackMemories(const DefUseProgramLocation& pLoc, const
 
 void CallDataFlowTracker::trackCall(const DefUseProgramLocation& pLoc, const DefUseFunction* duFunc, const CallerVector& callers)
 {
-	errs() << "Here, function = " << duFunc->getFunction().getName() << "\n";
 	auto duCallers = getDefUseCallerVector(callers);
 
 	trackValue(duFunc, duCallers);

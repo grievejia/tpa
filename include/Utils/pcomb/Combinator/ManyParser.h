@@ -16,13 +16,13 @@ private:
 	static_assert(std::is_base_of<Parser<typename ParserA::OutputType>, ParserA>::value, "ManyParser only accepts parser type");
 
 	ParserA pa;
-	bool nonEmpty;
+	unsigned minOccurrence;
 public:
 	using OutputType = std::vector<typename ParserA::OutputType>;
 	using ResultType = typename Parser<OutputType>::ResultType;
 	
-	ManyParser(const ParserA& a, bool moreThanOne = false): pa(a), nonEmpty(moreThanOne) {}
-	ManyParser(ParserA&& a, bool moreThanOne = false): pa(std::move(a)), nonEmpty(moreThanOne) {}
+	ManyParser(const ParserA& a, unsigned n = 0): pa(a), minOccurrence(n) {}
+	ManyParser(ParserA&& a, unsigned n = 0): pa(std::move(a)), minOccurrence(n) {}
 
 	ResultType parse(const InputStream& input) const override
 	{
@@ -39,18 +39,18 @@ public:
 			resStream = std::move(paResult).getInputStream();
 		}
 
-		ResultType ret(input);
-		if (!(nonEmpty && retVec.empty()))
-			ret = ResultType(std::move(resStream), std::move(retVec));
+		ResultType ret(resStream);
+		if (retVec.size() >= minOccurrence)
+			ret.setOutput(std::move(retVec));
 		return ret;
 	}
 };
 
 template <typename ParserA>
-auto many(ParserA&& p0, bool moreThanOne = false)
+auto many(ParserA&& p0, unsigned minOccurrence = 0)
 {
 	using ParserType = std::remove_reference_t<ParserA>;
-	return ManyParser<ParserType>(std::forward<ParserA>(p0), moreThanOne);
+	return ManyParser<ParserType>(std::forward<ParserA>(p0), minOccurrence);
 }
 
 }

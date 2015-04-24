@@ -48,9 +48,12 @@ private:
 	std::vector<TaintLattice> collectArgumentTaintValue(llvm::ImmutableCallSite, size_t);
 	bool updateParamTaintValue(const tpa::Context*, const llvm::Function*, const std::vector<TaintLattice>&);
 
+	bool updateDirectMemoryTaint(const llvm::Value*, TaintLattice);
+	bool updateReachableMemoryTaint(const llvm::Value*, TaintLattice);
 	TaintLattice getTaintValueByTClass(const llvm::Value*, TClass);
 	tpa::EvalStatus updateTaintValueByTClass(const llvm::Value*, TClass, TaintLattice);
 	tpa::EvalStatus updateTaintCallByTPosition(const llvm::Instruction*, TPosition, TClass, TaintLattice);
+	tpa::EvalStatus evalMemcpy(const llvm::Value*, const llvm::Value*);
 	tpa::EvalStatus evalTaintSource(const llvm::Instruction*, const SourceTaintEntry&);
 	tpa::EvalStatus evalTaintPipe(const llvm::Instruction*, const PipeTaintEntry&);
 	tpa::EvalStatus evalCallBySummary(const tpa::DefUseInstruction*, const llvm::Function*, const TaintSummary&);

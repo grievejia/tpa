@@ -19,7 +19,6 @@ bool PrecisionLossTrackingPass::runOnModule(Module& module)
 	TunablePointerAnalysisWrapper tpaWrapper;
 	tpaWrapper.runOnModule(module);
 	auto& tpa = tpaWrapper.getPointerAnalysis();
-	auto& extTable = tpaWrapper.getExtTable();
 
 	auto extModTable = ExternalModTable();
 	auto extRefTable = ExternalRefTable();

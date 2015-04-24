@@ -20,7 +20,6 @@ class TaintGlobalState;
 class PrecisionLossTrackingAnalysis
 {
 private:
-	SourceSinkLookupTable sourceSinkLookupTable;
 	const tpa::PointerAnalysis& ptrAnalysis;
 
 	void checkSinkViolation(const TaintGlobalState& globalState);

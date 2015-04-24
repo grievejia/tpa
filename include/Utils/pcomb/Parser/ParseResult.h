@@ -27,6 +27,12 @@ public:
 	bool success() const { return static_cast<bool>(attr); }
 	bool hasError() const { return !success(); }
 
+	template <typename O>
+	void setOutput(O&& o)
+	{
+		attr = std::forward<O>(o);
+	}
+
 	const OutputType& getOutput() const&
 	{
 		assert(success());

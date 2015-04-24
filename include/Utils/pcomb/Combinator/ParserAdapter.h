@@ -25,10 +25,10 @@ public:
 
 	ResultType parse(const InputStream& input) const override
 	{
-		auto ret = ResultType(input);
 		auto pResult = pa.parse(input);
+		auto ret = ResultType(pResult.getInputStream());
 		if (pResult.success())
-			ret = ResultType(std::move(pResult).getInputStream(), conv(std::move(pResult).getOutput()));
+			ret.setOutput(conv(std::move(pResult).getOutput()));
 		return ret;
 	}
 };

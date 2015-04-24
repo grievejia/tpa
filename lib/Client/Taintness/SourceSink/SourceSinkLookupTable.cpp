@@ -102,7 +102,7 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 		seq(
 			rule(token(str("PIPE")), [] (auto const&) { return TEnd::Pipe; }),
 			id,
-			alt(tret, targ),
+			alt(tret, targ, tafterarg),
 			alt(vclass, dclass, rclass),
 			targ,
 			alt(vclass, dclass, rclass)
@@ -144,7 +144,7 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 	);
 
 	auto tentry = alt(srcEntry, pipeEntry, sinkEntry, ignoreEntry);
-	auto tsummary = many(tentry, true);
+	auto tsummary = many(tentry, 1);
 
 	auto parseResult = tsummary.parse(fileContent);
 	if (parseResult.hasError() || !StringRef(parseResult.getInputStream().getRawBuffer()).ltrim().empty())
