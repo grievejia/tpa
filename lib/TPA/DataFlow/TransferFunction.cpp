@@ -48,7 +48,7 @@ EvalStatus TransferFunction::evalMemoryAllocation(const Pointer* dstPtr, Type* a
 	auto memObj = globalState.getMemoryManager().allocateMemory(ProgramLocation(ctx, dstPtr->getValue()), allocType, summary);
 	auto memLoc = globalState.getMemoryManager().offsetMemory(memObj, 0);
 
-	auto envChanged = globalState.getEnv().insert(dstPtr, memLoc);
+	auto envChanged = globalState.getEnv().strongUpdate(dstPtr, PtsSet::getSingletonSet(memLoc));
 	return EvalStatus::getValidStatus(envChanged, false);
 }
 

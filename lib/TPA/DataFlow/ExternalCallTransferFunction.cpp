@@ -162,6 +162,8 @@ bool TransferFunction::copyMemoryPtsSet(const MemoryLocation* dstLoc, const std:
 
 		auto offset = oLoc->getOffset() - startingOffset;
 		auto tgtLoc = globalState.getMemoryManager().offsetMemory(dstLoc, offset);
+		if (globalState.getMemoryManager().isSpecialMemoryLocation(tgtLoc))
+			break;
 		changed |= store->weakUpdate(tgtLoc, oSet);
 	}
 	return changed;

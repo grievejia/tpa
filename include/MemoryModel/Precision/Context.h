@@ -31,7 +31,7 @@ private:
 public:
 	const llvm::Instruction* getCallSite() const { return callSite; }
 	size_t getSize() const { return size; }
-	bool isGlobalContext() { return size == 0; }
+	bool isGlobalContext() const { return size == 0; }
 
 	bool operator==(const Context& other) const
 	{

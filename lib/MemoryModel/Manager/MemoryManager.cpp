@@ -155,7 +155,7 @@ const MemoryLocation* MemoryManager::offsetMemory(const MemoryObject* obj, size_
 		}
 	}
 
-	if (offset > obj->size)
+	if (offset >= obj->size)
 	{
 		// Our intent here is to capture obvious out-of-bound pointer arithmetics. If such case is detected, return a universal object immediately, indicating that we have no idea where the out-of-bound pointer might points to
 		// TODO: add a "strict mode" flag that, when set, will report an error instead of trying to carry on the analysis

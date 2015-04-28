@@ -1,257 +1,343 @@
-#include "MemoryModel/PtsSet/Env.h"
-#include "MemoryModel/PtsSet/Store.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
+#include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
+#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "TPA/DataFlow/Memo.h"
+#include "TPA/DataFlow/SemiSparseGlobalState.h"
+#include "TPA/DataFlow/TransferFunction.h"
 #include "Utils/ParseLLVMAssembly.h"
-
-#include <llvm/Support/raw_ostream.h>
 
 #include "gtest/gtest.h"
 
 using namespace tpa;
 using namespace llvm;
 
-namespace {
-
-TEST(InterpreterTest, EnvTest)
+namespace
 {
-	auto ptrManager = PointerManager();
 
-	auto testModule = parseAssembly(
-		"@g1 = common global i32* null, align 8"
-		"@g2 = common global i32* null, align 8"
-		"@g3 = common global i32* null, align 8"
-		"@g4 = common global i32* null, align 8"
-	);
-
-	auto itr = testModule->global_begin();
-	auto g1 = itr++;
-	auto g2 = itr++;
-	auto g3 = itr++;
-	auto g4 = itr++;
-
-	auto dataLayout = DataLayout(testModule.get());
-	auto memManager = MemoryManager(dataLayout);
-
-	auto globalCtx = Context::getGlobalContext();
-
-	auto obj1 = memManager.offsetMemory(memManager.allocateMemory(ProgramLocation(globalCtx, g1), g1->getType()->getElementType()), 0);
-	auto obj2 = memManager.offsetMemory(memManager.allocateMemory(ProgramLocation(globalCtx, g2), g2->getType()->getElementType()), 0);
-	auto obj3 = memManager.offsetMemory(memManager.allocateMemory(ProgramLocation(globalCtx, g3), g3->getType()->getElementType()), 0);
-	auto obj4 = memManager.offsetMemory(memManager.allocateMemory(ProgramLocation(globalCtx, g4), g4->getType()->getElementType()), 0);
-
-	auto ptr1 = ptrManager.getOrCreatePointer(globalCtx, g1);
-	auto ptr2 = ptrManager.getOrCreatePointer(globalCtx, g2);
-	auto ptr3 = ptrManager.getOrCreatePointer(globalCtx, g3);
-	auto ptr4 = ptrManager.getOrCreatePointer(globalCtx, g4);
-
-	auto env = Env();
-	EXPECT_EQ(env.getSize(), 0u);
-	EXPECT_TRUE(env.lookup(ptr1).isEmpty());
-
-	// env = [ var1 -> {addr1} ]
-	EXPECT_TRUE(env.insert(ptr1, obj1));
-	EXPECT_EQ(env.getSize(), 1u);
-	ASSERT_FALSE(env.lookup(ptr1).isEmpty());
-	EXPECT_TRUE(env.lookup(ptr1).has(obj1));
-
-	// env = [ var1 -> {addr1}, var2 -> {addr2}]
-	EXPECT_TRUE(env.insert(ptr2, obj2));
-	EXPECT_EQ(env.getSize(), 2u);
-	ASSERT_FALSE(env.lookup(ptr2).isEmpty());
-	EXPECT_TRUE(env.lookup(ptr2).has(obj2));
-	EXPECT_FALSE(env.insert(ptr1, obj1));
-	EXPECT_FALSE(env.insert(ptr2, obj2));
-
-	// env = [ var1 -> {addr1}, var2 -> {addr2}, var3 -> {addr3} ]
-	EXPECT_TRUE(env.insert(ptr3, obj3));
-	EXPECT_EQ(env.getSize(), 3u);
-	ASSERT_FALSE(env.lookup(ptr3).isEmpty());
-	EXPECT_TRUE(env.lookup(ptr3).has(obj3));
-
-	EXPECT_TRUE(env.lookup(ptr4).isEmpty());
-
-	auto pSet3 = PtsSet::getSingletonSet(obj3);
-	auto pSet4 = PtsSet::getSingletonSet(obj4);
-
-	// env = [ var1 -> {addr1, addr4}, var2 -> {addr2}, var3 -> {addr3} ]
-	EXPECT_TRUE(env.weakUpdate(ptr1, pSet4));
-	EXPECT_EQ(env.getSize(), 3u);
-	ASSERT_FALSE(env.lookup(ptr1).isEmpty());
-	EXPECT_TRUE(env.lookup(ptr1).has(obj1));
-	EXPECT_TRUE(env.lookup(ptr1).has(obj4));
-	
-	// env = [ var1 -> {addr1, addr4}, var2 -> {addr2, addr3}, var3 -> {addr3} ]
-	EXPECT_FALSE(env.weakUpdate(ptr3, pSet3));
-	EXPECT_TRUE(env.weakUpdate(ptr2, pSet3));
-	ASSERT_FALSE(env.lookup(ptr2).isEmpty());
-	EXPECT_TRUE(env.lookup(ptr2).has(obj2));
-	EXPECT_TRUE(env.lookup(ptr2).has(obj3));
-
-	// env = [ var1 -> {addr1, addr4}, var2 -> {addr2, addr3}, var3 -> {addr1, addr4} ]
-	ASSERT_FALSE(env.lookup(ptr1).isEmpty());
-	EXPECT_TRUE(env.strongUpdate(ptr3, env.lookup(ptr1)));
-	ASSERT_FALSE(env.lookup(ptr3).isEmpty());
-	EXPECT_TRUE(env.lookup(ptr3).has(obj1));
-	EXPECT_TRUE(env.lookup(ptr3).has(obj4));
-	EXPECT_FALSE(env.lookup(ptr3).has(obj3));
-}
-
-bool isStoreEqual(const Store& s0, const Store& s1)
+class InterpreterTest: public ::testing::Test
 {
-	if (s0.getSize() != s1.getSize())
-		return false;
-	for (auto const& mapping: s0)
-		if (s1.lookup(mapping.first) != mapping.second)
-			return false;
-	return true;
-}
-
-TEST(InterpreterTest, StoreTest)
-{
-	auto testModule = parseAssembly(
-		"declare noalias i8* @malloc(i64) \n"
-		"@g1 = global {i32*, i32*, i32*, i32*} {i32* null, i32* null, i32* null, i32* null}, align 16\n"
+protected:
+	std::unique_ptr<Module> testModule = parseAssembly(
 		"define i32 @main() {\n"
 		"bb:\n"
-		"  %x = alloca {i32*, i32*}, align 4\n"
-		"  %y = call noalias i8* @malloc(i64 8)\n"
+		"  %x = alloca { i32, i32 }, align 4\n"
+		"  %y = alloca { i32*, i32*, i32* }, align 4\n"
+		"  %z = alloca [10 x i32], align 4\n"
 		"  ret i32 0\n"
 		"}\n"
 	);
+	DataLayout dataLayout = DataLayout(testModule.get());
 
-	auto g1 = testModule->global_begin();
-	auto itr = testModule->begin()->begin()->begin();
-	auto g2 = itr++;
-	auto g3 = itr++;
+	PointerManager ptrManager;
+	MemoryManager memManager = MemoryManager(dataLayout);
+	const Context* globalCtx = Context::getGlobalContext();
 
-	auto dataLayout = DataLayout(testModule.get());
-	auto memManager = MemoryManager(dataLayout);
+	PointerProgram prog;
+	PointerCFG* mainCfg = prog.createPointerCFGForFunction(testModule->getFunction("main"));
 
-	auto globalCtx = Context::getGlobalContext();
+	StaticCallGraph callGraph;
+	ExternalPointerEffectTable extTable;
+	Env env;
+	SemiSparseGlobalState globalState = SemiSparseGlobalState(ptrManager, memManager, prog, callGraph, env, extTable);
 
-	auto o1 = memManager.allocateMemory(ProgramLocation(globalCtx, g1), g1->getType()->getElementType());
-	auto obj1 = memManager.offsetMemory(o1, 0);
-	auto o2 = memManager.allocateMemory(ProgramLocation(globalCtx, g2), g2->getType());
-	auto obj2 = memManager.offsetMemory(o2, 0);
-	auto o3 = memManager.allocateMemory(ProgramLocation(globalCtx, g3), g3->getType());
-	auto obj3 = memManager.offsetMemory(o3, 0);
-	auto obj10 = memManager.offsetMemory(o1, 8);
-	auto obj11 = memManager.offsetMemory(o1, 16);
-	auto obj12 = memManager.offsetMemory(o1, 24);
-	auto obj13 = memManager.offsetMemory(o1, 32);
-	auto obj20 = memManager.offsetMemory(o2, 8);
-	auto obj21 = memManager.offsetMemory(o1, 16);;
+	Store store;
+	TransferFunction transferFunction = TransferFunction(globalCtx, store, globalState);
 
-	auto mtStore = Store();
+	const Instruction *x, *y, *z;
+	const MemoryLocation *xLoc, *yLoc, *zLoc;
 
-	// st1 = [ 1->{10, 11} ]
-	auto st1 = mtStore;
-	EXPECT_TRUE(st1.insert( obj1, obj10));
-	EXPECT_TRUE(st1.insert( obj1, obj11));
-	EXPECT_EQ(st1.getSize(), 1u);
+	void SetUp() override
+	{
+		auto itr = testModule->begin()->begin()->begin();
+		x = itr++;
+		y = itr++;
+		z = itr++;
 
-	auto pSet1 = st1.lookup(obj1);
-	EXPECT_FALSE(pSet1.isEmpty());
-	EXPECT_EQ(pSet1.getSize(), 2u);
-	EXPECT_TRUE(pSet1.has(obj10));
-	EXPECT_TRUE(pSet1.has(obj11));
+		auto xObj = memManager.allocateMemory(ProgramLocation(globalCtx, x), x->getType()->getPointerElementType());
+		auto yObj = memManager.allocateMemory(ProgramLocation(globalCtx, y), y->getType()->getPointerElementType());
+		auto zObj = memManager.allocateMemory(ProgramLocation(globalCtx, z), z->getType()->getPointerElementType());
+		xLoc = memManager.offsetMemory(xObj, 0);
+		yLoc = memManager.offsetMemory(yObj, 0);
+		zLoc = memManager.offsetMemory(zObj, 0);
+	}
+};
 
-	// st2 = [ 1->{10, 12}]
-	auto st2 = mtStore;
-	EXPECT_TRUE(st2.insert( obj1, obj10));
-	EXPECT_TRUE(st2.insert( obj1, obj12));
-	EXPECT_EQ(st2.getSize(), 1u);
+TEST_F(InterpreterTest, MemoTest)
+{
+	ASSERT_TRUE(testModule.get() != nullptr);
 
-	// st3  = [ 1->{10, 11, 12}]
-	auto st3 = st1;
-	EXPECT_TRUE(st3.weakUpdate(obj1, st2.lookup(obj1)));
-	EXPECT_EQ(st3.getSize(), 1u);
+	unsigned n0 = 0, n1 = 1;
+	Memo<unsigned> testMemo;
 
-	auto pSet3 = st3.lookup(obj1);
-	EXPECT_NE(pSet3, pSet1);
-	EXPECT_FALSE(pSet3.isEmpty());
-	EXPECT_EQ(pSet3.getSize(), 3u);
-	EXPECT_TRUE(pSet3.has(obj10));
-	EXPECT_TRUE(pSet3.has(obj11));
-	EXPECT_TRUE(pSet3.has(obj12));
+	EXPECT_FALSE(testMemo.hasMemoState(globalCtx, &n0));
 
-	auto pSet2 = st2.lookup(obj1);
-	EXPECT_FALSE(pSet2.isEmpty());
-	EXPECT_EQ(pSet2.getSize(), 2u);
-	EXPECT_TRUE(pSet2.has(obj10));
-	EXPECT_FALSE(pSet2.has(obj11));
-	EXPECT_TRUE(pSet2.has(obj12));
+	auto set0 = PtsSet::getSingletonSet(xLoc);
+	testMemo.updateMemo(globalCtx, &n0, memManager.getUniversalLocation(), set0);
+	ASSERT_TRUE(testMemo.hasMemoState(globalCtx, &n0));
+	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->getSize(), 1u);
+	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->lookup(memManager.getUniversalLocation()), set0);
 
-	// st4 = [ 1->{10, 12} ]
-	auto st4 = st1;
-	EXPECT_TRUE(st4.strongUpdate(obj1, st2.lookup(obj1)));
-	EXPECT_EQ(st4.getSize(), 1u);
+	auto store = Store();
+	store.insert(memManager.getUniversalLocation(), yLoc);
+	testMemo.updateMemo(globalCtx, &n0, store);
+	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->getSize(), 1u);
+	auto set1 = set0.insert(yLoc);
+	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->lookup(memManager.getUniversalLocation()), set1);
 
-	auto pSet4 = st4.lookup(obj1);
-	EXPECT_FALSE(pSet4.isEmpty());
-	EXPECT_EQ(pSet4.getSize(), 2u);
-	EXPECT_TRUE(pSet4.has(obj10));
-	EXPECT_FALSE(pSet4.has(obj11));
-	EXPECT_TRUE(pSet4.has(obj12));
-	EXPECT_TRUE(isStoreEqual(st4, st2));
+	auto set2 = PtsSet::getSingletonSet(yLoc);
+	testMemo.updateMemo(globalCtx, &n1, xLoc, set2);
+	ASSERT_TRUE(testMemo.hasMemoState(globalCtx, &n1));
+	EXPECT_EQ(testMemo.lookup(globalCtx, &n1)->getSize(), 1u);
+	EXPECT_EQ(testMemo.lookup(globalCtx, &n1)->lookup(xLoc), set2);
+}
 
-	// st5 = [ 2->{20, 21} ]
-	auto st5 = mtStore;
-	EXPECT_TRUE(st5.insert(obj2, obj20));
-	EXPECT_TRUE(st5.insert(obj2, obj21));
-	EXPECT_EQ(st5.getSize(), 1u);
+TEST_F(InterpreterTest, TransferAllocTest)
+{
+	// Test alloca
+	auto allocNode = mainCfg->create<AllocNode>(x);
+	auto status = transferFunction.evalAllocNode(allocNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_TRUE(status.hasEnvChanged());
+	EXPECT_FALSE(status.hasStoreChanged());
+	EXPECT_TRUE(env.lookup(ptrManager.getPointer(globalCtx, x)).has(xLoc));
+}
 
-	// st6 = [ 1->{10, 12}, 2->{20, 21} ]
-	auto st6 = st4;
-	EXPECT_TRUE(st6.mergeWith(st5));
-	EXPECT_EQ(st6.getSize(), 2u);
+TEST_F(InterpreterTest, TransferCopyTest1)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	env.insert(ptrX, xLoc);
 
-	EXPECT_TRUE(st6.contains(obj1));
-	EXPECT_TRUE(st6.contains(obj2));
-	auto pSet61 = st6.lookup(obj1);
-	auto pSet62 = st6.lookup(obj2);
-	EXPECT_FALSE(pSet61.isEmpty());
-	EXPECT_EQ(pSet61.getSize(), 2u);
-	EXPECT_TRUE(pSet61.has(obj10));
-	EXPECT_TRUE(pSet61.has(obj12));
-	EXPECT_FALSE(pSet62.isEmpty());
-	EXPECT_EQ(pSet62.getSize(), 2u);
-	EXPECT_TRUE(pSet62.has(obj20));
-	EXPECT_TRUE(pSet62.has(obj21));
+	// Test copy - assignment
+	auto copyNode = mainCfg->create<CopyNode>(y, x, 0, false);
+	auto status = transferFunction.evalCopyNode(copyNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_TRUE(status.hasEnvChanged());
+	EXPECT_FALSE(status.hasStoreChanged());
+	EXPECT_EQ(env.lookup(ptrX), env.lookup(ptrY));
+}
 
-	// st7 = [ 1->{10, 12}, 2->{20, 21}, 3->{10, 11} ]
-	auto st7 = st6;
-	EXPECT_TRUE(st7.weakUpdate(obj3, st1.lookup(obj1)));
-	EXPECT_EQ(st7.getSize(), 3u);
+TEST_F(InterpreterTest, TransferCopyTest2)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	env.insert(ptrX, xLoc);
+	env.insert(ptrY, yLoc);
 
-	EXPECT_TRUE(st7.contains(obj3));
-	EXPECT_EQ(st7.lookup(obj3), st1.lookup(obj1));
+	// Test copy - strong update
+	auto copyNode = mainCfg->create<CopyNode>(y, x, 0, false);
+	auto status = transferFunction.evalCopyNode(copyNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_TRUE(status.hasEnvChanged());
+	EXPECT_FALSE(status.hasStoreChanged());
+	EXPECT_EQ(env.lookup(ptrX), env.lookup(ptrY));
+}
 
-	// st8 = st7
-	auto st8 = st7;
-	EXPECT_TRUE(st8.contains(obj1));
-	EXPECT_TRUE(st8.contains(obj2));
-	EXPECT_TRUE(st8.contains(obj3));
+TEST_F(InterpreterTest, TransferCopyTest3)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	env.insert(ptrX, xLoc);
+	auto offset = 4u;
+	auto xLoc2 = memManager.offsetMemory(xLoc, offset);
 
-	// st9 = [ 1->{10, 12}, 2->{20, 21}, 3->{10, 11} ]
-	auto st9 = st7;
-	EXPECT_FALSE(st9.insert(obj1, obj10));
-	EXPECT_EQ(st9.getSize(), 3u);
+	// Test copy - offset inbound
+	auto copyNode = mainCfg->create<CopyNode>(y, x, offset, false);
+	auto status = transferFunction.evalCopyNode(copyNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_TRUE(status.hasEnvChanged());
+	EXPECT_FALSE(status.hasStoreChanged());
+	EXPECT_EQ(env.lookup(ptrY).getSize(), 1u);
+	EXPECT_TRUE(env.lookup(ptrY).has(xLoc2));
+}
 
-	EXPECT_TRUE(isStoreEqual(st7, st9));
+TEST_F(InterpreterTest, TransferCopyTest4)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	env.insert(ptrX, xLoc);
 
-	// st10 = [ 1->{10, 12, 13}, 2->{20, 21}, 3->{10, 11} ]
-	auto st10 = st7;
-	EXPECT_TRUE(st9.insert(obj1, obj13));
-	EXPECT_TRUE(isStoreEqual(st7, st10));
-	EXPECT_EQ(st10.getSize(), 3u);
+	// Test copy - offset out of bound
+	auto copyNode = mainCfg->create<CopyNode>(y, x, 8, false);
+	auto status = transferFunction.evalCopyNode(copyNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_TRUE(status.hasEnvChanged());
+	EXPECT_FALSE(status.hasStoreChanged());
+	EXPECT_TRUE(env.lookup(ptrY).has(memManager.getUniversalLocation()));
+}
 
-	// st11 = [ 1->{10, 12}, 2->{20, 21}, 3->{10, 11} ]
-	auto st11 = st7;
-	EXPECT_FALSE(st11.strongUpdate(obj1, st4.lookup(obj1)));
-	EXPECT_TRUE(isStoreEqual(st7, st11));
-	EXPECT_EQ(st11.getSize(), 3u);
+TEST_F(InterpreterTest, TransferCopyTest5)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	env.insert(ptrY, yLoc);
+
+	// Test copy - array copy
+	auto copyNode = mainCfg->create<CopyNode>(x, y, 4, true);
+	auto status = transferFunction.evalCopyNode(copyNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_TRUE(status.hasEnvChanged());
+	EXPECT_FALSE(status.hasStoreChanged());
+	EXPECT_EQ(env.lookup(ptrX).getSize(), 6u);
+	EXPECT_TRUE(env.lookup(ptrX).has(yLoc));
+	EXPECT_TRUE(env.lookup(ptrX).has(memManager.offsetMemory(yLoc, 4)));
+	EXPECT_TRUE(env.lookup(ptrX).has(memManager.offsetMemory(yLoc, 8)));
+	EXPECT_TRUE(env.lookup(ptrX).has(memManager.offsetMemory(yLoc, 12)));
+	EXPECT_TRUE(env.lookup(ptrX).has(memManager.offsetMemory(yLoc, 16)));
+	EXPECT_TRUE(env.lookup(ptrX).has(memManager.offsetMemory(yLoc, 20)));
+}
+
+TEST_F(InterpreterTest, TransferCopyTest6)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	auto ptrZ = ptrManager.getOrCreatePointer(globalCtx, z);
+	auto yLoc2 = memManager.offsetMemory(yLoc, 8);
+	env.insert(ptrX, xLoc);
+	env.insert(ptrY, yLoc);
+	env.insert(ptrY, yLoc2);
+
+	// Test copy - multiple sources
+	auto copyNode = mainCfg->create<CopyNode>(z);
+	copyNode->addSrc(x);
+	copyNode->addSrc(y);
+	auto status = transferFunction.evalCopyNode(copyNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_TRUE(status.hasEnvChanged());
+	EXPECT_FALSE(status.hasStoreChanged());
+	EXPECT_EQ(env.lookup(ptrZ).getSize(), 3u);
+	EXPECT_TRUE(env.lookup(ptrZ).has(xLoc));
+	EXPECT_TRUE(env.lookup(ptrZ).has(yLoc));
+	EXPECT_TRUE(env.lookup(ptrZ).has(yLoc2));
+}
+
+TEST_F(InterpreterTest, TransferCopyTest7)
+{
+	ptrManager.getOrCreatePointer(globalCtx, x);
+
+	// Test copy - failure
+	auto copyNode = mainCfg->create<CopyNode>(y, x, 0, false);
+	auto status = transferFunction.evalCopyNode(copyNode);
+	EXPECT_FALSE(status.isValid());
+}
+
+TEST_F(InterpreterTest, TransferLoadTest1)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	env.insert(ptrX, xLoc);
+	env.insert(ptrY, yLoc);
+	store.insert(xLoc, zLoc);
+
+	// Test load - single src, strong update
+	auto loadNode = mainCfg->create<LoadNode>(y, x);
+	auto status = transferFunction.evalLoadNode(loadNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_TRUE(status.hasEnvChanged());
+	EXPECT_FALSE(status.hasStoreChanged());
+	EXPECT_EQ(env.lookup(ptrY).getSize(), 1u);
+	EXPECT_TRUE(env.lookup(ptrY).has(zLoc));
+}
+
+TEST_F(InterpreterTest, TransferLoadTest2)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	auto xLoc2 = memManager.offsetMemory(xLoc, 4);
+	auto yLoc2 = memManager.offsetMemory(yLoc, 8);
+	auto yLoc3 = memManager.offsetMemory(yLoc2, 8);
+	env.insert(ptrX, xLoc);
+	env.insert(ptrX, xLoc2);
+	store.insert(xLoc, yLoc2);
+	store.insert(xLoc2, yLoc3);
+	store.insert(xLoc2, zLoc);
+
+	// Test load - multiple srcs
+	auto loadNode = mainCfg->create<LoadNode>(y, x);
+	auto status = transferFunction.evalLoadNode(loadNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_TRUE(status.hasEnvChanged());
+	EXPECT_FALSE(status.hasStoreChanged());
+	EXPECT_EQ(env.lookup(ptrY).getSize(), 3u);
+	EXPECT_TRUE(env.lookup(ptrY).has(yLoc2));
+	EXPECT_TRUE(env.lookup(ptrY).has(yLoc3));
+	EXPECT_TRUE(env.lookup(ptrY).has(zLoc));
+}
+
+TEST_F(InterpreterTest, TransferLoadTest3)
+{
+	ptrManager.getOrCreatePointer(globalCtx, x);
+
+	// Test load - failure
+	auto loadNode = mainCfg->create<LoadNode>(y, x);
+	auto status = transferFunction.evalLoadNode(loadNode);
+	EXPECT_FALSE(status.isValid());
+}
+
+TEST_F(InterpreterTest, TransferStoreTest1)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	env.insert(ptrX, xLoc);
+	env.insert(ptrY, yLoc);
+	store.insert(yLoc, zLoc);
+
+	// Test store - strong update
+	auto storeNode = mainCfg->create<StoreNode>(z, y, x);
+	auto status = transferFunction.evalStoreNode(storeNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_FALSE(status.hasEnvChanged());
+	EXPECT_TRUE(status.hasStoreChanged());
+	EXPECT_EQ(store.lookup(yLoc).getSize(), 1u);
+	EXPECT_TRUE(store.lookup(yLoc).has(xLoc));
+}
+
+TEST_F(InterpreterTest, TransferStoreTest2)
+{
+	auto ptrX = ptrManager.getOrCreatePointer(globalCtx, x);
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	auto yLoc2 = memManager.offsetMemory(yLoc, 8);
+	auto yLoc3 = memManager.offsetMemory(yLoc2, 8);
+	env.insert(ptrX, xLoc);
+	env.insert(ptrY, yLoc);
+	env.insert(ptrY, yLoc2);
+	store.insert(yLoc, zLoc);
+	store.insert(yLoc2, yLoc3);
+
+	// Test store - weak update (imprecise dst)
+	auto storeNode = mainCfg->create<StoreNode>(z, y, x);
+	auto status = transferFunction.evalStoreNode(storeNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_FALSE(status.hasEnvChanged());
+	EXPECT_TRUE(status.hasStoreChanged());
+
+	EXPECT_EQ(store.lookup(yLoc).getSize(), 2u);
+	EXPECT_TRUE(store.lookup(yLoc).has(xLoc));
+	EXPECT_TRUE(store.lookup(yLoc).has(zLoc));
+	EXPECT_EQ(store.lookup(yLoc2).getSize(), 2u);
+	EXPECT_TRUE(store.lookup(yLoc2).has(yLoc3));
+	EXPECT_TRUE(store.lookup(yLoc2).has(xLoc));
+}
+
+TEST_F(InterpreterTest, TransferStoreTest3)
+{
+	auto ptrY = ptrManager.getOrCreatePointer(globalCtx, y);
+	auto ptrZ = ptrManager.getOrCreatePointer(globalCtx, z);
+	env.insert(ptrY, yLoc);
+	env.insert(ptrZ, zLoc);
+	store.insert(zLoc, xLoc);
+
+	// Test store - weak update (summary dst)
+	auto storeNode = mainCfg->create<StoreNode>(x, z, y);
+	auto status = transferFunction.evalStoreNode(storeNode);
+	EXPECT_TRUE(status.isValid());
+	EXPECT_FALSE(status.hasEnvChanged());
+	EXPECT_TRUE(status.hasStoreChanged());
+
+	EXPECT_EQ(store.lookup(zLoc).getSize(), 2u);
+	EXPECT_TRUE(store.lookup(zLoc).has(xLoc));
+	EXPECT_TRUE(store.lookup(zLoc).has(yLoc));
 }
 
 }
