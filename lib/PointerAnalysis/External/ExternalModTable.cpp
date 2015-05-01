@@ -24,6 +24,8 @@ void ExternalModTable::initializeTable()
 		{"scanf", ModEffect::ModAfterArg0},
 		{"__isoc99_sscanf", ModEffect::ModAfterArg1},
 		{"sscanf", ModEffect::ModAfterArg1},
+		{"__isoc99_swscanf", ModEffect::ModAfterArg1},
+		{"__ctype_b_loc", ModEffect::NoEffect},
 		
 		{"accept", ModEffect::ModAfterArg0},
 
@@ -101,6 +103,7 @@ void ExternalModTable::initializeTable()
 		{"ntohs", ModEffect::NoEffect},
 		{"open", ModEffect::NoEffect},
 		{"printf", ModEffect::NoEffect},
+		{"wprintf", ModEffect::NoEffect},
 		{"puts", ModEffect::NoEffect},
 		{"srand", ModEffect::NoEffect},
 		{"srandom", ModEffect::NoEffect},
@@ -235,6 +238,19 @@ void ExternalModTable::initializeTable()
 		{"times", ModEffect::ModArg0Array},
 		{"fread", ModEffect::ModArg0Array},
 		{"qsort", ModEffect::ModArg0Array},
+
+		{"socket", ModEffect::NoEffect},
+		{"time", ModEffect::ModArg0Array},
+		{"inet_addr", ModEffect::NoEffect},
+		{"connect", ModEffect::NoEffect},
+		{"recv", ModEffect::ModArg1},
+		{"close", ModEffect::NoEffect},
+
+		{"llvm.va_start", ModEffect::NoEffect},
+		{"llvm.va_end", ModEffect::NoEffect},
+		{"iswxdigit", ModEffect::NoEffect},
+
+		{"getenv", ModEffect::NoEffect},
 	};
 }
 

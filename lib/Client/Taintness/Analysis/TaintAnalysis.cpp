@@ -3,10 +3,13 @@
 #include "Client/Taintness/DataFlow/TaintGlobalState.h"
 #include "Client/Taintness/SourceSink/Checker/SinkViolationChecker.h"
 
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace tpa;
+
+cl::opt<std::string> ConfigFileName("taint-config", cl::desc("Specify taint config filename"), cl::init("source_sink.conf"), cl::value_desc("filename"));
 
 namespace client
 {
@@ -20,7 +23,7 @@ static void printSinkViolation(const DefUseProgramLocation& pLoc, const std::vec
 		errs().changeColor(raw_ostream::RED);
 
 		errs() << "\nSink violation at " << *pLoc.getContext() << ":: " << *pLoc.getDefUseInstruction()->getInstruction() << "\n";
-		errs() << "\tArgument: " << record.argPos << "\n";
+		errs() << "\tArgument: " << static_cast<unsigned>(record.argPos) << "\n";
 		errs() << "\tExpected: " << record.expectVal << "\n";
 		errs() << "\tActual:   " << record.actualVal << "\n";
 
@@ -54,7 +57,7 @@ bool TaintAnalysis::checkSinkViolation(const TaintGlobalState& globalState)
 // Return true if there is a info flow violation
 bool TaintAnalysis::runOnDefUseModule(const DefUseModule& duModule)
 {
-	TaintGlobalState globalState(duModule, ptrAnalysis);
+	TaintGlobalState globalState(duModule, ptrAnalysis, ConfigFileName);
 	TaintAnalysisEngine engine(globalState);
 	engine.run();
 

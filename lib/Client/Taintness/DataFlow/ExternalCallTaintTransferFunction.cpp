@@ -114,19 +114,11 @@ TaintLattice TaintTransferFunction::getTaintValueByTClass(const Value* val, TCla
 			assert(store != nullptr);
 
 			auto const& ptrAnalysis = globalState.getPointerAnalysis();
-			auto const& memManager = ptrAnalysis.getMemoryManager();
 
 			auto pSet = ptrAnalysis.getPtsSet(ctx, val);
 			assert(!pSet.isEmpty());
 
-			TaintLattice retVal = TaintLattice::Unknown;
-			for (auto loc: pSet)
-			{
-				if (memManager.isSpecialMemoryLocation(loc))
-					continue;
-
-				retVal = Lattice<TaintLattice>::merge(retVal, store->lookup(loc));
-			}
+			TaintLattice retVal = loadTaintFromPtsSet(pSet);
 			
 			return retVal;
 		}
@@ -154,7 +146,12 @@ EvalStatus TaintTransferFunction::evalMemcpy(const Value* dstVal, const Value* s
 		auto startingOffset = srcLoc->getOffset();
 		for (auto oLoc: srcLocs)
 		{
-			auto oVal = store->lookup(oLoc);
+			auto oVal = TaintLattice::Unknown;
+			if (oLoc == memManager.getUniversalLocation())
+				oVal = TaintLattice::Either;
+			else if (oLoc != memManager.getNullLocation())
+				oVal = store->lookup(oLoc);
+			
 			if (oVal == TaintLattice::Unknown)
 				continue;
 

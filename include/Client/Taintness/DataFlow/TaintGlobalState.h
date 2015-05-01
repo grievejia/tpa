@@ -41,9 +41,9 @@ private:
 
 	std::unordered_set<tpa::ProgramLocation> visitedFuncs;
 public:
-	TaintGlobalState(const tpa::DefUseModule& m, const tpa::PointerAnalysis& p): duModule(m), ptrAnalysis(p)
+	TaintGlobalState(const tpa::DefUseModule& m, const tpa::PointerAnalysis& p, const llvm::StringRef& fileName = "source_sink.conf"): duModule(m), ptrAnalysis(p)
 	{
-		sourceSinkLookupTable.readSummaryFromFile("source_sink.conf");
+		sourceSinkLookupTable.readSummaryFromFile(fileName);
 	}
 
 	const tpa::DefUseModule& getProgram() const { return duModule; }

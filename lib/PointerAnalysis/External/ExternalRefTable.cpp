@@ -24,6 +24,8 @@ void ExternalRefTable::initializeTable()
 		{"scanf", RefEffect::RefArg1},
 		{"__isoc99_sscanf", RefEffect::RefArg0Arg1},
 		{"sscanf", RefEffect::RefArg0Arg1},
+		{"__isoc99_swscanf", RefEffect::RefArg0Arg1},
+		{"__ctype_b_loc", RefEffect::NoEffect},
 		
 		{"alarm", RefEffect::NoEffect},
 		{"atexit", RefEffect::NoEffect},
@@ -67,6 +69,7 @@ void ExternalRefTable::initializeTable()
 		{"isblank", RefEffect::NoEffect},
 		{"iscntrl", RefEffect::NoEffect},
 		{"isdigit", RefEffect::NoEffect},
+		{"iswxdigit", RefEffect::NoEffect},
 		{"isgraph", RefEffect::NoEffect},
 		{"islower", RefEffect::NoEffect},
 		{"isprint", RefEffect::NoEffect},
@@ -100,10 +103,14 @@ void ExternalRefTable::initializeTable()
 		{"srand", RefEffect::NoEffect},
 		{"srandom", RefEffect::NoEffect},
 		
+		// TODO: The "v" version requires us to model vararg properly
 		{"printf", RefEffect::RefAllArgs},
+		{"wprintf", RefEffect::RefAllArgs},
+		{"vprintf", RefEffect::RefAllArgs},
 		{"fprintf", RefEffect::RefAfterArg0},
 		{"sprintf", RefEffect::RefAfterArg0},
 		{"snprintf", RefEffect::RefAfterArg0},
+		{"vfprintf", RefEffect::RefAfterArg0},
 		
 		{"strcasecmp", RefEffect::RefArg0Arg1},
 		{"strcmp", RefEffect::RefArg0Arg1},
@@ -228,6 +235,18 @@ void ExternalRefTable::initializeTable()
 		{"times", RefEffect::NoEffect},
 		{"fread", RefEffect::NoEffect},
 		{"qsort", RefEffect::NoEffect},
+
+		{"socket", RefEffect::NoEffect},
+		{"time", RefEffect::NoEffect},
+		{"inet_addr", RefEffect::RefArg0},
+		{"connect", RefEffect::RefArg1Array},
+		{"recv", RefEffect::NoEffect},
+		{"close", RefEffect::NoEffect},
+
+		{"llvm.va_start", RefEffect::NoEffect},
+		{"llvm.va_end", RefEffect::NoEffect},
+
+		{"getenv", RefEffect::RefArg0},
 	};
 }
 

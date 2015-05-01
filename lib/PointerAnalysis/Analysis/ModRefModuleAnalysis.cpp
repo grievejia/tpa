@@ -6,6 +6,7 @@
 #include "Utils/WorkList.h"
 
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 
@@ -122,10 +123,12 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 	ImmutableCallSite cs(inst);
 	assert(cs);
 
+	bool changed = false;
 	auto caller = inst->getParent()->getParent();
 	auto extModType = extModTable.lookup(f->getName());
 	auto addMemWrite = [&ptrAnalysis, &summary, caller] (const llvm::Value* v, bool array = false)
 	{
+		auto changed = false;
 		auto pSet = ptrAnalysis.getPtsSet(v);
 		for (auto loc: pSet)
 		{
@@ -134,45 +137,47 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 			if (array)
 			{
 				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-					summary.addMemoryWrite(oLoc);		
+					changed |= summary.addMemoryWrite(oLoc);		
 			}
 			else
 			{
-				summary.addMemoryWrite(loc);
+				changed |= summary.addMemoryWrite(loc);
 			}
 		}
+		return changed;
 	};
 
 	switch (extModType)
 	{
 		case ModEffect::ModArg0:
 		{
-			addMemWrite(cs.getArgument(0));
+			changed |= addMemWrite(cs.getArgument(0));
 			break;
 		}
 		case ModEffect::ModArg1:
 		{
-			addMemWrite(cs.getArgument(1));
+			changed |= addMemWrite(cs.getArgument(1));
 			break;
 		}
 		case ModEffect::ModAfterArg0:
 		{
 			for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-				addMemWrite(cs.getArgument(i));
+				changed |= addMemWrite(cs.getArgument(i));
 			break;
 		}
 		case ModEffect::ModAfterArg1:
 		{
 			for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-				addMemWrite(cs.getArgument(i));
+				changed |= addMemWrite(cs.getArgument(i));
 			break;
 		}
 		case ModEffect::ModArg0Array:
 		{
-			addMemWrite(cs.getArgument(0), true);
+			changed |= addMemWrite(cs.getArgument(0), true);
 			break;
 		}
 		case ModEffect::UnknownEffect:
+			errs() << "Function " << f->getName() << "\n";
 			llvm_unreachable("Unknown mod effect");
 		default:
 			break;
@@ -181,6 +186,7 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 	auto extRefType = extRefTable.lookup(f->getName());
 	auto addMemRead = [&ptrAnalysis, &summary, caller] (const llvm::Value* v, bool array = false)
 	{
+		bool changed = false;
 		auto pSet = ptrAnalysis.getPtsSet(v);
 		for (auto loc: pSet)
 		{
@@ -189,63 +195,65 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 			if (array)
 			{
 				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-					summary.addMemoryRead(oLoc);		
+					changed |= summary.addMemoryRead(oLoc);		
 			}
 			else
 			{
-				summary.addMemoryRead(loc);
+				changed |= summary.addMemoryRead(loc);
 			}
 		}
+		return changed;
 	};
 
 	switch (extRefType)
 	{
 		case RefEffect::RefArg0:
 		{
-			addMemRead(cs.getArgument(0));
+			changed |= addMemRead(cs.getArgument(0));
 			break;
 		}
 		case RefEffect::RefArg1:
 		{
-			addMemRead(cs.getArgument(1));
+			changed |= addMemRead(cs.getArgument(1));
 			break;
 		}
 		case RefEffect::RefArg0Arg1:
 		{
-			addMemRead(cs.getArgument(0));
-			addMemRead(cs.getArgument(1));
+			changed |= addMemRead(cs.getArgument(0));
+			changed |= addMemRead(cs.getArgument(1));
 			break;
 		}
 		case RefEffect::RefAfterArg0:
 		{
 			for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-				addMemRead(cs.getArgument(i));
+				changed |= addMemRead(cs.getArgument(i));
 			break;
 		}
 		case RefEffect::RefAfterArg1:
 		{
 			for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-				addMemRead(cs.getArgument(i));
+				changed |= addMemRead(cs.getArgument(i));
 			break;
 		}
 		case RefEffect::RefAllArgs:
 		{
 			for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
-				addMemRead(cs.getArgument(i));
+				changed |= addMemRead(cs.getArgument(i));
 			break;
 		}
 		case RefEffect::RefArg1Array:
 		{
-			addMemRead(cs.getArgument(1), true);
+			changed |= addMemRead(cs.getArgument(1), true);
 			break;
 		}
 		case RefEffect::UnknownEffect:
+			errs() << "Function " << f->getName() << "\n";
 			llvm_unreachable("Unknown ref effect");
 		default:
 			break;
 	}
 
-	return false;
+	return changed;
 }
 
 void propagateSummary(ModRefSummaryMap& summaryMap, const RevCallMapType& revCallGraph, const PointerAnalysis& ptrAnalysis, const ExternalModTable& extModTable, const ExternalRefTable& extRefTable)

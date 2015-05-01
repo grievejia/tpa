@@ -5,6 +5,8 @@ using namespace llvm;
 namespace tpa
 {
 
+// TODO: Model the behaviors of functions that may return NULL
+
 PointerEffect EffectTrait<PointerEffect>::DefaultEffect = PointerEffect::UnknownEffect;
 
 void ExternalPointerEffectTable::initializeTable()
@@ -18,6 +20,7 @@ void ExternalPointerEffectTable::initializeTable()
 		{"__isoc99_fscanf", PointerEffect::NoEffect},
 		{"__isoc99_scanf", PointerEffect::NoEffect},
 		{"__isoc99_sscanf", PointerEffect::NoEffect},
+		{"__isoc99_swscanf", PointerEffect::NoEffect},
 		{"__sigsetjmp", PointerEffect::NoEffect},
 		{"abs", PointerEffect::NoEffect},
 		{"accept", PointerEffect::NoEffect},
@@ -154,6 +157,7 @@ void ExternalPointerEffectTable::initializeTable()
 		{"isblank", PointerEffect::NoEffect},
 		{"iscntrl", PointerEffect::NoEffect},
 		{"isdigit", PointerEffect::NoEffect},
+		{"iswxdigit", PointerEffect::NoEffect},
 		{"isgraph", PointerEffect::NoEffect},
 		{"islower", PointerEffect::NoEffect},
 		{"isprint", PointerEffect::NoEffect},
@@ -221,6 +225,7 @@ void ExternalPointerEffectTable::initializeTable()
 		{"poll", PointerEffect::NoEffect},
 		{"pread64", PointerEffect::NoEffect},
 		{"printf", PointerEffect::NoEffect},
+		{"wprintf", PointerEffect::NoEffect},
 		{"pthread_attr_destroy", PointerEffect::NoEffect},
 		{"pthread_attr_init", PointerEffect::NoEffect},
 		{"pthread_attr_setscope", PointerEffect::NoEffect},
