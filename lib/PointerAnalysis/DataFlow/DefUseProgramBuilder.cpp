@@ -131,6 +131,11 @@ void processMemReadForExternalCall(const PointerCFGNode* node, const Function* c
 			refArg(cs.getArgument(1));
 			break;
 		}
+		case RefEffect::RefArg2:
+		{
+			refArg(cs.getArgument(2));
+			break;
+		}
 		case RefEffect::RefArg0Arg1:
 		{
 			refArg(cs.getArgument(0));

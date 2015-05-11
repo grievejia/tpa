@@ -180,6 +180,10 @@ public:
 	const llvm::Function* getFunction() const { return function; }
 	EntryNode* getEntryNode() { return entryNode; }
 	const EntryNode* getEntryNode() const { return entryNode; }
+	bool doesNotReturn() const
+	{
+		return (exitNode == nullptr);
+	}
 	const ReturnNode* getExitNode() const
 	{
 		assert(exitNode != nullptr);

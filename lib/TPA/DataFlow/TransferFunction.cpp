@@ -69,8 +69,10 @@ EvalStatus TransferFunction::evalCopyNodeWithZeroOffset(const CopyNode* copyNode
 	for (auto src: *copyNode)
 	{
 		auto srcPtr = getPointer(src);
+
+		// This must happen in a PHI node, where one operand must be defined after the CopyNode itself. We need to proceed because the operand may depend on the rhs of this CopyNode and if we give up here, the analysis will reach an immature fixpoint
 		if (srcPtr == nullptr)
-			return EvalStatus::getInvalidStatus();
+			continue;
 
 		auto pSet = globalState.getEnv().lookup(srcPtr);
 		if (pSet.isEmpty())
@@ -117,13 +119,9 @@ EvalStatus TransferFunction::copyWithOffset(const Pointer* dst, const Pointer* s
 	auto resSet = PtsSet::getEmptySet();
 	for (auto srcLoc: srcSet)
 	{
-		if (globalState.getMemoryManager().isSpecialMemoryLocation(srcLoc))
-		{
-			// For unknown location, we are unable to track its points-to set
-			// For null location, doing pointer arithmetic on it result in undefined behavior
-			// TODO: report this to the user
-			continue;
-		}
+		// For unknown location, we are unable to track its points-to set
+		// For null location, doing pointer arithmetic on it result in undefined behavior
+		// TODO: report this to the user
 
 		resSet = updateOffsetLocation(resSet, srcLoc, offset, isArrayRef);
 	}
@@ -157,6 +155,8 @@ EvalStatus TransferFunction::evalLoadNode(const LoadNode* loadNode)
 	assert(store != nullptr);
 
 	auto srcPtr = getPointer(loadNode->getSrc());
+	if (srcPtr == nullptr)
+		errs() << "load = " << *loadNode->getInstruction() << '\n';
 	assert(srcPtr != nullptr && "LoadNode is evaluated before its src operand becomes available");
 	auto dstPtr = getOrCreatePointer(loadNode->getDest());
 

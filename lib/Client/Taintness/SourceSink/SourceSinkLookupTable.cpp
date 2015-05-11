@@ -1,8 +1,6 @@
 #include "Utils/pcomb/pcomb.h"
+#include "Utils/ReadFile.h"
 #include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
-
-#include <llvm/ADT/StringExtras.h>
-#include <llvm/Support/MemoryBuffer.h>
 
 using namespace llvm;
 using namespace pcomb;
@@ -11,18 +9,6 @@ namespace client
 {
 namespace taint
 {
-
-std::unique_ptr<MemoryBuffer> readFileIntoBuffer(const std::string& fileName)
-{
-	auto fileOrErr = MemoryBuffer::getFile(fileName);
-	if (auto ec = fileOrErr.getError())
-	{
-		auto errMsg = (Twine("Can't open file \'") + fileName + "\' :" + ec.message()).str();
-		report_fatal_error(errMsg);
-	}
-
-	return std::move(fileOrErr.get());
-}
 
 void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 {
@@ -92,7 +78,7 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 		),
 		[this] (auto const& tuple)
 		{
-			auto entry = std::make_unique<SourceTaintEntry>(std::get<2>(tuple));
+			auto entry = TaintEntry::getSourceEntry(std::get<2>(tuple));
 			summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
 			return true;
 		}
@@ -109,7 +95,7 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 		),
 		[this] (auto const& tuple)
 		{
-			auto entry = std::make_unique<PipeTaintEntry>(std::get<2>(tuple), std::get<3>(tuple), std::get<4>(tuple), std::get<5>(tuple));
+			auto entry = TaintEntry::getPipeEntry(std::get<2>(tuple), std::get<3>(tuple), std::get<4>(tuple), std::get<5>(tuple));
 			summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
 			return true;
 		}
@@ -124,7 +110,7 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 		),
 		[this] (auto const& tuple)
 		{
-			auto entry = std::make_unique<SinkTaintEntry>(std::get<2>(tuple), std::get<3>(tuple));
+			auto entry = TaintEntry::getSinkEntry(std::get<2>(tuple), std::get<3>(tuple));
 			summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
 			return true;
 		}
@@ -144,7 +130,7 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 	);
 
 	auto tentry = alt(srcEntry, pipeEntry, sinkEntry, ignoreEntry);
-	auto tsummary = many(tentry, 1);
+	auto tsummary = many(tentry);
 
 	auto parseResult = tsummary.parse(fileContent);
 	if (parseResult.hasError() || !StringRef(parseResult.getInputStream().getRawBuffer()).ltrim().empty())
@@ -159,7 +145,7 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 
 void SourceSinkLookupTable::readSummaryFromFile(const std::string& fileName)
 {
-	auto memBuf = readFileIntoBuffer(fileName);
+	auto memBuf = tpa::readFileIntoBuffer(fileName);
 	parseLines(memBuf->getBuffer());
 }
 

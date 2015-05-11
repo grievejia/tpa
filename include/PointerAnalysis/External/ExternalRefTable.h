@@ -12,6 +12,7 @@ enum class RefEffect
 	NoEffect,
 	RefArg0,
 	RefArg1,
+	RefArg2,
 	RefArg0Arg1,
 	RefAfterArg0,
 	RefAfterArg1,

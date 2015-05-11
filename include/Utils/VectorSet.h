@@ -62,18 +62,9 @@ public:
 	{
 		bool changed = false;
 
-		Compare comp;
 		set.reserve(set.size() + other.set.size());
 		for (auto const& elem: other)
-		{
-			if (!std::binary_search(set.begin(), set.end(), elem, comp))
-			{
-				changed = true;
-				set.push_back(elem);
-			}
-		}
-		if (changed)
-			std::sort(set.begin(), set.end(), comp);
+			changed |= insert(elem);
 
 		return changed;
 	}

@@ -177,6 +177,11 @@ private:
 				processMemRead(inst, cs.getArgument(1));
 				break;
 			}
+			case RefEffect::RefArg2:
+			{
+				processMemRead(inst, cs.getArgument(2));
+				break;
+			}
 			case RefEffect::RefArg0Arg1:
 			{
 				processMemRead(inst, cs.getArgument(0));

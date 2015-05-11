@@ -40,7 +40,7 @@ PtsSet PtsSet::merge(const PtsSet& rhs)
 
 	// We prefer to merge the smaller set into the larger set
 	auto set0 = pSet, set1 = rhs.pSet;
-	if (set0->getSize() > set1->getSize())
+	if (set0->getSize() < set1->getSize())
 		std::swap(set0, set1);
 	SetType newSet(*set0);
 	newSet.mergeWith(*set1);

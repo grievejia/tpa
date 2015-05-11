@@ -29,37 +29,46 @@ void TablePrinter::printTPos(TPosition pos) const
 		os << "return";
 	else
 	{
-		os << "arg " << static_cast<unsigned>(pos.getArgIndex());
-		if (pos.isAllArgPosition())
+		auto const& argPos = pos.getAsArgPosition();
+		os << "arg " << static_cast<unsigned>(argPos.getArgIndex());
+		if (argPos.isAfterArgPosition())
 			os << " and after";
 	}
 }
 
 void TablePrinter::printTEntry(const TaintEntry& entry) const
 {
-	if (auto sourceEntry = dyn_cast<SourceTaintEntry>(&entry))
+	switch (entry.getEntryEnd())
 	{
-		os << "  Taint source at ";
-		printTPos(sourceEntry->getTaintPosition());
-	}
-	else if (auto pipeEntry = dyn_cast<PipeTaintEntry>(&entry))
-	{
-		os << "  Taint pipe from ";
-		printTPos(pipeEntry->getSrcPosition());
-		printTClass(pipeEntry->getSrcClass());
-		os << " to ";
-		printTPos(pipeEntry->getDstPosition());
-		printTClass(pipeEntry->getDstClass());
-	}
-	else if (auto sinkEntry = dyn_cast<SinkTaintEntry>(&entry))
-	{
-		os << "  Taint sink at ";
-		printTPos(sinkEntry->getArgPosition());
-		printTClass(sinkEntry->getTaintClass());
-	}
-	else
-	{
-		os << "  Ignored";
+		case TEnd::Source:
+		{
+			auto const& sourceEntry = entry.getAsSourceEntry();
+			
+			os << "  Taint source at ";
+			printTPos(sourceEntry.getTaintPosition());
+			break;
+		}
+		case TEnd::Pipe:
+		{
+			auto const& pipeEntry = entry.getAsPipeEntry();
+
+			os << "  Taint pipe from ";
+			printTPos(pipeEntry.getSrcPosition());
+			printTClass(pipeEntry.getSrcClass());
+			os << " to ";
+			printTPos(pipeEntry.getDstPosition());
+			printTClass(pipeEntry.getDstClass());
+			break;
+		}
+		case TEnd::Sink:
+		{
+			auto const& sinkEntry = entry.getAsSinkEntry();
+
+			os << "  Taint sink at ";
+			printTPos(sinkEntry.getArgPosition());
+			printTClass(sinkEntry.getTaintClass());
+			break;
+		}
 	}
 	os << "\n";
 }
@@ -70,6 +79,13 @@ void TablePrinter::printTable(const SourceSinkLookupTable& table) const
 	for (auto const& mapping: table)
 	{
 		os << "Function " << mapping.first << ":\n";
+		
+		if (mapping.second.isEmpty())
+		{
+			os << "  Ignored\n";
+			continue;
+		}
+
 		for (auto const& entry: mapping.second)
 			printTEntry(entry);
 	}

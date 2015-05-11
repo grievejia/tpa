@@ -19,6 +19,8 @@ set (PointerAnalysisSourceCodes
 	DataFlow/ModRefSummary.cpp
 	DataFlow/WriteDotFile.cpp
 	External/ExternalPointerEffectTable.cpp
+	External/ExternalPointerTable.cpp
+	External/ExternalPointerTablePrinter.cpp
 	External/ExternalModTable.cpp
 	External/ExternalRefTable.cpp
 )

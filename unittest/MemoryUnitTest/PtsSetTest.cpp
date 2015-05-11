@@ -73,6 +73,12 @@ TEST(PtsSetTest, PtsSetTest)
 	EXPECT_TRUE(set1.has(loc1));
 	EXPECT_TRUE(set1.has(loc2));
 	EXPECT_FALSE(set1.has(loc3));
+
+	// set5 -> { loc1, loc2 }
+	auto set5 = set2.merge(set1);
+	EXPECT_EQ(set5.getSize(), 2u);
+	EXPECT_TRUE(set5.has(loc1));
+	EXPECT_TRUE(set5.has(loc2));
 }
 
 TEST(PtsSetTest, EnvTest)

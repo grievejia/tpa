@@ -120,7 +120,8 @@ void GlobalPointerAnalysis::processGlobalInitializer(const MemoryLocation* gLoc,
 						unsigned offset = dataLayout.getIndexedOffset(baseVal->getType(), indexes);
 
 						auto offsetLoc = processConstantGEP(cast<Constant>(baseVal), offset, env, store);
-						assert(offsetLoc != memManager.getUniversalLocation());
+						// offsetLoc could be an off-by-one pointer, so we can't have the assertion here
+						//assert(offsetLoc != memManager.getUniversalLocation());
 
 						store.insert(gLoc, offsetLoc);
 						break;

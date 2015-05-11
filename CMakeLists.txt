@@ -20,6 +20,7 @@ else()
 endif()
 
 configure_file(config/source_sink.conf source_sink.conf COPYONLY)
+configure_file(config/ptr_effect.conf ptr_effect.conf COPYONLY)
 
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
@@ -29,6 +30,7 @@ set (EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 add_subdirectory (lib)
 add_subdirectory (unittest)
+add_subdirectory (tool)
 
 enable_testing ()
 add_test (MemoryUnitTest ${PROJECT_BINARY_DIR}/unittest/MemoryTest)

@@ -53,8 +53,7 @@ void SinkViolationChecker::checkValueWithTClass(const ProgramLocation& pLoc, TCl
 
 void SinkViolationChecker::checkCallSiteWithEntry(const DefUseProgramLocation& pLoc, const SinkTaintEntry& entry, SinkViolationRecords& violations)
 {
-	auto taintPos = entry.getArgPosition();
-	assert(!taintPos.isReturnPosition());
+	auto taintPos = entry.getArgPosition().getAsArgPosition();
 
 	ImmutableCallSite cs(pLoc.getDefUseInstruction()->getInstruction());
 	auto checkArgument = [this, &pLoc, &entry, &violations, &cs] (size_t idx)
@@ -62,7 +61,7 @@ void SinkViolationChecker::checkCallSiteWithEntry(const DefUseProgramLocation& p
 		auto argPLoc = ProgramLocation(pLoc.getContext(), cs.getArgument(idx));
 		checkValueWithTClass(argPLoc, entry.getTaintClass(), idx, violations);
 	};
-	if (taintPos.isAllArgPosition())
+	if (taintPos.isAfterArgPosition())
 	{
 		for (size_t i = taintPos.getArgIndex(), e = cs.arg_size(); i < e; ++i)
 			checkArgument(i);
@@ -85,73 +84,7 @@ SinkViolationRecords SinkViolationChecker::checkCallSiteWithSummary(const DefUse
 		if (entry.getEntryEnd() != TEnd::Sink)
 			continue;
 
-		checkCallSiteWithEntry(pLoc, cast<SinkTaintEntry>(entry), violations);
-
-		/*auto checkArgument = [this, &entry, &violations, &pLoc, cs] (unsigned argPos)
-		{
-			auto argPLoc = ProgramLocation(pLoc.getContext(), cs.getArgument(argPos));
-
-			auto currVal = lookupTaint(argPLoc, entry.what);
-			auto cmpRes = Lattice<TaintLattice>::compare(entry.val, currVal);
-			if (cmpRes != LatticeCompareResult::Equal && cmpRes != LatticeCompareResult::GreaterThan)
-			{
-				violations.push_back({ argPos, entry.what, entry.val, currVal });
-			}
-		};
-
-		switch (entry.pos)
-		{
-			case TPosition::Ret:
-			{
-				llvm_unreachable("Return value cannot be a sink");
-				//checkProgramLocation(pLoc);
-				break;
-			}
-			case TPosition::Arg0:
-			{
-				checkArgument(0);
-				break;
-			}
-			case TPosition::Arg1:
-			{
-				checkArgument(1);
-				break;
-			}
-			case TPosition::Arg2:
-			{
-				checkArgument(2);
-				break;
-			}
-			case TPosition::Arg3:
-			{
-				checkArgument(3);
-				break;
-			}
-			case TPosition::Arg4:
-			{
-				checkArgument(4);
-				break;
-			}
-			case TPosition::AfterArg0:
-			{
-				for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-					checkArgument(i);
-				break;
-			}
-			case TPosition::AfterArg1:
-			{
-				for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-					checkArgument(i);
-				break;
-			}
-			case TPosition::AllArgs:
-			{
-				for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
-					checkArgument(i);
-
-				break;
-			}
-		}*/
+		checkCallSiteWithEntry(pLoc, entry.getAsSinkEntry(), violations);
 	}
 
 	return violations;

@@ -84,15 +84,19 @@ EvalStatus TaintTransferFunction::updateTaintCallByTPosition(const Instruction* 
 
 	if (taintPos.isReturnPosition())
 		return updateTaintValueByTClass(inst, taintClass, taintVal);
-	else if (!taintPos.isAllArgPosition())
-		return updateTaintValueByTClass(cs.getArgument(taintPos.getArgIndex()), taintClass, taintVal);
 	else
 	{
-		auto res = EvalStatus::getValidStatus(false, false);
-		for (size_t i = taintPos.getArgIndex(), e = cs.arg_size(); i < e; ++i)
-			res = res || updateTaintValueByTClass(cs.getArgument(i), taintClass, taintVal);
+		auto const& argPos = taintPos.getAsArgPosition();
+		if (!argPos.isAfterArgPosition())
+			return updateTaintValueByTClass(cs.getArgument(argPos.getArgIndex()), taintClass, taintVal);
+		else
+		{
+			auto res = EvalStatus::getValidStatus(false, false);
+			for (size_t i = argPos.getArgIndex(), e = cs.arg_size(); i < e; ++i)
+				res = res || updateTaintValueByTClass(cs.getArgument(i), taintClass, taintVal);
 
-		return res;
+			return res;
+		}	
 	}
 }
 
@@ -175,7 +179,7 @@ EvalStatus TaintTransferFunction::evalTaintPipe(const Instruction* inst, const P
 
 	auto srcPos = entry.getSrcPosition();
 	assert(!srcPos.isReturnPosition());
-	assert(!srcPos.isAllArgPosition());
+	assert(!srcPos.getAsArgPosition().isAfterArgPosition());
 	auto dstPos = entry.getDstPosition();
 
 	auto srcClass = entry.getSrcClass();
@@ -185,13 +189,13 @@ EvalStatus TaintTransferFunction::evalTaintPipe(const Instruction* inst, const P
 	{
 		// This is the case of memcpy
 		assert(!dstPos.isReturnPosition());
-		assert(!dstPos.isAllArgPosition());
+		assert(!dstPos.getAsArgPosition().isAfterArgPosition());
 
-		return evalMemcpy(cs.getArgument(dstPos.getArgIndex()), cs.getArgument(srcPos.getArgIndex()));
+		return evalMemcpy(cs.getArgument(dstPos.getAsArgPosition().getArgIndex()), cs.getArgument(srcPos.getAsArgPosition().getArgIndex()));
 	}
 	else
 	{
-		auto srcTaint = getTaintValueByTClass(cs.getArgument(srcPos.getArgIndex()), entry.getSrcClass());
+		auto srcTaint = getTaintValueByTClass(cs.getArgument(srcPos.getAsArgPosition().getArgIndex()), entry.getSrcClass());
 		if (srcTaint == TaintLattice::Unknown)
 			return EvalStatus::getInvalidStatus();
 
@@ -210,10 +214,10 @@ EvalStatus TaintTransferFunction::evalCallBySummary(const DefUseInstruction* duI
 		switch (entry.getEntryEnd())
 		{
 			case TEnd::Source:
-				res = res || evalTaintSource(duInst->getInstruction(), cast<SourceTaintEntry>(entry));
+				res = res || evalTaintSource(duInst->getInstruction(), entry.getAsSourceEntry());
 				break;
 			case TEnd::Pipe:
-				res = res || evalTaintPipe(duInst->getInstruction(), cast<PipeTaintEntry>(entry));
+				res = res || evalTaintPipe(duInst->getInstruction(), entry.getAsPipeEntry());
 				break;
 			case TEnd::Sink:
 				// We only care about taint source, but we need to record all taint sinks for future examination

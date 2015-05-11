@@ -247,4 +247,44 @@ TEST(GlobalAnalysisTest, BasicTest3)
 	ASSERT_TRUE(memSet6.has(memManager.offsetMemory(loc5, 16)));
 }
 
+TEST(GlobalAnalysisTest, BasicTest4)
+{
+	auto testModule = parseAssembly(
+		"%struct.token = type { i8, i8, i16, i32, i32, i8* }\n"
+		"@g0 = global %struct.token { i8 1, i8 0, i16 0, i32 0, i32 0, i8* null }, align 8\n"
+		"@g1 = global i8* getelementptr (i8* getelementptr inbounds (%struct.token* @g0, i32 0, i32 0), i64 24)\n"
+		"define i32 @main() {\n"
+		"bb:\n"
+		"  ret i32 0\n"
+		"}\n"
+	);
+
+	auto g0 = testModule->getGlobalVariable("g0");
+	auto g1 = testModule->getGlobalVariable("g1");
+
+	auto ptrManager = PointerManager();
+	auto dataLayout = DataLayout(testModule.get());
+	auto memManager = MemoryManager(dataLayout);
+
+	auto globalAnalysis = GlobalPointerAnalysis(ptrManager, memManager);
+	auto envStore = globalAnalysis.runOnModule(*testModule);
+	auto env = std::move(envStore.first);
+	auto store = std::move(envStore.second);
+
+	auto globalCtx = Context::getGlobalContext();
+	auto ptr0 = ptrManager.getPointer(globalCtx, g0);
+	EXPECT_NE(ptr0, nullptr);
+	auto ptr1 = ptrManager.getPointer(globalCtx, g1);
+	EXPECT_NE(ptr1, nullptr);
+
+	auto locSet1 = env.lookup(ptr1);
+	ASSERT_EQ(locSet1.getSize(), 1u);
+	auto loc1 = *locSet1.begin();
+	
+	auto memSet1 = store.lookup(loc1);
+	ASSERT_EQ(memSet1.getSize(), 1u);
+	auto mem1 = *memSet1.begin();
+	EXPECT_EQ(mem1, memManager.getUniversalLocation());
+}
+
 }

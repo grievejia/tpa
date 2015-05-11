@@ -217,6 +217,11 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 			changed |= addMemRead(cs.getArgument(1));
 			break;
 		}
+		case RefEffect::RefArg2:
+		{
+			changed |= addMemRead(cs.getArgument(2));
+			break;
+		}
 		case RefEffect::RefArg0Arg1:
 		{
 			changed |= addMemRead(cs.getArgument(0));

@@ -157,7 +157,8 @@ void PointerCFGEvaluator::applyNonExternalCall(const CallNode* callNode, const C
 	// Prevent premature fixpoint
 	// We enqueue the callee's return node rather than caller's successors of the call node. The reason is that if the callee reaches its fixpoint, the call node's lhs won't get updated
 	// FIXME: should only propagate once for each non-external callsite
-	globalWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getExitNode());
+	if (!tgtCFG->doesNotReturn())
+		globalWorkList.enqueue(newCtx, tgtCFG, tgtCFG->getExitNode());
 }
 
 void PointerCFGEvaluator::applyCall(const CallNode* callNode, const Function* callee, const Store& store)

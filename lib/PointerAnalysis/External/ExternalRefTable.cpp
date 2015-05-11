@@ -18,6 +18,9 @@ void ExternalRefTable::initializeTable()
 		{"abs", RefEffect::NoEffect},
 		{"access", RefEffect::RefArg0},
 
+		{"execl", RefEffect::RefAllArgs},
+		{"execlp", RefEffect::RefAllArgs},
+
 		{"__isoc99_fscanf", RefEffect::RefArg0Arg1},
 		{"fscanf", RefEffect::RefArg0Arg1},
 		{"__isoc99_scanf", RefEffect::RefArg1},
@@ -107,14 +110,18 @@ void ExternalRefTable::initializeTable()
 		{"printf", RefEffect::RefAllArgs},
 		{"wprintf", RefEffect::RefAllArgs},
 		{"vprintf", RefEffect::RefAllArgs},
+		{"vwprintf", RefEffect::RefAllArgs},
 		{"fprintf", RefEffect::RefAfterArg0},
+		{"fwprintf", RefEffect::RefAfterArg0},
 		{"sprintf", RefEffect::RefAfterArg0},
 		{"snprintf", RefEffect::RefAfterArg0},
 		{"vfprintf", RefEffect::RefAfterArg0},
+		{"vfwprintf", RefEffect::RefAfterArg0},
 		
 		{"strcasecmp", RefEffect::RefArg0Arg1},
 		{"strcmp", RefEffect::RefArg0Arg1},
 		{"strlen", RefEffect::RefArg0},
+		{"wcslen", RefEffect::RefArg0},
 		{"strncasecmp", RefEffect::RefArg0Arg1},
 		{"strncmp", RefEffect::RefArg0Arg1},
 		{"syslog", RefEffect::RefAfterArg0},
@@ -167,7 +174,7 @@ void ExternalRefTable::initializeTable()
 		{"fopen", RefEffect::NoEffect},
 		{"getlogin", RefEffect::NoEffect},
 		{"opendir", RefEffect::NoEffect},
-		{"popen", RefEffect::NoEffect},
+		{"popen", RefEffect::RefAllArgs},
 		{"tempnam", RefEffect::NoEffect},
 		{"textdomain", RefEffect::NoEffect},
 		{"tgetstr", RefEffect::NoEffect},
@@ -191,14 +198,19 @@ void ExternalRefTable::initializeTable()
 		{"strtok_r", RefEffect::NoEffect},
 
 		{"fgets", RefEffect::NoEffect},
+		{"fgetws", RefEffect::NoEffect},
 		{"gets", RefEffect::NoEffect},
 		{"memchr", RefEffect::NoEffect},
 
 		{"strcat", RefEffect::RefArg1},
+		{"wcscat", RefEffect::RefArg1},
 		{"strncat", RefEffect::RefArg1},
+		{"wcsncat", RefEffect::RefArg1},
 		{"strcpy", RefEffect::RefArg1},
+		{"wcscpy", RefEffect::RefArg1},
 		{"strncpy", RefEffect::RefArg1},
 		{"strchr", RefEffect::RefArg0},
+		{"wcschr", RefEffect::RefArg0},
 		{"strrchr", RefEffect::RefArg0},
 		{"strstr", RefEffect::RefArg0Arg1},
 		{"strpbrk", RefEffect::RefArg0Arg1},
@@ -242,11 +254,16 @@ void ExternalRefTable::initializeTable()
 		{"connect", RefEffect::RefArg1Array},
 		{"recv", RefEffect::NoEffect},
 		{"close", RefEffect::NoEffect},
+		{"listen", RefEffect::NoEffect},
+		{"accept", RefEffect::RefArg2},
+		{"bind", RefEffect::RefArg1Array},
 
 		{"llvm.va_start", RefEffect::NoEffect},
 		{"llvm.va_end", RefEffect::NoEffect},
 
 		{"getenv", RefEffect::RefArg0},
+		{"pclose", RefEffect::NoEffect},
+		{"system", RefEffect::RefArg0},
 	};
 }
 

@@ -10,68 +10,114 @@ namespace client
 namespace taint
 {
 
-class TaintEntry
-{
-private:
-	TEnd type;
-public:
-	TaintEntry(TEnd t): type(t) {}
-	virtual ~TaintEntry() = default;
-
-	TEnd getEntryEnd() const { return type; }
-};
-
-class SourceTaintEntry: public TaintEntry
+class SourceTaintEntry
 {
 private:
 	TPosition pos;
 public:
-	SourceTaintEntry(TPosition p): TaintEntry(TEnd::Source), pos(p) {}
+	SourceTaintEntry(TPosition p): pos(p) {}
 
 	TPosition getTaintPosition() const { return pos; }
-
-	static bool classof(const TaintEntry* e)
-	{
-		return e->getEntryEnd() == TEnd::Source;
-	}
 };
 
-class PipeTaintEntry: public TaintEntry
+class PipeTaintEntry
 {
 private:
 	TPosition dstPos, srcPos;
 	TClass dstClass, srcClass;
 public:
-	PipeTaintEntry(TPosition dp, TClass dc, TPosition sp, TClass sc): TaintEntry(TEnd::Pipe), dstPos(dp), srcPos(sp), dstClass(dc), srcClass(sc) {}
+	PipeTaintEntry(TPosition dp, TClass dc, TPosition sp, TClass sc): dstPos(dp), srcPos(sp), dstClass(dc), srcClass(sc) {}
 
 	TPosition getDstPosition() const { return dstPos; }
 	TClass getDstClass() const { return dstClass; }
 	TPosition getSrcPosition() const { return srcPos; }
 	TClass getSrcClass() const { return srcClass; }
-
-	static bool classof(const TaintEntry* e)
-	{
-		return e->getEntryEnd() == TEnd::Pipe;
-	}
 };
 
-class SinkTaintEntry: public TaintEntry
+class SinkTaintEntry
 {
 private:
 	TPosition argPos;
 	TClass argClass;
 public:
-	SinkTaintEntry(TPosition p, TClass c): TaintEntry(TEnd::Sink), argPos(p), argClass(c)
+	SinkTaintEntry(TPosition p, TClass c): argPos(p), argClass(c)
 	{
 		assert(!argPos.isReturnPosition());
 	}
 
 	TPosition getArgPosition() const { return argPos; }
 	TClass getTaintClass() const { return argClass; }
+};
 
-	static bool classof(const TaintEntry* e)
+class TaintEntry
+{
+private:
+	TEnd type;
+
+	union
 	{
-		return e->getEntryEnd() == TEnd::Sink;
+		SourceTaintEntry source;
+		PipeTaintEntry pipe;
+		SinkTaintEntry sink;
+	};
+
+	TaintEntry(TPosition p): type(TEnd::Source)
+	{
+		new (&source) SourceTaintEntry(p);
+	}
+	TaintEntry(TPosition dp, TClass dc, TPosition sp, TClass sc): type(TEnd::Pipe)
+	{
+		new (&pipe) PipeTaintEntry(dp, dc, sp, sc);
+	}
+	TaintEntry(TPosition p, TClass c): type(TEnd::Sink)
+	{
+		new (&sink) SinkTaintEntry(p, c);
+	}
+public:
+
+	static TaintEntry getSourceEntry(TPosition p)
+	{
+		return TaintEntry(p);
+	}
+	static TaintEntry getPipeEntry(TPosition dp, TClass dc, TPosition sp, TClass sc)
+	{
+		return TaintEntry(dp, dc, sp, sc);
+	}
+	static TaintEntry getSinkEntry(TPosition p, TClass c)
+	{
+		return TaintEntry(p, c);
+	}
+
+	~TaintEntry()
+	{
+		switch (type)
+		{
+			case TEnd::Source:
+				source.~SourceTaintEntry();
+				break;
+			case TEnd::Pipe:
+				pipe.~PipeTaintEntry();
+			case TEnd::Sink:
+				sink.~SinkTaintEntry();
+		}
+	}
+
+	TEnd getEntryEnd() const { return type; }
+
+	const SourceTaintEntry& getAsSourceEntry() const
+	{
+		assert(type == TEnd::Source);
+		return source;
+	}
+	const PipeTaintEntry& getAsPipeEntry() const
+	{
+		assert(type == TEnd::Pipe);
+		return pipe;
+	}
+	const SinkTaintEntry& getAsSinkEntry() const
+	{
+		assert(type == TEnd::Sink);
+		return sink;
 	}
 };
 

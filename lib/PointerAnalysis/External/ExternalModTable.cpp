@@ -18,6 +18,9 @@ void ExternalModTable::initializeTable()
 		{"abs", ModEffect::NoEffect},
 		{"access", ModEffect::NoEffect},
 
+		{"execl", ModEffect::NoEffect},
+		{"execlp", ModEffect::NoEffect},
+
 		{"__isoc99_fscanf", ModEffect::ModAfterArg1},
 		{"fscanf", ModEffect::ModAfterArg1},
 		{"__isoc99_scanf", ModEffect::ModAfterArg0},
@@ -27,6 +30,7 @@ void ExternalModTable::initializeTable()
 		{"__isoc99_swscanf", ModEffect::ModAfterArg1},
 		{"__ctype_b_loc", ModEffect::NoEffect},
 		
+		// More accurate: ModArg1Array and ModArg2
 		{"accept", ModEffect::ModAfterArg0},
 
 		
@@ -43,6 +47,7 @@ void ExternalModTable::initializeTable()
 		{"fflush", ModEffect::NoEffect},
 		{"fgetc", ModEffect::NoEffect},
 		{"fprintf", ModEffect::NoEffect},
+		{"fwprintf", ModEffect::NoEffect},
 		{"fputc", ModEffect::NoEffect},
 		{"fputs", ModEffect::NoEffect},
 		{"free", ModEffect::NoEffect},
@@ -114,6 +119,7 @@ void ExternalModTable::initializeTable()
 		{"strcasecmp", ModEffect::NoEffect},
 		{"strcmp", ModEffect::NoEffect},
 		{"strlen", ModEffect::NoEffect},
+		{"wcslen", ModEffect::NoEffect},
 		{"strncasecmp", ModEffect::NoEffect},
 		{"strncmp", ModEffect::NoEffect},
 		{"syslog", ModEffect::NoEffect},
@@ -122,7 +128,9 @@ void ExternalModTable::initializeTable()
 		{"towlower", ModEffect::NoEffect},
 		{"towupper", ModEffect::NoEffect},
 		{"vfprintf", ModEffect::NoEffect},
+		{"vfwprintf", ModEffect::NoEffect},
 		{"vprintf", ModEffect::NoEffect},
+		{"vwprintf", ModEffect::NoEffect},
 		{"vsnprintf", ModEffect::NoEffect},
 		{"vsprintf", ModEffect::NoEffect},
 		{"write", ModEffect::NoEffect},
@@ -170,7 +178,6 @@ void ExternalModTable::initializeTable()
 		{"fopen", ModEffect::ModArg0},
 		{"getlogin", ModEffect::ModArg0},
 		{"opendir", ModEffect::ModArg0},
-		{"popen", ModEffect::ModArg0},
 		{"tempnam", ModEffect::ModArg0},
 		{"textdomain", ModEffect::ModArg0},
 		{"tgetstr", ModEffect::ModArg0},
@@ -194,14 +201,19 @@ void ExternalModTable::initializeTable()
 		{"strtok_r", ModEffect::ModArg0},
 
 		{"fgets", ModEffect::ModArg0},
+		{"fgetws", ModEffect::ModArg0},
 		{"gets", ModEffect::ModArg0},
 		{"memchr", ModEffect::NoEffect},
 
 		{"strcat", ModEffect::ModArg0},
+		{"wcscat", ModEffect::ModArg0},
 		{"strncat", ModEffect::ModArg0},
+		{"wcsncat", ModEffect::ModArg0},
 		{"strcpy", ModEffect::ModArg0},
+		{"wcscpy", ModEffect::ModArg0},
 		{"strncpy", ModEffect::ModArg0},
 		{"strchr", ModEffect::NoEffect},
+		{"wcschr", ModEffect::NoEffect},
 		{"strrchr", ModEffect::NoEffect},
 		{"strstr", ModEffect::NoEffect},
 		{"strpbrk", ModEffect::NoEffect},
@@ -245,12 +257,17 @@ void ExternalModTable::initializeTable()
 		{"connect", ModEffect::NoEffect},
 		{"recv", ModEffect::ModArg1},
 		{"close", ModEffect::NoEffect},
+		{"listen", ModEffect::NoEffect},
+		{"bind", ModEffect::NoEffect},
 
 		{"llvm.va_start", ModEffect::NoEffect},
 		{"llvm.va_end", ModEffect::NoEffect},
 		{"iswxdigit", ModEffect::NoEffect},
 
 		{"getenv", ModEffect::NoEffect},
+		{"popen", ModEffect::NoEffect},
+		{"pclose", ModEffect::NoEffect},
+		{"system", ModEffect::NoEffect},
 	};
 }
 
