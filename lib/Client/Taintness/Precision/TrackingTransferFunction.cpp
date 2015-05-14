@@ -4,7 +4,7 @@
 #include "Client/Taintness/Precision/TrackingTransferFunction.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 #include "PointerAnalysis/DataFlow/DefUseModule.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Function.h>

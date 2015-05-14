@@ -2,16 +2,22 @@
 #include "Utils/ReadFile.h"
 #include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
 
+#include <llvm/Support/CommandLine.h>
+
 using namespace llvm;
 using namespace pcomb;
+
+cl::opt<std::string> ConfigFileName("taint-config", cl::desc("Specify taint config filename"), cl::init("source_sink.conf"), cl::value_desc("filename"));
 
 namespace client
 {
 namespace taint
 {
 
-void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
+SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRef& fileContent)
 {
+	SourceSinkLookupTable table;
+
 	auto idx = rule(
 		regex("\\d+"),
 		[] (auto const& digits) -> uint8_t
@@ -76,10 +82,10 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 			id,
 			alt(tret, targ, tafterarg)
 		),
-		[this] (auto const& tuple)
+		[&table] (auto const& tuple)
 		{
 			auto entry = TaintEntry::getSourceEntry(std::get<2>(tuple));
-			summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
+			table.summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
 			return true;
 		}
 	);
@@ -93,10 +99,10 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 			targ,
 			alt(vclass, dclass, rclass)
 		),
-		[this] (auto const& tuple)
+		[&table] (auto const& tuple)
 		{
 			auto entry = TaintEntry::getPipeEntry(std::get<2>(tuple), std::get<3>(tuple), std::get<4>(tuple), std::get<5>(tuple));
-			summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
+			table.summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
 			return true;
 		}
 	);
@@ -108,10 +114,10 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 			alt(targ, tafterarg),
 			alt(vclass, dclass)
 		),
-		[this] (auto const& tuple)
+		[&table] (auto const& tuple)
 		{
 			auto entry = TaintEntry::getSinkEntry(std::get<2>(tuple), std::get<3>(tuple));
-			summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
+			table.summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
 			return true;
 		}
 	);
@@ -122,14 +128,22 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 			token(str("IGNORE")),
 			id
 		),
-		[this] (auto const& tuple)
+		[&table] (auto const& tuple)
 		{
-			summaryMap.insert(std::make_pair(std::get<1>(tuple), TaintSummary()));
+			table.summaryMap.insert(std::make_pair(std::get<1>(tuple), TaintSummary()));
 			return false;
 		}
 	);
 
-	auto tentry = alt(srcEntry, pipeEntry, sinkEntry, ignoreEntry);
+	auto commentEntry = rule(
+		token(regex("#.*\\n")),
+		[] (auto const&)
+		{
+			return false;
+		}
+	);
+
+	auto tentry = alt(commentEntry, ignoreEntry, srcEntry, pipeEntry, sinkEntry);
 	auto tsummary = many(tentry);
 
 	auto parseResult = tsummary.parse(fileContent);
@@ -140,16 +154,24 @@ void SourceSinkLookupTable::parseLines(const StringRef& fileContent)
 		auto colStr = std::to_string(stream.getColumnNumber());
 		auto errMsg = Twine("Parsing taint config file failed at line ") + lineStr + ", column " + colStr;
 		report_fatal_error(errMsg);
+		llvm_unreachable("Fatal error");
 	}
+
+	return table;
 }
 
-void SourceSinkLookupTable::readSummaryFromFile(const std::string& fileName)
+SourceSinkLookupTable SourceSinkLookupTable::loadFromFile(const std::string& fileName)
 {
 	auto memBuf = tpa::readFileIntoBuffer(fileName);
-	parseLines(memBuf->getBuffer());
+	return buildTableFromBuffer(memBuf->getBuffer());
 }
 
-const TaintSummary* SourceSinkLookupTable::getSummary(const std::string& name) const
+SourceSinkLookupTable SourceSinkLookupTable::loadFromFile()
+{
+	return loadFromFile(ConfigFileName);
+}
+
+const TaintSummary* SourceSinkLookupTable::lookup(const std::string& name) const
 {
 	auto itr = summaryMap.find(name);
 	if (itr == summaryMap.end())

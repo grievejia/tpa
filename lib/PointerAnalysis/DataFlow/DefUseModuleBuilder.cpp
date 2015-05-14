@@ -4,7 +4,7 @@
 #include "PointerAnalysis/DataFlow/DefUseModule.h"
 #include "PointerAnalysis/DataFlow/DefUseModuleBuilder.h"
 #include "PointerAnalysis/DataFlow/ModRefSummary.h"
-#include "PointerAnalysis/External/ExternalRefTable.h"
+#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/CFG.h>
@@ -116,7 +116,7 @@ class MemReadVisitor: public llvm::InstVisitor<MemReadVisitor>
 private:
 	const PointerAnalysis& ptrAnalysis;
 	const ModRefSummaryMap& summaryMap;
-	const ExternalRefTable& extRefTable;
+	const ExternalModRefTable& modRefTable;
 
 	using RDMapType = ReachingDefMap<Instruction>;
 	const RDMapType& rdMap;
@@ -138,7 +138,7 @@ private:
 		}
 	}
 
-	void processMemRead(Instruction& inst, Value* ptr, bool array = false)
+	void processMemRead(Instruction& inst, Value* ptr, bool isReachableMemory)
 	{
 		auto pSet = ptrAnalysis.getPtsSet(ptr);
 		if (!pSet.isEmpty())
@@ -147,7 +147,7 @@ private:
 			auto dstDuInst = duFunc.getDefUseInstruction(&inst);
 			for (auto loc: pSet)
 			{
-				if (array)
+				if (isReachableMemory)
 				{
 					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
 						addMemDefUseEdge(oLoc, rdStore, dstDuInst);
@@ -162,70 +162,43 @@ private:
 
 	void processExternalCall(CallSite cs, const Function* f)
 	{
-		auto extType = extRefTable.lookup(f->getName());
+		auto summary = modRefTable.lookup(f->getName());
+		if (summary == nullptr)
+		{
+			errs() << "Missing entry in ModRefTable: " << f->getName() << "\n";
+			llvm_unreachable("Consider adding the function to modref annotations");
+		}
 		auto& inst = *cs.getInstruction();
 
-		switch (extType)
+		for (auto const& effect: *summary)
 		{
-			case RefEffect::RefArg0:
+			if (effect.isRefEffect())
 			{
-				processMemRead(inst, cs.getArgument(0));
-				break;
+				auto const& pos = effect.getPosition();
+				assert(!pos.isReturnPosition() && "It doesn't make any sense to ref a return position!");
+
+				auto const& argPos = pos.getAsArgPosition();
+				unsigned idx = argPos.getArgIndex();
+
+				if (!argPos.isAfterArgPosition())
+					processMemRead(inst, cs.getArgument(idx), effect.onReachableMemory());
+				else
+				{
+					for (auto i = idx, e = cs.arg_size(); i < e; ++i)
+						processMemRead(inst, cs.getArgument(i), effect.onReachableMemory());
+				}
 			}
-			case RefEffect::RefArg1:
-			{
-				processMemRead(inst, cs.getArgument(1));
-				break;
-			}
-			case RefEffect::RefArg2:
-			{
-				processMemRead(inst, cs.getArgument(2));
-				break;
-			}
-			case RefEffect::RefArg0Arg1:
-			{
-				processMemRead(inst, cs.getArgument(0));
-				processMemRead(inst, cs.getArgument(1));
-				break;
-			}
-			case RefEffect::RefAfterArg0:
-			{
-				for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-					processMemRead(inst, cs.getArgument(i));
-				break;
-			}
-			case RefEffect::RefAfterArg1:
-			{
-				for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-					processMemRead(inst, cs.getArgument(i));
-				break;
-			}
-			case RefEffect::RefAllArgs:
-			{
-				for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
-					processMemRead(inst, cs.getArgument(i));
-				break;
-			}
-			case RefEffect::RefArg1Array:
-			{
-				processMemRead(inst, cs.getArgument(1), true);
-				break;
-			}
-			case RefEffect::UnknownEffect:
-				llvm_unreachable("Unknown ref effect");
-			default:
-				break;
 		}
 	}
 public:
-	MemReadVisitor(const RDMapType& m, DefUseFunction& f, const PointerAnalysis& p, const ModRefSummaryMap& sm, const ExternalRefTable& e): ptrAnalysis(p), summaryMap(sm), extRefTable(e), rdMap(m), duFunc(f) {}
+	MemReadVisitor(const RDMapType& m, DefUseFunction& f, const PointerAnalysis& p, const ModRefSummaryMap& sm, const ExternalModRefTable& e): ptrAnalysis(p), summaryMap(sm), modRefTable(e), rdMap(m), duFunc(f) {}
 
 	// Default case
 	void visitInstruction(Instruction&) {}
 
 	void visitLoadInst(LoadInst& loadInst)
 	{
-		processMemRead(loadInst, loadInst.getPointerOperand());
+		processMemRead(loadInst, loadInst.getPointerOperand(), false);
 	}
 
 	void visitCallSite(CallSite cs)
@@ -255,10 +228,10 @@ public:
 void DefUseModuleBuilder::buildMemLevelEdges(DefUseFunction& duFunc)
 {
 	// Run the reaching def analysis
-	ReachingDefModuleAnalysis rdAnalysis(ptrAnalysis, summaryMap, extModTable);
+	ReachingDefModuleAnalysis rdAnalysis(ptrAnalysis, summaryMap, modRefTable);
 	auto rdMap = rdAnalysis.runOnFunction(duFunc.getFunction());
 
-	MemReadVisitor memVisitor(rdMap, duFunc, ptrAnalysis, summaryMap, extRefTable);
+	MemReadVisitor memVisitor(rdMap, duFunc, ptrAnalysis, summaryMap, modRefTable);
 	memVisitor.visit(const_cast<Function&>(duFunc.getFunction()));
 
 	// Add mem-level external uses

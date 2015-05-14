@@ -20,7 +20,7 @@ public:
 
 	void addEffect(PointerEffect&& e)
 	{
-		list.push_back(std::move(e));
+		list.emplace_back(std::move(e));
 	}
 
 	const_iterator begin() const { return list.begin(); }

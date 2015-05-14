@@ -237,7 +237,7 @@ EvalStatus TaintTransferFunction::evalExternalCall(const DefUseInstruction* duIn
 	assert(store != nullptr);
 
 	auto funName = callee->getName();
-	if (auto summary = globalState.getSourceSinkLookupTable().getSummary(funName))
+	if (auto summary = globalState.getSourceSinkLookupTable().lookup(funName))
 		return evalCallBySummary(duInst, callee, *summary);
 	else
 	{

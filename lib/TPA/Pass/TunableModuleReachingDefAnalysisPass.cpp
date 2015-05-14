@@ -1,7 +1,6 @@
 #include "PointerAnalysis/Analysis/ModRefModuleAnalysis.h"
 #include "PointerAnalysis/Analysis/ReachingDefModuleAnalysis.h"
-#include "PointerAnalysis/External/ExternalModTable.h"
-#include "PointerAnalysis/External/ExternalRefTable.h"
+#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 #include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 #include "TPA/Pass/TunableModuleReachingDefAnalysisPass.h"
 
@@ -49,12 +48,11 @@ bool TunableModuleReachingDefAnalysisPass::runOnModule(Module& module)
 	TunablePointerAnalysisWrapper tpaWrapper;
 	tpaWrapper.runOnModule(module);
 
-	auto extModTable = ExternalModTable();
-	auto extRefTable = ExternalRefTable();
-	ModRefModuleAnalysis modRefAnalysis(tpaWrapper.getPointerAnalysis(), extModTable, extRefTable);
+	auto modRefTable = ExternalModRefTable::loadFromFile();
+	ModRefModuleAnalysis modRefAnalysis(tpaWrapper.getPointerAnalysis(), modRefTable);
 	auto summaryMap = modRefAnalysis.runOnModule(module);
 
-	ReachingDefModuleAnalysis rdAnalysis(tpaWrapper.getPointerAnalysis(), summaryMap, extModTable);
+	ReachingDefModuleAnalysis rdAnalysis(tpaWrapper.getPointerAnalysis(), summaryMap, modRefTable);
 	for (auto const& f: module)
 	{
 		if (f.isDeclaration())

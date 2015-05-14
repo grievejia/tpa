@@ -120,8 +120,10 @@ EvalStatus TransferFunction::copyWithOffset(const Pointer* dst, const Pointer* s
 	for (auto srcLoc: srcSet)
 	{
 		// For unknown location, we are unable to track its points-to set
-		// For null location, doing pointer arithmetic on it result in undefined behavior
+		// For null location, we assume that whenever pointer arithmetic happens, the pointer is known to be not NULL
 		// TODO: report this to the user
+		if (srcLoc == globalState.getMemoryManager().getNullLocation())
+			continue;
 
 		resSet = updateOffsetLocation(resSet, srcLoc, offset, isArrayRef);
 	}
@@ -150,19 +152,14 @@ EvalStatus TransferFunction::evalCopyNode(const CopyNode* copyNode)
 		return evalCopyNodeWithNonZeroOffset(copyNode);
 }
 
-EvalStatus TransferFunction::evalLoadNode(const LoadNode* loadNode)
+PtsSet TransferFunction::loadFromPointer(const Pointer* srcPtr)
 {
 	assert(store != nullptr);
-
-	auto srcPtr = getPointer(loadNode->getSrc());
-	if (srcPtr == nullptr)
-		errs() << "load = " << *loadNode->getInstruction() << '\n';
-	assert(srcPtr != nullptr && "LoadNode is evaluated before its src operand becomes available");
-	auto dstPtr = getOrCreatePointer(loadNode->getDest());
+	assert(srcPtr != nullptr);
 
 	auto srcSet = globalState.getEnv().lookup(srcPtr);
 	if (srcSet.isEmpty())
-		return EvalStatus::getInvalidStatus();
+		return srcSet;
 
 	auto resSet = PtsSet::getEmptySet();
 	for (auto tgtLoc: srcSet)
@@ -171,7 +168,16 @@ EvalStatus TransferFunction::evalLoadNode(const LoadNode* loadNode)
 		if (!tgtSet.isEmpty())
 			resSet = resSet.merge(tgtSet);
 	}
+	return resSet;
+}
 
+EvalStatus TransferFunction::evalLoadNode(const LoadNode* loadNode)
+{
+	auto srcPtr = getPointer(loadNode->getSrc());
+	assert(srcPtr != nullptr && "LoadNode is evaluated before its src operand becomes available");
+	auto dstPtr = getOrCreatePointer(loadNode->getDest());
+
+	auto resSet = loadFromPointer(srcPtr);
 	auto envChanged = globalState.getEnv().strongUpdate(dstPtr, resSet);
 	return EvalStatus::getValidStatus(envChanged, false);
 }

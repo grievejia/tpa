@@ -15,7 +15,7 @@ TablePrinter::TablePrinter(raw_ostream& o): os(o)
 {
 }
 
-void TablePrinter::printTClass(TClass c) const
+static void printTClass(raw_ostream& os, TClass c)
 {
 	if (c == TClass::ValueOnly)
 		os << "(ValueOnly)";
@@ -23,7 +23,7 @@ void TablePrinter::printTClass(TClass c) const
 		os << "(DirectMemory)";
 }
 
-void TablePrinter::printTPos(TPosition pos) const
+static void printTPos(raw_ostream& os, TPosition pos)
 {
 	if (pos.isReturnPosition())
 		os << "return";
@@ -36,37 +36,40 @@ void TablePrinter::printTPos(TPosition pos) const
 	}
 }
 
-void TablePrinter::printTEntry(const TaintEntry& entry) const
+static void printTEntry(raw_ostream& os, const TaintEntry& entry)
 {
 	switch (entry.getEntryEnd())
 	{
 		case TEnd::Source:
 		{
 			auto const& sourceEntry = entry.getAsSourceEntry();
+			os.changeColor(raw_ostream::MAGENTA);
 			
 			os << "  Taint source at ";
-			printTPos(sourceEntry.getTaintPosition());
+			printTPos(os, sourceEntry.getTaintPosition());
 			break;
 		}
 		case TEnd::Pipe:
 		{
 			auto const& pipeEntry = entry.getAsPipeEntry();
+			os.changeColor(raw_ostream::BLUE);
 
 			os << "  Taint pipe from ";
-			printTPos(pipeEntry.getSrcPosition());
-			printTClass(pipeEntry.getSrcClass());
+			printTPos(os, pipeEntry.getSrcPosition());
+			printTClass(os, pipeEntry.getSrcClass());
 			os << " to ";
-			printTPos(pipeEntry.getDstPosition());
-			printTClass(pipeEntry.getDstClass());
+			printTPos(os, pipeEntry.getDstPosition());
+			printTClass(os, pipeEntry.getDstClass());
 			break;
 		}
 		case TEnd::Sink:
 		{
 			auto const& sinkEntry = entry.getAsSinkEntry();
+			os.changeColor(raw_ostream::YELLOW);
 
 			os << "  Taint sink at ";
-			printTPos(sinkEntry.getArgPosition());
-			printTClass(sinkEntry.getTaintClass());
+			printTPos(os, sinkEntry.getArgPosition());
+			printTClass(os, sinkEntry.getTaintClass());
 			break;
 		}
 	}
@@ -78,17 +81,24 @@ void TablePrinter::printTable(const SourceSinkLookupTable& table) const
 	os << "\n----- TablePrinter -----\n";
 	for (auto const& mapping: table)
 	{
-		os << "Function " << mapping.first << ":\n";
+		os.resetColor();
+
+		os << "Function ";
+		os.changeColor(raw_ostream::GREEN);
+		os << mapping.first << ":\n";
 		
 		if (mapping.second.isEmpty())
 		{
+			os.changeColor(raw_ostream::RED);
 			os << "  Ignored\n";
 			continue;
 		}
 
 		for (auto const& entry: mapping.second)
-			printTEntry(entry);
+			printTEntry(os, entry);
 	}
+
+	os.resetColor();
 	os << "---------- End of Table ---------\n";
 }
 

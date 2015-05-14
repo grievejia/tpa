@@ -7,7 +7,7 @@
 namespace tpa
 {
 
-class ExternalPointerEffectTable;
+class ExternalPointerTable;
 class MemoryManager;
 class PointerManager;
 class PointerProgram;
@@ -31,12 +31,12 @@ private:
 	Env& env;
 
 	// The external table
-	const ExternalPointerEffectTable& extTable;
+	const ExternalPointerTable& extTable;
 
 	// The global memo
 	Memo<NodeType> memo;
 public:
-	GlobalState(PointerManager& pm, MemoryManager& mm, const ProgType& p, StaticCallGraph& s, Env& e, const ExternalPointerEffectTable& t): ptrManager(pm), memManager(mm), prog(p), callGraph(s), env(e), extTable(t) {}
+	GlobalState(PointerManager& pm, MemoryManager& mm, const ProgType& p, StaticCallGraph& s, Env& e, const ExternalPointerTable& t): ptrManager(pm), memManager(mm), prog(p), callGraph(s), env(e), extTable(t) {}
 
 	PointerManager& getPointerManager() { return ptrManager; }
 	const PointerManager& getPointerManager() const { return ptrManager; }
@@ -52,7 +52,7 @@ public:
 	Env& getEnv() { return env; }
 	const Env& getEnv() const { return env; }
 
-	const ExternalPointerEffectTable& getExternalPointerEffectTable() const { return extTable; }
+	const ExternalPointerTable& getExternalPointerTable() const { return extTable; }
 
 	Memo<NodeType>& getMemo() { return memo; }
 	const Memo<NodeType>& getMemo() const { return memo; }

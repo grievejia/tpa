@@ -22,18 +22,20 @@ class SourceSinkLookupTable
 private:
 	std::unordered_map<std::string, TaintSummary> summaryMap;
 
-	void parseLines(const llvm::StringRef&);
+	static SourceSinkLookupTable buildTableFromBuffer(const llvm::StringRef&);
 public:
 	using const_iterator = typename decltype(summaryMap)::const_iterator;
 
 	SourceSinkLookupTable() = default;
 
-	void readSummaryFromFile(const std::string& fileName);
-	const TaintSummary* getSummary(const std::string& name) const;
+	const TaintSummary* lookup(const std::string& name) const;
 
 	const_iterator begin() const { return summaryMap.begin(); }
 	const_iterator end() const { return summaryMap.end(); }
 	size_t getSize() const { return summaryMap.size(); }
+
+	static SourceSinkLookupTable loadFromFile(const std::string& fileName);
+	static SourceSinkLookupTable loadFromFile();
 };
 
 }	// end of taint

@@ -1,7 +1,7 @@
 #ifndef TPA_POINTER_EFFECT_H
 #define TPA_POINTER_EFFECT_H
 
-#include "PointerAnalysis/External/Descriptors.h"
+#include "PointerAnalysis/External/ArgPosition.h"
 
 namespace tpa
 {
@@ -21,7 +21,7 @@ public:
 	PointerAllocEffect(): sizePos(APosition::getReturnPosition()), hasSize(false) {}
 	PointerAllocEffect(const APosition& p): sizePos(p), hasSize(true) {}
 
-	bool hasArgPosition() const { return hasSize; }
+	bool hasSizePosition() const { return hasSize; }
 	APosition getSizePosition() const
 	{
 		assert(hasSize);
@@ -34,9 +34,9 @@ class CopySource
 public:
 	enum class SourceType: std::uint8_t
 	{
-		ArgValue,
-		ArgDirectMemory,
-		ArgReachableMemory,
+		Value,
+		DirectMemory,
+		ReachableMemory,
 		Null,
 		Universal,
 		Static,
@@ -55,20 +55,20 @@ public:
 		return pos;
 	}
 
-	static CopySource getArgValue(const APosition& p)
+	static CopySource getValue(const APosition& p)
 	{
 		assert(p.isArgPosition());
-		return CopySource(SourceType::ArgValue, p);
+		return CopySource(SourceType::Value, p);
 	}
-	static CopySource getArgDirectMemory(const APosition& p)
+	static CopySource getDirectMemory(const APosition& p)
 	{
 		assert(p.isArgPosition());
-		return CopySource(SourceType::ArgDirectMemory, p);
+		return CopySource(SourceType::DirectMemory, p);
 	}
-	static CopySource getArgRechableMemory(const APosition& p)
+	static CopySource getRechableMemory(const APosition& p)
 	{
 		assert(p.isArgPosition());
-		return CopySource(SourceType::ArgReachableMemory, p);
+		return CopySource(SourceType::ReachableMemory, p);
 	}
 	static CopySource getNullPointer()
 	{
@@ -84,16 +84,51 @@ public:
 	}
 };
 
+class CopyDest
+{
+public:
+	enum class DestType: std::uint8_t
+	{
+		Value,
+		DirectMemory,
+		ReachableMemory,
+	};
+private:
+	DestType type;
+	APosition pos;
+
+	CopyDest(DestType t, const APosition& p): type(t), pos(p) {}
+public:
+	DestType getType() const { return type; }
+	APosition getPosition() const
+	{
+		return pos;
+	}
+
+	static CopyDest getValue(const APosition& p)
+	{
+		return CopyDest(DestType::Value, p);
+	}
+	static CopyDest getDirectMemory(const APosition& p)
+	{
+		return CopyDest(DestType::DirectMemory, p);
+	}
+	static CopyDest getRechableMemory(const APosition& p)
+	{
+		return CopyDest(DestType::ReachableMemory, p);
+	}
+};
+
 class PointerCopyEffect
 {
 private:
-	APosition dstPos;
+	CopyDest dstPos;
 	CopySource srcPos;
 public:
-	PointerCopyEffect(APosition d, CopySource s): dstPos(d), srcPos(s) {}
+	PointerCopyEffect(const CopyDest& d, const CopySource& s): dstPos(d), srcPos(s) {}
 
-	APosition getDest() const { return dstPos; }
-	CopySource getSource() const { return srcPos; }
+	const CopyDest& getDest() const { return dstPos; }
+	const CopySource& getSource() const { return srcPos; }
 };
 
 class PointerEffect
@@ -115,7 +150,7 @@ private:
 	{
 		new (&alloc) PointerAllocEffect(a);
 	}
-	PointerEffect(const APosition& d, const CopySource& s): type(PointerEffectType::Copy)
+	PointerEffect(const CopyDest& d, const CopySource& s): type(PointerEffectType::Copy)
 	{
 		new (&copy) PointerCopyEffect(d, s);
 	}
@@ -144,7 +179,7 @@ public:
 		return PointerEffect(sizePos);
 	}
 
-	static PointerEffect getCopyEffect(const APosition& d, const CopySource& s)
+	static PointerEffect getCopyEffect(const CopyDest& d, const CopySource& s)
 	{
 		return PointerEffect(d, s);
 	}

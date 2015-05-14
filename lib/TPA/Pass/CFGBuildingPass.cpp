@@ -1,5 +1,5 @@
 #include "PointerAnalysis/ControlFlow/SemiSparseProgramBuilder.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 #include "TPA/Pass/CFGBuildingPass.h"
 
 #include <llvm/IR/Module.h>
@@ -11,8 +11,7 @@ namespace tpa
 
 bool CFGBuildingPass::runOnModule(Module& module)
 {
-	auto extTable = ExternalPointerEffectTable();
-	auto builder = PointerProgramBuilder(extTable);
+	auto builder = PointerProgramBuilder();
 
 	auto prog = builder.buildPointerProgram(module);
 
@@ -28,8 +27,7 @@ void CFGBuildingPass::getAnalysisUsage(AnalysisUsage &AU) const
 
 bool SemiSparseCFGBuildingPass::runOnModule(Module& module)
 {
-	auto extTable = ExternalPointerEffectTable();
-	auto builder = SemiSparseProgramBuilder(extTable);
+	auto builder = SemiSparseProgramBuilder();
 
 	auto prog = builder.buildSemiSparseProgram(module);
 

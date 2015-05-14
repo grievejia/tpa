@@ -1,5 +1,4 @@
 #include "PointerAnalysis/ControlFlow/PointerProgramBuilder.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
 
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/DataLayout.h>
@@ -88,21 +87,6 @@ PointerCFGNode* PointerProgramBuilder::translateInstruction(PointerCFG& cfg, con
 				// The external function may get masked by bitcasts
 				if (auto calledFunction = dyn_cast<Function>(funPtr))
 					callee = calledFunction;
-			}
-			if (callee != nullptr)
-			{
-				if (callee->isDeclaration())
-				{
-					auto extType = extTable.lookup(callee->getName());
-					if (extType == PointerEffect::UnknownEffect)
-					{
-						errs() << "Unrecognized external funciton call: " << callee->getName() << "\n";
-						llvm_unreachable("");
-					}
-					// Removing NoEffect external calls has some negative impact on the client. Disable it for now.
-					//else if (extType == PointerEffect::NoEffect)
-					//	return nullptr;
-				}
 			}
 
 			const Value* retVar = nullptr;

@@ -8,7 +8,11 @@ using namespace llvm;
 namespace tpa
 {
 
-TunablePointerAnalysisWrapper::TunablePointerAnalysisWrapper() {}
+TunablePointerAnalysisWrapper::TunablePointerAnalysisWrapper()
+{
+	extTable = ExternalPointerTable::loadFromFile();
+}
+
 TunablePointerAnalysisWrapper::~TunablePointerAnalysisWrapper() {}
 
 void TunablePointerAnalysisWrapper::runOnModule(const llvm::Module& module)
@@ -23,7 +27,7 @@ void TunablePointerAnalysisWrapper::runOnModule(const llvm::Module& module)
 	auto initEnv = std::move(initEnvStore.first);
 	auto initStore = std::move(initEnvStore.second);
 
-	auto builder = SemiSparseProgramBuilder(extTable);
+	auto builder = SemiSparseProgramBuilder();
 	prog = builder.buildSemiSparseProgram(module);
 
 	ptrAnalysis = std::make_unique<TunablePointerAnalysis>(ptrManager, *memManager, extTable, std::move(initEnv));

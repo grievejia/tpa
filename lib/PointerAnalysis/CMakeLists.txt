@@ -18,11 +18,10 @@ set (PointerAnalysisSourceCodes
 	DataFlow/DefUseProgramBuilder.cpp
 	DataFlow/ModRefSummary.cpp
 	DataFlow/WriteDotFile.cpp
-	External/ExternalPointerEffectTable.cpp
 	External/ExternalPointerTable.cpp
 	External/ExternalPointerTablePrinter.cpp
-	External/ExternalModTable.cpp
-	External/ExternalRefTable.cpp
+	External/ExternalModRefTable.cpp
+	External/ExternalModRefTablePrinter.cpp
 )
 add_library (PointerAnalysisObj OBJECT ${PointerAnalysisSourceCodes})
 add_library (PointerAnalysis SHARED $<TARGET_OBJECTS:PointerAnalysisObj>)

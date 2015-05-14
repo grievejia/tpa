@@ -13,9 +13,9 @@ class PointerProgram;
 class TunablePointerAnalysis: public PointerAnalysis
 {
 public:
-	TunablePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e);
-	TunablePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e, const Env&);
-	TunablePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e, Env&&);
+	TunablePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerTable& e);
+	TunablePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerTable& e, const Env&);
+	TunablePointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerTable& e, Env&&);
 	~TunablePointerAnalysis();
 
 	void runOnProgram(const PointerProgram& prog, Store store);

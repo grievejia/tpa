@@ -1,7 +1,7 @@
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/SemiSparseGlobalState.h"
 #include "TPA/DataFlow/TransferFunction.h"
@@ -37,7 +37,7 @@ protected:
 	PointerCFG* mainCfg = prog.createPointerCFGForFunction(testModule->getFunction("main"));
 
 	StaticCallGraph callGraph;
-	ExternalPointerEffectTable extTable;
+	ExternalPointerTable extTable;
 	Env env;
 	SemiSparseGlobalState globalState = SemiSparseGlobalState(ptrManager, memManager, prog, callGraph, env, extTable);
 
@@ -263,16 +263,6 @@ TEST_F(InterpreterTest, TransferLoadTest2)
 	EXPECT_TRUE(env.lookup(ptrY).has(yLoc2));
 	EXPECT_TRUE(env.lookup(ptrY).has(yLoc3));
 	EXPECT_TRUE(env.lookup(ptrY).has(zLoc));
-}
-
-TEST_F(InterpreterTest, TransferLoadTest3)
-{
-	ptrManager.getOrCreatePointer(globalCtx, x);
-
-	// Test load - failure
-	auto loadNode = mainCfg->create<LoadNode>(y, x);
-	auto status = transferFunction.evalLoadNode(loadNode);
-	EXPECT_FALSE(status.isValid());
 }
 
 TEST_F(InterpreterTest, TransferStoreTest1)

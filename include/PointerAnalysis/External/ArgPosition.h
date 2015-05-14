@@ -8,13 +8,6 @@
 namespace tpa
 {
 
-enum class AClass: uint8_t
-{
-	ValueOnly,
-	DirectMemory,
-	ReachableMemory
-};
-
 class ArgPosition
 {
 private:

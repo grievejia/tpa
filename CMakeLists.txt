@@ -21,6 +21,7 @@ endif()
 
 configure_file(config/source_sink.conf source_sink.conf COPYONLY)
 configure_file(config/ptr_effect.conf ptr_effect.conf COPYONLY)
+configure_file(config/mod_ref.conf mod_ref.conf COPYONLY)
 
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})

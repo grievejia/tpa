@@ -4,7 +4,7 @@
 #include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 #include "Utils/DummyPointerAnalysis.h"
 #include "Utils/ParseLLVMAssembly.h"
 
@@ -21,13 +21,13 @@ namespace
 TEST(TaintnessTest, SourceSinkTest)
 {
 	auto ssTable = SourceSinkLookupTable();
-	EXPECT_EQ(ssTable.getSummary("read"), nullptr);
-	EXPECT_EQ(ssTable.getSummary("printf"), nullptr);
+	EXPECT_EQ(ssTable.lookup("read"), nullptr);
+	EXPECT_EQ(ssTable.lookup("printf"), nullptr);
 
-	ssTable.readSummaryFromFile("source_sink.conf");
+	ssTable = SourceSinkLookupTable::loadFromFile("source_sink.conf");
 	ASSERT_TRUE(ssTable.getSize() > 0);
-	EXPECT_NE(ssTable.getSummary("read"), nullptr);
-	EXPECT_NE(ssTable.getSummary("printf"), nullptr);
+	EXPECT_NE(ssTable.lookup("read"), nullptr);
+	EXPECT_NE(ssTable.lookup("printf"), nullptr);
 }
 
 TEST(TaintnessTest, EnvTest)
@@ -140,7 +140,7 @@ TEST(TaintnessTest, ViolationCheckerTest)
 	auto ptrG = ptrManager.getOrCreatePointer(globalCtx, g3);
 	auto objG = memManager.allocateMemory(ProgramLocation(globalCtx, g3), g3->getType()->getElementType());
 	auto locG = memManager.offsetMemory(objG, 0);
-	auto extTable = ExternalPointerEffectTable();
+	auto extTable = ExternalPointerTable::loadFromFile("ptr_effect.conf");
 
 	DummyPointerAnalysis ptrAnalysis(ptrManager, memManager, extTable);
 	ptrAnalysis.injectEnv(ptrG, locG);
@@ -153,8 +153,7 @@ TEST(TaintnessTest, ViolationCheckerTest)
 	env.strongUpdate(z, TaintLattice::Either);
 	store.strongUpdate(locG, TaintLattice::Either);
 
-	auto ssLookupTable = SourceSinkLookupTable();
-	ssLookupTable.readSummaryFromFile("source_sink.conf");
+	auto ssLookupTable = SourceSinkLookupTable::loadFromFile("source_sink.conf");
 
 	// The real test actually starts here...
 	SinkViolationChecker checker(env, store, ssLookupTable, ptrAnalysis);

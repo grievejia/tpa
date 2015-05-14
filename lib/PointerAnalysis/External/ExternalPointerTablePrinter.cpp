@@ -22,7 +22,7 @@ static void printPosition(raw_ostream& os, const APosition& pos)
 static void printAllocEffect(raw_ostream& os, const PointerAllocEffect& allocEffect)
 {
 	os << "  Memory allocation with ";
-	if (allocEffect.hasArgPosition())
+	if (allocEffect.hasSizePosition())
 	{
 		os << "size given by ";
 		printPosition(os, allocEffect.getSizePosition());
@@ -37,14 +37,14 @@ static void printCopySource(raw_ostream& os, const CopySource& src)
 {
 	switch (src.getType())
 	{
-		case CopySource::SourceType::ArgValue:
+		case CopySource::SourceType::Value:
 			printPosition(os, src.getPosition());
 			break;
-		case CopySource::SourceType::ArgDirectMemory:
+		case CopySource::SourceType::DirectMemory:
 			os << "*";
 			printPosition(os, src.getPosition());
 			break;
-		case CopySource::SourceType::ArgReachableMemory:
+		case CopySource::SourceType::ReachableMemory:
 			os << "*[";
 			printPosition(os, src.getPosition());
 			os << " + x]";
@@ -61,12 +61,31 @@ static void printCopySource(raw_ostream& os, const CopySource& src)
 	}
 }
 
+static void printCopyDest(raw_ostream& os, const CopyDest& dest)
+{
+	switch (dest.getType())
+	{
+		case CopyDest::DestType::Value:
+			printPosition(os, dest.getPosition());
+			break;
+		case CopyDest::DestType::DirectMemory:
+			os << "*";
+			printPosition(os, dest.getPosition());
+			break;
+		case CopyDest::DestType::ReachableMemory:
+			os << "*[";
+			printPosition(os, dest.getPosition());
+			os << " + x]";
+			break;
+	}
+}
+
 static void printCopyEffect(raw_ostream& os, const PointerCopyEffect& copyEffect)
 {
 	os << "  Copy points-to set from ";
 	printCopySource(os, copyEffect.getSource());
 	os << " to ";
-	printPosition(os, copyEffect.getDest());
+	printCopyDest(os, copyEffect.getDest());
 }
 
 static void printPointerEffect(raw_ostream& os, const PointerEffect& effect)
@@ -88,17 +107,25 @@ void ExternalPointerTablePrinter::printTable(const ExternalPointerTable& table)
 	os << "\n----- ExternalPointerTable -----\n";
 	for (auto const& mapping: table)
 	{
-		os << "Function " << mapping.first << ":\n";
+		os.resetColor();
+
+		os << "Function ";
+		os.changeColor(raw_ostream::GREEN);
+		os << mapping.first << ":\n";
 		
 		if (mapping.second.isEmpty())
 		{
+			os.changeColor(raw_ostream::RED);
 			os << "  Ignored\n";
 			continue;
 		}
 
+		os.changeColor(raw_ostream::YELLOW);
 		for (auto const& effect: mapping.second)
 			printPointerEffect(os, effect);
 	}
+
+	os.resetColor();
 	os << "--------- End of Table ---------\n\n";
 }
 

@@ -7,6 +7,7 @@ namespace table
 enum class TableType
 {
 	PointerEffect,
+	ModRef,
 	Taint,
 };
 

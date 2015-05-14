@@ -6,7 +6,7 @@
 namespace tpa
 {
 
-class ExternalModTable;
+class ExternalModRefTable;
 class PointerAnalysis;
 class PointerCFG;
 class PointerCFGNode;
@@ -18,11 +18,11 @@ class ReachingDefAnalysis
 private:
 	const PointerAnalysis& ptrAnalysis;
 	const ModRefSummaryMap& summaryMap;
-	const ExternalModTable& extModTable;
+	const ExternalModRefTable& modRefTable;
 
 	void evalNode(const PointerCFGNode* node, ReachingDefStore<PointerCFGNode>& store);
 public:
-	ReachingDefAnalysis(const PointerAnalysis& p, const ModRefSummaryMap& s, const ExternalModTable& t): ptrAnalysis(p), summaryMap(s), extModTable(t) {}
+	ReachingDefAnalysis(const PointerAnalysis& p, const ModRefSummaryMap& s, const ExternalModRefTable& t): ptrAnalysis(p), summaryMap(s), modRefTable(t) {}
 
 	ReachingDefMap<PointerCFGNode> runOnPointerCFG(const PointerCFG& cfg);
 };

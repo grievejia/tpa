@@ -7,19 +7,17 @@ namespace tpa
 {
 
 class PointerAnalysis;
-class ExternalModTable;
-class ExternalRefTable;
+class ExternalModRefTable;
 
 class ModRefModuleAnalysis
 {
 private:
 	const PointerAnalysis& ptrAnalysis;
-	const ExternalModTable& extModTable;
-	const ExternalRefTable& extRefTable;
+	const ExternalModRefTable& modRefTable;
 
 	void collectProcedureSummary(const llvm::Function&, ModRefSummary&);
 public:
-	ModRefModuleAnalysis(const PointerAnalysis& p, const ExternalModTable& em, const ExternalRefTable& er): ptrAnalysis(p), extModTable(em), extRefTable(er) {}
+	ModRefModuleAnalysis(const PointerAnalysis& p, const ExternalModRefTable& t): ptrAnalysis(p), modRefTable(t) {}
 
 	ModRefSummaryMap runOnModule(const llvm::Module& module);
 };

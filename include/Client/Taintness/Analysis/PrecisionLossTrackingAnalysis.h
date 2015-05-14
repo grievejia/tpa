@@ -6,7 +6,7 @@
 namespace tpa
 {
 	class DefUseModule;
-	class ExternalPointerEffectTable;
+	class ExternalPointerTable;
 	class PointerAnalysis;
 }
 

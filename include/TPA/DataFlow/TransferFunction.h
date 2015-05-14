@@ -11,8 +11,14 @@
 namespace tpa
 {
 
+class APosition;
 class Context;
+class CopySource;
+class CopyDest;
 class MemoryManager;
+class PointerAllocEffect;
+class PointerCopyEffect;
+class PointerEffect;
 class PointerManager;
 
 class TransferFunction
@@ -37,26 +43,30 @@ private:
 	EvalStatus copyWithOffset(const Pointer*, const Pointer*, size_t, bool);
 	PtsSet updateOffsetLocation(PtsSet, const MemoryLocation*, size_t, bool);
 
+	// evalLoad helpers
+	PtsSet loadFromPointer(const Pointer*);
+
 	// evalStore helpers
 	EvalStatus evalStore(const Pointer*, const Pointer*);
 	EvalStatus strongUpdateStore(const MemoryLocation*, PtsSet);
 	EvalStatus weakUpdateStore(PtsSet, PtsSet);
 
 	// evalExternalCall helpers
-	EvalStatus evalMalloc(const CallNode*);
+	EvalStatus evalExternalCallByEffect(const CallNode*, const PointerEffect&);
+	EvalStatus evalExternalAlloc(const CallNode*, const PointerAllocEffect&);
+	EvalStatus evalExternalCopy(const CallNode*, const PointerCopyEffect&);
+	PtsSet evalExternalCopySource(const CallNode*, const CopySource&);
+	EvalStatus evalExternalCopyDest(const CallNode*, const CopyDest&, PtsSet);
 	size_t getMallocSize(llvm::Type*, const llvm::Value*);
 	EvalStatus evalMallocWithSizeValue(const CallNode*, const llvm::Value*);
 	EvalStatus evalRealloc(const CallNode*);
 	EvalStatus copyPointerPtsSet(const Pointer*, const Pointer*);
-	EvalStatus evalExternalReturnsArg(const CallNode*, size_t);
-	EvalStatus evalExternalReturnsStatic(const CallNode*);
-	EvalStatus evalExternalStore(const CallNode*, size_t, size_t);
-	EvalStatus evalMemcpy(const CallNode*, size_t, size_t);
+	EvalStatus evalMemcpy(const CallNode*, const APosition&, const APosition&);
 	EvalStatus evalMemcpyPointer(const Pointer*, const Pointer*);
 	bool copyMemoryPtsSet(const MemoryLocation*, const std::vector<const MemoryLocation*>&, size_t);
 	EvalStatus evalMemset(const CallNode*);
-	EvalStatus fillPtsSetWithNull(const Pointer*);
-	bool setMemoryLocationToNull(const MemoryLocation*, llvm::Type*);
+	EvalStatus fillPtsSetWith(const Pointer*, PtsSet);
+	bool setMemoryLocationTo(const MemoryLocation*, llvm::Type*, PtsSet);
 	std::vector<const MemoryLocation*> findPointerCandidates(const MemoryLocation*, llvm::Type*);
 	std::vector<const MemoryLocation*> findPointerCandidatesInStruct(const MemoryLocation*, llvm::StructType*, size_t);
 

@@ -1,7 +1,7 @@
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 #include "TPA/DataFlow/Memo.h"
 #include "TPA/DataFlow/SemiSparseGlobalState.h"
 #include "TPA/DataFlow/TransferFunction.h"
@@ -57,7 +57,7 @@ protected:
 	PointerCFG* gCfg = prog.createPointerCFGForFunction(g);
 
 	StaticCallGraph callGraph;
-	ExternalPointerEffectTable extTable;
+	ExternalPointerTable extTable;
 	Env env;
 	SemiSparseGlobalState globalState = SemiSparseGlobalState(ptrManager, memManager, prog, callGraph, env, extTable);
 
@@ -84,6 +84,8 @@ protected:
 		xLoc = memManager.offsetMemory(xObj, 0);
 		yLoc = memManager.offsetMemory(yObj, 0);
 		zLoc = memManager.offsetMemory(zObj, 0);
+
+		extTable = ExternalPointerTable::loadFromFile("ptr_effect.conf");
 	}
 };
 
@@ -233,8 +235,8 @@ TEST_F(InterProcTest, ExternalMemcpyTest)
 	store.insert(g3Loc0, xLoc);
 	store.insert(g3Loc1, yLoc);
 	store.insert(g3Loc1, zLoc);
-	env.insert(ptrX, g3Loc0);
-	env.insert(ptrY, g4Loc0);
+	env.insert(ptrY, g3Loc0);
+	env.insert(ptrX, g4Loc0);
 
 	auto callNode = fCfg->create<CallNode>(w, g, w);
 	callNode->addArgument(y);
@@ -247,7 +249,7 @@ TEST_F(InterProcTest, ExternalMemcpyTest)
 
 	EXPECT_EQ(store.lookup(g4Loc0), store.lookup(g3Loc0));
 	EXPECT_EQ(store.lookup(g4Loc1), store.lookup(g3Loc1));
-	EXPECT_EQ(env.lookup(ptrW), env.lookup(ptrY));
+	EXPECT_EQ(env.lookup(ptrW), env.lookup(ptrX));
 }
 
 TEST_F(InterProcTest, ExternalMemcpyTest2)
@@ -264,8 +266,8 @@ TEST_F(InterProcTest, ExternalMemcpyTest2)
 	store.insert(g3Loc0, xLoc);
 	store.insert(g3Loc1, yLoc);
 	store.insert(g3Loc1, zLoc);
-	env.insert(ptrX, g3Loc0);
-	env.insert(ptrY, yLoc);
+	env.insert(ptrY, g3Loc0);
+	env.insert(ptrX, yLoc);
 
 	auto callNode = fCfg->create<CallNode>(w, g, w);
 	callNode->addArgument(y);
@@ -278,7 +280,7 @@ TEST_F(InterProcTest, ExternalMemcpyTest2)
 
 	EXPECT_EQ(store.lookup(yLoc), store.lookup(g3Loc0));
 	EXPECT_TRUE(store.lookup(memManager.getUniversalLocation()).isEmpty());
-	EXPECT_EQ(env.lookup(ptrW), env.lookup(ptrY));
+	EXPECT_EQ(env.lookup(ptrW), env.lookup(ptrX));
 }
 
 TEST_F(InterProcTest, ExternalMemsetTest)

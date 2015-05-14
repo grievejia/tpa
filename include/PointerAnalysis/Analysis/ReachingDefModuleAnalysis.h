@@ -12,7 +12,7 @@ namespace llvm
 namespace tpa
 {
 
-class ExternalModTable;
+class ExternalModRefTable;
 class PointerAnalysis;
 class MemoryLocation;
 class ModRefSummaryMap;
@@ -22,9 +22,9 @@ class ReachingDefModuleAnalysis
 private:
 	const PointerAnalysis& ptrAnalysis;
 	const ModRefSummaryMap& summaryMap;
-	const ExternalModTable& extModTable;
+	const ExternalModRefTable& modRefTable;
 public:
-	ReachingDefModuleAnalysis(const PointerAnalysis& p, const ModRefSummaryMap& s, const ExternalModTable& t): ptrAnalysis(p), summaryMap(s), extModTable(t) {}
+	ReachingDefModuleAnalysis(const PointerAnalysis& p, const ModRefSummaryMap& s, const ExternalModRefTable& t): ptrAnalysis(p), summaryMap(s), modRefTable(t) {}
 
 	ReachingDefMap<llvm::Instruction> runOnFunction(const llvm::Function& func);
 };

@@ -17,10 +17,6 @@ class TablePrinter
 {
 private:
 	llvm::raw_ostream& os;
-
-	void printTEntry(const TaintEntry&) const;
-	void printTPos(TPosition) const;
-	void printTClass(TClass) const;
 public:
 	TablePrinter(llvm::raw_ostream&);
 

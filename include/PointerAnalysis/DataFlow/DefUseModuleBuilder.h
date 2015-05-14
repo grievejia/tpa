@@ -11,8 +11,7 @@ namespace llvm
 namespace tpa
 {
 
-class ExternalModTable;
-class ExternalRefTable;
+class ExternalModRefTable;
 class ModRefSummaryMap;
 class PointerAnalysis;
 
@@ -21,14 +20,13 @@ class DefUseModuleBuilder
 private:
 	const PointerAnalysis& ptrAnalysis;
 	const ModRefSummaryMap& summaryMap;
-	const ExternalModTable& extModTable;
-	const ExternalRefTable& extRefTable;
+	const ExternalModRefTable& modRefTable;
 
 	void buildDefUseFunction(DefUseFunction& f);
 	//void buildTopLevelEdges(DefUseFunction& f);
 	void buildMemLevelEdges(DefUseFunction& f);
 public:
-	DefUseModuleBuilder(const PointerAnalysis& p, const ModRefSummaryMap& m, const ExternalModTable& em, const ExternalRefTable& er): ptrAnalysis(p), summaryMap(m), extModTable(em), extRefTable(er) {}
+	DefUseModuleBuilder(const PointerAnalysis& p, const ModRefSummaryMap& m, const ExternalModRefTable& t): ptrAnalysis(p), summaryMap(m), modRefTable(t) {}
 	DefUseModule buildDefUseModule(const llvm::Module& module);
 };
 

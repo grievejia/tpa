@@ -3,10 +3,11 @@
 #include "PointerAnalysis/Analysis/ReachingDefAnalysis.h"
 #include "PointerAnalysis/ControlFlow/PointerCFG.h"
 #include "PointerAnalysis/DataFlow/ModRefSummary.h"
-#include "PointerAnalysis/External/ExternalModTable.h"
+#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 #include "Utils/WorkList.h"
 
 #include <llvm/IR/CallSite.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 
@@ -24,63 +25,58 @@ struct PrioCompare
 	}
 };
 
-void evalExternalCall(const PointerCFGNode* node, const Function* f, ReachingDefStore<PointerCFGNode>& store, const ExternalModTable& extTable, const PointerAnalysis& ptrAnalysis)
+void modValue(const Value* v, ReachingDefStore<PointerCFGNode>& store, const PointerCFGNode* node, const PointerAnalysis& ptrAnalysis, bool isReachableMemory)
+{
+	auto pSet = ptrAnalysis.getPtsSet(v);
+	for (auto loc: pSet)
+	{
+		if (isReachableMemory)
+		{
+			for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+				store.insertBinding(oLoc, node);
+		}
+		else
+		{
+			store.insertBinding(loc, node);
+		}
+	}
+}
+
+void evalExternalCall(const PointerCFGNode* node, const Function* f, ReachingDefStore<PointerCFGNode>& store, const ExternalModRefTable& modRefTable, const PointerAnalysis& ptrAnalysis)
 {
 	ImmutableCallSite cs(node->getInstruction());
 	assert(cs);
 
-	auto extType = extTable.lookup(f->getName());
-	auto modArg = [&ptrAnalysis, &store, node] (const llvm::Value* v, bool array = false)
+	auto summary = modRefTable.lookup(f->getName());
+	if (summary == nullptr)
 	{
-		auto pSet = ptrAnalysis.getPtsSet(v);
-		for (auto loc: pSet)
+		errs() << "Missing entry in ModRefTable: " << f->getName() << "\n";
+		llvm_unreachable("Consider adding the function to modref annotations");
+	}
+
+	for (auto const& effect: *summary)
+	{
+		if (effect.isModEffect())
 		{
-			if (array)
+			auto const& pos = effect.getPosition();
+			if (pos.isReturnPosition())
 			{
-				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-					store.insertBinding(oLoc, node);
+				modValue(node->getInstruction(), store, node, ptrAnalysis, effect.onReachableMemory());
 			}
 			else
 			{
-				store.insertBinding(loc, node);
+				auto const& argPos = pos.getAsArgPosition();
+				unsigned idx = argPos.getArgIndex();
+
+				if (!argPos.isAfterArgPosition())
+					modValue(cs.getArgument(idx)->stripPointerCasts(), store, node, ptrAnalysis, effect.onReachableMemory());
+				else
+				{
+					for (auto i = idx, e = cs.arg_size(); i < e; ++i)
+						modValue(cs.getArgument(i)->stripPointerCasts(), store, node, ptrAnalysis, effect.onReachableMemory());
+				}
 			}
 		}
-	};
-
-	switch (extType)
-	{
-		case ModEffect::ModArg0:
-		{
-			modArg(cs.getArgument(0));
-			break;
-		}
-		case ModEffect::ModArg1:
-		{
-			modArg(cs.getArgument(1));
-			break;
-		}
-		case ModEffect::ModAfterArg0:
-		{
-			for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-				modArg(cs.getArgument(i));
-			break;
-		}
-		case ModEffect::ModAfterArg1:
-		{
-			for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-				modArg(cs.getArgument(i));
-			break;
-		}
-		case ModEffect::ModArg0Array:
-		{
-			modArg(cs.getArgument(0), true);
-
-			break;
-		}
-		case ModEffect::UnknownEffect:
-			llvm_unreachable("Unknown mod effect");
-		default:
-			break;
 	}
 }
 
@@ -128,7 +124,7 @@ void ReachingDefAnalysis::evalNode(const PointerCFGNode* node, ReachingDefStore<
 			{
 				if (callee->isDeclaration())
 				{
-					evalExternalCall(node, callee, retStore, extModTable, ptrAnalysis);
+					evalExternalCall(node, callee, retStore, modRefTable, ptrAnalysis);
 				}
 				else
 				{

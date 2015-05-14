@@ -2,13 +2,17 @@
 #include "Utils/pcomb/pcomb.h"
 #include "Utils/ReadFile.h"
 
+#include <llvm/Support/CommandLine.h>
+
 using namespace llvm;
 using namespace pcomb;
+
+static cl::opt<std::string> ConfigFileName("ptr-config", cl::desc("Specify pointer effect config filename"), cl::init("ptr_effect.conf"), cl::value_desc("filename"));
 
 namespace tpa
 {
 
-const PointerEffectSummary* ExternalPointerTable::getSummary(const llvm::StringRef& name) const
+const PointerEffectSummary* ExternalPointerTable::lookup(const StringRef& name) const
 {
 	auto itr = table.find(name);
 	if (itr == table.end())
@@ -17,8 +21,10 @@ const PointerEffectSummary* ExternalPointerTable::getSummary(const llvm::StringR
 		return &itr->second;
 }
 
-void ExternalPointerTable::buildTable(ExternalPointerTable& extTable, const StringRef& fileContent)
+ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileContent)
 {
+	ExternalPointerTable extTable;
+
 	auto idx = rule(
 		regex("\\d+"),
 		[] (auto const& digits) -> uint8_t
@@ -57,11 +63,11 @@ void ExternalPointerTable::buildTable(ExternalPointerTable& extTable, const Stri
 			switch (type)
 			{
 				case 'V':
-					return CopySource::getArgValue(std::get<0>(pair));
+					return CopySource::getValue(std::get<0>(pair));
 				case 'D':
-					return CopySource::getArgDirectMemory(std::get<0>(pair));
+					return CopySource::getDirectMemory(std::get<0>(pair));
 				case 'R':
-					return CopySource::getArgRechableMemory(std::get<0>(pair));
+					return CopySource::getRechableMemory(std::get<0>(pair));
 				default:
 					llvm_unreachable("Only VDR could possibly be here");
 			}
@@ -94,6 +100,33 @@ void ExternalPointerTable::buildTable(ExternalPointerTable& extTable, const Stri
 
 	auto copysrc = alt(nullsrc, unknowsrc, staticsrc, argsrc);
 
+	auto copydest = rule(
+		seq(ppos, token(alt(ch('V'), ch('D'), ch('R')))),
+		[] (auto const& pair)
+		{
+			auto type = std::get<1>(pair);
+			switch (type)
+			{
+				case 'V':
+					return CopyDest::getValue(std::get<0>(pair));
+				case 'D':
+					return CopyDest::getDirectMemory(std::get<0>(pair));
+				case 'R':
+					return CopyDest::getRechableMemory(std::get<0>(pair));
+				default:
+					llvm_unreachable("Only VDR could possibly be here");
+			}
+		}
+	);
+
+	auto commentEntry = rule(
+		token(regex("#.*\\n")),
+		[] (auto const&)
+		{
+			return false;
+		}
+	);
+
 	auto ignoreEntry = rule(
 		seq(
 			token(str("IGNORE")),
@@ -101,7 +134,7 @@ void ExternalPointerTable::buildTable(ExternalPointerTable& extTable, const Stri
 		),
 		[&extTable] (auto const& pair)
 		{
-			assert(extTable.getSummary(std::get<1>(pair)) == nullptr && "Ignore entry should not co-exist with other entries");
+			assert(extTable.lookup(std::get<1>(pair)) == nullptr && "Ignore entry should not co-exist with other entries");
 			extTable.table.insert(std::make_pair(std::get<1>(pair), PointerEffectSummary()));
 			return false;
 		}
@@ -141,18 +174,19 @@ void ExternalPointerTable::buildTable(ExternalPointerTable& extTable, const Stri
 	auto copyEntry = rule(
 		seq(
 			id,
-			ppos,
+			token(str("COPY")),
+			copydest,
 			copysrc
 		),
 		[&extTable] (auto const& tuple)
 		{
-			auto entry = PointerEffect::getCopyEffect(std::get<1>(tuple), std::get<2>(tuple));
+			auto entry = PointerEffect::getCopyEffect(std::get<2>(tuple), std::get<3>(tuple));
 			extTable.table[std::get<0>(tuple)].addEffect(std::move(entry));
 			return true;
 		}
 	);
 
-	auto pentry = alt(ignoreEntry, allocEntry, copyEntry);
+	auto pentry = alt(commentEntry, ignoreEntry, allocEntry, copyEntry);
 	auto ptable = many(pentry);
 
 	auto parseResult = ptable.parse(fileContent);
@@ -164,16 +198,19 @@ void ExternalPointerTable::buildTable(ExternalPointerTable& extTable, const Stri
 		auto errMsg = Twine("Parsing taint config file failed at line ") + lineStr + ", column " + colStr;
 		report_fatal_error(errMsg);
 	}
+
+	return extTable;
 }
 
-ExternalPointerTable ExternalPointerTable::loadFromFile(const llvm::StringRef& fileName)
+ExternalPointerTable ExternalPointerTable::loadFromFile(const StringRef& fileName)
 {
-	ExternalPointerTable table;
-
 	auto memBuf = readFileIntoBuffer(fileName);
-	buildTable(table, memBuf->getBuffer());
+	return buildTable(memBuf->getBuffer());
+}
 
-	return table;
+ExternalPointerTable ExternalPointerTable::loadFromFile()
+{
+	return loadFromFile(ConfigFileName);
 }
 
 }

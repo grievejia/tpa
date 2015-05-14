@@ -2,8 +2,7 @@
 #include "PointerAnalysis/Analysis/ModRefAnalysis.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 #include "PointerAnalysis/ControlFlow/PointerProgram.h"
-#include "PointerAnalysis/External/ExternalModTable.h"
-#include "PointerAnalysis/External/ExternalRefTable.h"
+#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 #include "Utils/WorkList.h"
 
 #include <llvm/IR/CallSite.h>
@@ -64,148 +63,122 @@ bool updateSummary(ModRefSummary& callerSummary, const ModRefSummary& calleeSumm
 	return changed;
 }
 
-bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, ModRefSummary& summary, const PointerAnalysis& ptrAnalysis, const ExternalModTable& extModTable, const ExternalRefTable& extRefTable)
+bool addExternalMemoryWrite(const Value* v, ModRefSummary& summary, const Function* caller, const PointerAnalysis& ptrAnalysis, bool isReachableMemory)
 {
-	ImmutableCallSite cs(inst);
-	assert(cs);
-
 	bool changed = false;
-	auto caller = inst->getParent()->getParent();
-	auto extModType = extModTable.lookup(f->getName());
-	auto addMemWrite = [&ptrAnalysis, &summary, caller] (const llvm::Value* v, bool array = false)
+	auto pSet = ptrAnalysis.getPtsSet(v);
+	for (auto loc: pSet)
 	{
-		bool changed = false;
-		auto pSet = ptrAnalysis.getPtsSet(v);
-		for (auto loc: pSet)
+		if (isLocalStackLocation(loc, caller))
+			continue;
+		if (isReachableMemory)
 		{
-			if (isLocalStackLocation(loc, caller))
-				continue;
-			if (array)
-			{
-				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-					changed |= summary.addMemoryWrite(oLoc);		
-			}
-			else
-			{
-				changed |= summary.addMemoryWrite(loc);
-			}
+			for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+				changed |= summary.addMemoryWrite(oLoc);		
 		}
-		return changed;
-	};
-
-	switch (extModType)
-	{
-		case ModEffect::ModArg0:
+		else
 		{
-			changed |= addMemWrite(cs.getArgument(0));
-			break;
+			changed |= summary.addMemoryWrite(loc);
 		}
-		case ModEffect::ModArg1:
-		{
-			changed |= addMemWrite(cs.getArgument(1));
-			break;
-		}
-		case ModEffect::ModAfterArg0:
-		{
-			for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-				changed |= addMemWrite(cs.getArgument(i));
-			break;
-		}
-		case ModEffect::ModAfterArg1:
-		{
-			for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-				changed |= addMemWrite(cs.getArgument(i));
-			break;
-		}
-		case ModEffect::ModArg0Array:
-		{
-			changed |= addMemWrite(cs.getArgument(0), true);
-			break;
-		}
-		case ModEffect::UnknownEffect:
-			llvm_unreachable("Unknown mod effect");
-		default:
-			break;
 	}
-
-	auto extRefType = extRefTable.lookup(f->getName());
-	auto addMemRead = [&ptrAnalysis, &summary, caller] (const llvm::Value* v, bool array = false)
-	{
-		bool changed = false;
-		auto pSet = ptrAnalysis.getPtsSet(v);
-		for (auto loc: pSet)
-		{
-			if (isLocalStackLocation(loc, caller))
-				continue;
-			if (array)
-			{
-				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-					changed |= summary.addMemoryRead(oLoc);		
-			}
-			else
-			{
-				changed |= summary.addMemoryRead(loc);
-			}
-		}
-		return changed;
-	};
-
-	switch (extRefType)
-	{
-		case RefEffect::RefArg0:
-		{
-			changed |= addMemRead(cs.getArgument(0));
-			break;
-		}
-		case RefEffect::RefArg1:
-		{
-			changed |= addMemRead(cs.getArgument(1));
-			break;
-		}
-		case RefEffect::RefArg2:
-		{
-			changed |= addMemRead(cs.getArgument(2));
-			break;
-		}
-		case RefEffect::RefArg0Arg1:
-		{
-			changed |= addMemRead(cs.getArgument(0));
-			changed |= addMemRead(cs.getArgument(1));
-			break;
-		}
-		case RefEffect::RefAfterArg0:
-		{
-			for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-				changed |= addMemRead(cs.getArgument(i));
-			break;
-		}
-		case RefEffect::RefAfterArg1:
-		{
-			for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-				changed |= addMemRead(cs.getArgument(i));
-			break;
-		}
-		case RefEffect::RefAllArgs:
-		{
-			for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
-				changed |= addMemRead(cs.getArgument(i));
-			break;
-		}
-		case RefEffect::RefArg1Array:
-		{
-			changed |= addMemRead(cs.getArgument(1), true);
-			break;
-		}
-		case RefEffect::UnknownEffect:
-			llvm_unreachable("Unknown ref effect");
-		default:
-			break;
-	}
-
 	return changed;
 }
 
-void propagateSummary(ModRefSummaryMap& summaryMap, const RevCallMapType& revCallGraph, const PointerAnalysis& ptrAnalysis, const ExternalModTable& extModTable, const ExternalRefTable& extRefTable)
+bool updateSummaryForModEffect(const Instruction* inst, ModRefSummary& summary, const PointerAnalysis& ptrAnalysis, const ModRefEffect& modEffect)
+{
+	assert(modEffect.isModEffect());
+
+	ImmutableCallSite cs(inst);
+	assert(cs);
+	auto caller = inst->getParent()->getParent();
+
+	auto const& pos = modEffect.getPosition();
+	if (pos.isReturnPosition())
+		return addExternalMemoryWrite(inst, summary, caller, ptrAnalysis, modEffect.onReachableMemory());
+	else
+	{
+		auto const& argPos = pos.getAsArgPosition();
+		unsigned idx = argPos.getArgIndex();
+
+		if (!argPos.isAfterArgPosition())
+			return addExternalMemoryWrite(cs.getArgument(idx)->stripPointerCasts(), summary, caller, ptrAnalysis, modEffect.onReachableMemory());
+		else
+		{
+			bool changed = false;
+			for (auto i = idx, e = cs.arg_size(); i < e; ++i)
+				changed |= addExternalMemoryWrite(cs.getArgument(i)->stripPointerCasts(), summary, caller, ptrAnalysis, modEffect.onReachableMemory());
+			return changed;
+		}
+	}
+}
+
+bool addExternalMemoryRead(const Value* v, ModRefSummary& summary, const Function* caller, const PointerAnalysis& ptrAnalysis, bool isReachableMemory)
+{
+	bool changed = false;
+	auto pSet = ptrAnalysis.getPtsSet(v);
+	for (auto loc: pSet)
+	{
+		if (isLocalStackLocation(loc, caller))
+			continue;
+		if (isReachableMemory)
+		{
+			for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+				changed |= summary.addMemoryRead(oLoc);		
+		}
+		else
+		{
+			changed |= summary.addMemoryRead(loc);
+		}
+	}
+	return changed;
+}
+
+bool updateSummaryForRefEffect(const Instruction* inst, ModRefSummary& summary, const PointerAnalysis& ptrAnalysis, const ModRefEffect& refEffect)
+{
+	assert(refEffect.isRefEffect());
+
+	ImmutableCallSite cs(inst);
+	assert(cs);
+	auto caller = inst->getParent()->getParent();
+
+	auto const& pos = refEffect.getPosition();
+	assert(!pos.isReturnPosition() && "It doesn't make any sense to ref a return position!");
+	
+	auto const& argPos = pos.getAsArgPosition();
+	unsigned idx = argPos.getArgIndex();
+
+	if (!argPos.isAfterArgPosition())
+		return addExternalMemoryRead(cs.getArgument(idx)->stripPointerCasts(), summary, caller, ptrAnalysis, refEffect.onReachableMemory());
+	else
+	{
+		bool changed = false;
+		for (auto i = idx, e = cs.arg_size(); i < e; ++i)
+			changed |= addExternalMemoryRead(cs.getArgument(i)->stripPointerCasts(), summary, caller, ptrAnalysis, refEffect.onReachableMemory());
+		return changed;
+	}
+}
+
+bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, ModRefSummary& summary, const PointerAnalysis& ptrAnalysis, const ExternalModRefTable& modRefTable)
+{
+	auto modRefSummary = modRefTable.lookup(f->getName());
+	if (modRefSummary == nullptr)
+	{
+		errs() << "Missing entry in ModRefTable: " << f->getName() << "\n";
+		llvm_unreachable("Consider adding the function to modref annotations");
+	}
+
+	bool changed = false;
+	for (auto const& effect: *modRefSummary)
+	{
+		if (effect.isModEffect())
+			changed |= updateSummaryForModEffect(inst, summary, ptrAnalysis, effect);
+		else
+			changed |= updateSummaryForRefEffect(inst, summary, ptrAnalysis, effect);
+	}
+	return changed;
+}
+
+void propagateSummary(ModRefSummaryMap& summaryMap, const RevCallMapType& revCallGraph, const PointerAnalysis& ptrAnalysis, const ExternalModRefTable& modRefTable)
 {
 	auto workList = WorkList<const Function*>();
 
@@ -229,7 +202,7 @@ void propagateSummary(ModRefSummaryMap& summaryMap, const RevCallMapType& revCal
 			{
 				auto caller = callSite->getParent()->getParent();
 				auto& callerSummary = summaryMap.getSummary(caller);
-				if (updateSummaryForExternalCall(callSite, f, callerSummary, ptrAnalysis, extModTable, extRefTable))
+				if (updateSummaryForExternalCall(callSite, f, callerSummary, ptrAnalysis, modRefTable))
 					workList.enqueue(caller);
 			}
 		}
@@ -355,7 +328,7 @@ ModRefSummaryMap ModRefAnalysis::runOnProgram(const PointerProgram& prog)
 		updateRevCallGraph(revCallGraph, cfg, ptrAnalysis);
 	}
 
-	propagateSummary(summaryMap, revCallGraph, ptrAnalysis, extModTable, extRefTable);
+	propagateSummary(summaryMap, revCallGraph, ptrAnalysis, modRefTable);
 
 	return summaryMap;
 }

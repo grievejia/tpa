@@ -8,7 +8,7 @@
 namespace tpa
 {
 
-std::unique_ptr<llvm::MemoryBuffer> readFileIntoBuffer(const std::string& fileName)
+inline std::unique_ptr<llvm::MemoryBuffer> readFileIntoBuffer(const std::string& fileName)
 {
 	auto fileOrErr = llvm::MemoryBuffer::getFile(fileName);
 	if (auto ec = fileOrErr.getError())

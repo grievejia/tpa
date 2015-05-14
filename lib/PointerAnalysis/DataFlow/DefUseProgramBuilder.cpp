@@ -4,9 +4,10 @@
 #include "PointerAnalysis/ControlFlow/PointerProgram.h"
 #include "PointerAnalysis/DataFlow/DefUseProgramBuilder.h"
 #include "PointerAnalysis/DataFlow/ModRefSummary.h"
-#include "PointerAnalysis/External/ExternalRefTable.h"
+#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 
 #include <llvm/IR/CallSite.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 
@@ -85,94 +86,68 @@ void buildTopLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap)
 	}
 }
 
-void processMemReadForExternalCall(const PointerCFGNode* node, const Function* callee, DefUseGraphNode* dstDefUseNode, const ExternalRefTable& extRefTable, const NodeMap& nodeMap, const ReachingDefStore<PointerCFGNode>& rdStore, const PointerAnalysis& ptrAnalysis)
+void processValueRef(const Value* v, const NodeMap& nodeMap, const ReachingDefStore<PointerCFGNode>& rdStore, DefUseGraphNode* dstDefUseNode, const PointerAnalysis& ptrAnalysis, bool isReachableMemory)
+{
+	auto refLoc = [&rdStore, &nodeMap, dstDefUseNode] (const MemoryLocation* loc)
+	{
+		auto nodeSet = rdStore.getReachingDefs(loc);
+		assert(nodeSet != nullptr);
+		for (auto srcNode: *nodeSet)
+		{
+			auto srcDefUseNode = getDefUseNode(nodeMap, srcNode);
+			srcDefUseNode->insertMemLevelEdge(loc, dstDefUseNode);
+		}
+	};
+
+	auto pSet = ptrAnalysis.getPtsSet(v);
+	for (auto loc: pSet)
+	{
+		if (isReachableMemory)
+		{
+			for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+				refLoc(oLoc);
+		}
+		else
+		{
+			refLoc(loc);
+		}
+	}
+}
+
+void processMemReadForExternalCall(const PointerCFGNode* node, const Function* callee, DefUseGraphNode* dstDefUseNode, const ExternalModRefTable& modRefTable, const NodeMap& nodeMap, const ReachingDefStore<PointerCFGNode>& rdStore, const PointerAnalysis& ptrAnalysis)
 {
 	ImmutableCallSite cs(node->getInstruction());
 	assert(cs);
 
-	auto refArg = [&ptrAnalysis, &rdStore, &nodeMap, dstDefUseNode] (const Value* v, bool array = false)
+	auto summary = modRefTable.lookup(callee->getName());
+	if (summary == nullptr)
 	{
-		auto refLoc = [&rdStore, &nodeMap, dstDefUseNode] (const MemoryLocation* loc)
-		{
-			auto nodeSet = rdStore.getReachingDefs(loc);
-			assert(nodeSet != nullptr);
-			for (auto srcNode: *nodeSet)
-			{
-				auto srcDefUseNode = getDefUseNode(nodeMap, srcNode);
-				srcDefUseNode->insertMemLevelEdge(loc, dstDefUseNode);
-			}
-		};
+		errs() << "Missing entry in ModRefTable: " << callee->getName() << "\n";
+		llvm_unreachable("Consider adding the function to modref annotations");
+	}
 
-		auto pSet = ptrAnalysis.getPtsSet(v);
-		for (auto loc: pSet)
+	for (auto const& effect: *summary)
+	{
+		if (effect.isRefEffect())
 		{
-			if (array)
-			{
-				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-					refLoc(oLoc);
-			}
+			auto const& pos = effect.getPosition();
+			assert(!pos.isReturnPosition() && "It doesn't make any sense to ref a return position!");
+
+			auto const& argPos = pos.getAsArgPosition();
+			unsigned idx = argPos.getArgIndex();
+
+			if (!argPos.isAfterArgPosition())
+				processValueRef(cs.getArgument(idx)->stripPointerCasts(),nodeMap, rdStore, dstDefUseNode, ptrAnalysis, effect.onReachableMemory());
 			else
 			{
-				refLoc(loc);
+				for (auto i = idx, e = cs.arg_size(); i < e; ++i)
+					processValueRef(cs.getArgument(i)->stripPointerCasts(),nodeMap, rdStore, dstDefUseNode, ptrAnalysis, effect.onReachableMemory());
 			}
 		}
-	};
-
-	auto extType = extRefTable.lookup(callee->getName());
-	switch (extType)
-	{
-		case RefEffect::RefArg0:
-		{
-			refArg(cs.getArgument(0));
-			break;
-		}
-		case RefEffect::RefArg1:
-		{
-			refArg(cs.getArgument(1));
-			break;
-		}
-		case RefEffect::RefArg2:
-		{
-			refArg(cs.getArgument(2));
-			break;
-		}
-		case RefEffect::RefArg0Arg1:
-		{
-			refArg(cs.getArgument(0));
-			refArg(cs.getArgument(1));
-			break;
-		}
-		case RefEffect::RefAfterArg0:
-		{
-			for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-				refArg(cs.getArgument(i));
-			break;
-		}
-		case RefEffect::RefAfterArg1:
-		{
-			for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-				refArg(cs.getArgument(i));
-			break;
-		}
-		case RefEffect::RefAllArgs:
-		{
-			for (auto i = 0u, e = cs.arg_size(); i < e; ++i)
-				refArg(cs.getArgument(i));
-			break;
-		}
-		case RefEffect::RefArg1Array:
-		{
-			refArg(cs.getArgument(1), true);
-			break;
-		}
-		case RefEffect::UnknownEffect:
-			llvm_unreachable("Unknown ref effect");
-		default:
-			break;
 	}
 }
 
-void buildMemLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap, const ModRefSummaryMap& summaryMap, const ReachingDefMap<PointerCFGNode>& rdMap, const PointerAnalysis& ptrAnalysis, const ExternalRefTable& extRefTable)
+void buildMemLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap, const ModRefSummaryMap& summaryMap, const ReachingDefMap<PointerCFGNode>& rdMap, const PointerAnalysis& ptrAnalysis, const ExternalModRefTable& modRefTable)
 {
 	auto processMemRead = [&nodeMap, &rdMap, &ptrAnalysis] (const PointerCFGNode* node, const llvm::Value* val)
 	{
@@ -225,7 +200,7 @@ void buildMemLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap, const Mod
 				{
 					if (callee->isDeclaration())
 					{
-						processMemReadForExternalCall(node, callee, dstDefUseNode, extRefTable, nodeMap, rdStore, ptrAnalysis);
+						processMemReadForExternalCall(node, callee, dstDefUseNode, modRefTable, nodeMap, rdStore, ptrAnalysis);
 					}
 					else
 					{
@@ -265,7 +240,7 @@ void DefUseProgramBuilder::buildDefUseGraph(DefUseGraph& dug, const PointerCFG& 
 		nodeMap[node] = duNode;
 	}
 
-	ReachingDefAnalysis rdAnalysis(ptrAnalysis, summaryMap, extModTable);
+	ReachingDefAnalysis rdAnalysis(ptrAnalysis, summaryMap, modRefTable);
 	auto rdMap = rdAnalysis.runOnPointerCFG(cfg);
 
 	// Set the entry and the exit
@@ -277,7 +252,7 @@ void DefUseProgramBuilder::buildDefUseGraph(DefUseGraph& dug, const PointerCFG& 
 	entryDefUseNode->insertTopLevelEdge(exitDefUseNode);
 
 	buildTopLevelEdges(cfg, nodeMap);
-	buildMemLevelEdges(cfg, nodeMap, summaryMap, rdMap, ptrAnalysis, extRefTable);
+	buildMemLevelEdges(cfg, nodeMap, summaryMap, rdMap, ptrAnalysis, modRefTable);
 }
 
 DefUseProgram DefUseProgramBuilder::buildDefUseProgram(const PointerProgram& prog)

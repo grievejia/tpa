@@ -15,7 +15,7 @@ namespace llvm
 namespace tpa
 {
 
-class ExternalPointerEffectTable;
+class ExternalPointerTable;
 class MemoryManager;
 class PointerManager;
 
@@ -25,16 +25,16 @@ protected:
 	PointerManager& ptrManager;
 	MemoryManager& memManager;
 
-	const ExternalPointerEffectTable& extTable;
+	const ExternalPointerTable& extTable;
 
 	Env env;
 	StaticCallGraph callGraph;
 public:
 	// Constructor with default env
-	PointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& e): ptrManager(p), memManager(m), extTable(e), env() {}
+	PointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerTable& e): ptrManager(p), memManager(m), extTable(e), env() {}
 	// Constructors with user-initialized env
-	PointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& ext, const Env& e): ptrManager(p), memManager(m), extTable(ext), env(e) {}
-	PointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerEffectTable& ext, Env&& e): ptrManager(p), memManager(m), extTable(ext), env(std::move(e)) {}
+	PointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerTable& ext, const Env& e): ptrManager(p), memManager(m), extTable(ext), env(e) {}
+	PointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerTable& ext, Env&& e): ptrManager(p), memManager(m), extTable(ext), env(std::move(e)) {}
 	virtual ~PointerAnalysis() = default;
 
 	PtsSet getPtsSet(const llvm::Value* val) const;

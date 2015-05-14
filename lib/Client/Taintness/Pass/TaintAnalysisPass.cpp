@@ -2,8 +2,7 @@
 #include "Client/Taintness/Pass/TaintAnalysisPass.h"
 #include "PointerAnalysis/Analysis/ModRefModuleAnalysis.h"
 #include "PointerAnalysis/DataFlow/DefUseModuleBuilder.h"
-#include "PointerAnalysis/External/ExternalModTable.h"
-#include "PointerAnalysis/External/ExternalRefTable.h"
+#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 #include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 
 #include <llvm/Support/raw_ostream.h>
@@ -22,12 +21,11 @@ bool TaintAnalysisPass::runOnModule(Module& module)
 	tpaWrapper.runOnModule(module);
 	auto& tpa = tpaWrapper.getPointerAnalysis();
 
-	auto extModTable = ExternalModTable();
-	auto extRefTable = ExternalRefTable();
-	ModRefModuleAnalysis modRefAnalysis(tpa, extModTable, extRefTable);
+	auto modRefTable = ExternalModRefTable::loadFromFile("mod_ref.conf");
+	ModRefModuleAnalysis modRefAnalysis(tpa, modRefTable);
 	auto summaryMap = modRefAnalysis.runOnModule(module);
 
-	DefUseModuleBuilder duBuilder(tpa, summaryMap, extModTable, extRefTable);
+	DefUseModuleBuilder duBuilder(tpa, summaryMap, modRefTable);
 	auto duModule = duBuilder.buildDefUseModule(module);
 
 	TaintAnalysis taintAnalysis(tpa);

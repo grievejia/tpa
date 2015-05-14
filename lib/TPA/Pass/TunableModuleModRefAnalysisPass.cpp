@@ -1,6 +1,5 @@
 #include "PointerAnalysis/Analysis/ModRefModuleAnalysis.h"
-#include "PointerAnalysis/External/ExternalModTable.h"
-#include "PointerAnalysis/External/ExternalRefTable.h"
+#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 #include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 #include "TPA/Pass/TunableModuleModRefAnalysisPass.h"
 
@@ -16,7 +15,8 @@ bool TunableModuleModRefAnalysisPass::runOnModule(Module& module)
 	TunablePointerAnalysisWrapper tpaWrapper;
 	tpaWrapper.runOnModule(module);
 
-	ModRefModuleAnalysis modRefAnalysis(tpaWrapper.getPointerAnalysis(), ExternalModTable(), ExternalRefTable());
+	auto modRefTable = ExternalModRefTable::loadFromFile();
+	ModRefModuleAnalysis modRefAnalysis(tpaWrapper.getPointerAnalysis(), modRefTable);
 	auto summaryMap = modRefAnalysis.runOnModule(module);
 
 	summaryMap.dump(errs());

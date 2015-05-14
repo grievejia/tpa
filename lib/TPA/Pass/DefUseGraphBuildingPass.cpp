@@ -1,7 +1,6 @@
 #include "PointerAnalysis/Analysis/ModRefAnalysis.h"
 #include "PointerAnalysis/DataFlow/DefUseProgramBuilder.h"
-#include "PointerAnalysis/External/ExternalModTable.h"
-#include "PointerAnalysis/External/ExternalRefTable.h"
+#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
 #include "TPA/Analysis/TunablePointerAnalysisWrapper.h"
 #include "TPA/Pass/DefUseGraphBuildingPass.h"
@@ -17,12 +16,11 @@ bool DefUseGraphBuildingPass::runOnModule(Module& module)
 	tpaWrapper.runOnModule(module);
 
 	auto const& ptrAnalysis = tpaWrapper.getPointerAnalysis();
-	auto extModTable = ExternalModTable();
-	auto extRefTable = ExternalRefTable();
-	ModRefAnalysis modRefAnalysis(ptrAnalysis, extModTable, extRefTable);
+	auto modRefTable = ExternalModRefTable::loadFromFile();
+	ModRefAnalysis modRefAnalysis(ptrAnalysis, modRefTable);
 	auto summaryMap = modRefAnalysis.runOnProgram(tpaWrapper.getPointerProgram());
 
-	DefUseProgramBuilder builder(ptrAnalysis, summaryMap, extModTable, extRefTable);
+	DefUseProgramBuilder builder(ptrAnalysis, summaryMap, modRefTable);
 	auto dug = builder.buildDefUseProgram(tpaWrapper.getPointerProgram());
 
 	dug.writeDotFile("dots", "");

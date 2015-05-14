@@ -1,5 +1,5 @@
 #include "PointerAnalysis/ControlFlow/PointerProgramBuilder.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 #include "Utils/ParseLLVMAssembly.h"
 
 #include "gtest/gtest.h"
@@ -95,8 +95,7 @@ TEST(ControlFlowTest, PointerCFGBuilderTest)
 		"}\n"
 	);
 
-	auto extTable = ExternalPointerEffectTable();
-	auto builder = PointerProgramBuilder(extTable);
+	auto builder = PointerProgramBuilder();
 	auto prog = builder.buildPointerProgram(*testModule);
 	auto cfg = prog.getPointerCFG(testModule->begin());
 	EXPECT_EQ(cfg, prog.getEntryCFG());

@@ -10,7 +10,7 @@ namespace tpa
 class DummyPointerAnalysis: public PointerAnalysis
 {
 public:
-	DummyPointerAnalysis(PointerManager& pm, MemoryManager& mm, const ExternalPointerEffectTable& t): PointerAnalysis(pm, mm, t) {}
+	DummyPointerAnalysis(PointerManager& pm, MemoryManager& mm, const ExternalPointerTable& t): PointerAnalysis(pm, mm, t) {}
 
 	void injectEnv(const Pointer* ptr, const MemoryLocation* loc)
 	{

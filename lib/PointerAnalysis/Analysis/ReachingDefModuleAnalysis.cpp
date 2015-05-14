@@ -2,7 +2,7 @@
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 #include "PointerAnalysis/Analysis/ReachingDefModuleAnalysis.h"
 #include "PointerAnalysis/DataFlow/ModRefSummary.h"
-#include "PointerAnalysis/External/ExternalModTable.h"
+#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 #include "Utils/WorkList.h"
 
 #include <llvm/IR/BasicBlock.h>
@@ -32,7 +32,7 @@ class EvalVisitor: public llvm::InstVisitor<EvalVisitor>
 private:
 	const PointerAnalysis& ptrAnalysis;
 	const ModRefSummaryMap& summaryMap;
-	const ExternalModTable& extModTable;
+	const ExternalModRefTable& modRefTable;
 
 	using StoreType = ReachingDefStore<Instruction>;
 	StoreType store;
@@ -57,63 +57,60 @@ private:
 		}
 	}
 
+	void modValue(const Value* v, const Instruction* inst, bool isReachableMemory)
+	{
+		auto pSet = ptrAnalysis.getPtsSet(v);
+		for (auto loc: pSet)
+		{
+			if (isReachableMemory)
+			{
+				for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
+					store.insertBinding(oLoc, inst);
+			}
+			else
+			{
+				store.insertBinding(loc, inst);
+			}
+			
+		}
+	}
+
 	void evalExternalCall(CallSite cs, const Function* f)
 	{
-		auto extType = extModTable.lookup(f->getName());
-		auto modArg = [this, cs] (const Value* v, bool array = false)
+		auto summary = modRefTable.lookup(f->getName());
+		if (summary == nullptr)
 		{
-			auto pSet = ptrAnalysis.getPtsSet(v);
-			for (auto loc: pSet)
+			errs() << "Missing entry in ModRefTable: " << f->getName() << "\n";
+			llvm_unreachable("Consider adding the function to modref annotations");
+		}
+
+		for (auto const& effect: *summary)
+		{
+			if (effect.isModEffect())
 			{
-				if (array)
+				auto const& pos = effect.getPosition();
+				if (pos.isReturnPosition())
 				{
-					for (auto oLoc: ptrAnalysis.getMemoryManager().getAllOffsetLocations(loc))
-						store.insertBinding(oLoc, cs.getInstruction());
+					modValue(cs.getInstruction()->stripPointerCasts(), cs.getInstruction(), effect.onReachableMemory());
 				}
 				else
 				{
-					store.insertBinding(loc, cs.getInstruction());
+					auto const& argPos = pos.getAsArgPosition();
+					unsigned idx = argPos.getArgIndex();
+
+					if (!argPos.isAfterArgPosition())
+						modValue(cs.getArgument(idx)->stripPointerCasts(), cs.getInstruction(), effect.onReachableMemory());
+					else
+					{
+						for (auto i = idx, e = cs.arg_size(); i < e; ++i)
+							modValue(cs.getArgument(i)->stripPointerCasts(), cs.getInstruction(), effect.onReachableMemory());
+					}
 				}
-				
 			}
-		};
-		switch (extType)
-		{
-			case ModEffect::ModArg0:
-			{
-				modArg(cs.getArgument(0));
-				break;
-			}
-			case ModEffect::ModArg1:
-			{
-				modArg(cs.getArgument(1));
-				break;
-			}
-			case ModEffect::ModAfterArg0:
-			{
-				for (auto i = 1u, e = cs.arg_size(); i < e; ++i)
-					modArg(cs.getArgument(i));
-				break;
-			}
-			case ModEffect::ModAfterArg1:
-			{
-				for (auto i = 2u, e = cs.arg_size(); i < e; ++i)
-					modArg(cs.getArgument(i));
-				break;
-			}
-			case ModEffect::ModArg0Array:
-			{
-				modArg(cs.getArgument(0), true);
-				break;
-			}
-			case ModEffect::UnknownEffect:
-				llvm_unreachable("Unknown mod effect");
-			default:
-				break;
 		}
 	}
 public:
-	EvalVisitor(const PointerAnalysis& p, const ModRefSummaryMap& sm, const ExternalModTable& e, const StoreType& s): ptrAnalysis(p), summaryMap(sm), extModTable(e), store(s) {}
+	EvalVisitor(const PointerAnalysis& p, const ModRefSummaryMap& sm, const ExternalModRefTable& e, const StoreType& s): ptrAnalysis(p), summaryMap(sm), modRefTable(e), store(s) {}
 	const StoreType& getStore() const { return store; }
 
 	// Default case
@@ -170,7 +167,7 @@ ReachingDefMap<Instruction> ReachingDefModuleAnalysis::runOnFunction(const Funct
 	{
 		auto inst = workList.dequeue();
 		
-		EvalVisitor evalVisitor(ptrAnalysis, summaryMap, extModTable, rdMap.getReachingDefStore(inst));
+		EvalVisitor evalVisitor(ptrAnalysis, summaryMap, modRefTable, rdMap.getReachingDefStore(inst));
 		evalVisitor.visit(const_cast<Instruction&>(*inst));
 
 		if (auto termInst = dyn_cast<TerminatorInst>(inst))

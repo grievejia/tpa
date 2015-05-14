@@ -3,13 +3,10 @@
 #include "Client/Taintness/DataFlow/TaintGlobalState.h"
 #include "Client/Taintness/SourceSink/Checker/SinkViolationChecker.h"
 
-#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace tpa;
-
-cl::opt<std::string> ConfigFileName("taint-config", cl::desc("Specify taint config filename"), cl::init("source_sink.conf"), cl::value_desc("filename"));
 
 namespace client
 {
@@ -57,7 +54,7 @@ bool TaintAnalysis::checkSinkViolation(const TaintGlobalState& globalState)
 // Return true if there is a info flow violation
 bool TaintAnalysis::runOnDefUseModule(const DefUseModule& duModule)
 {
-	TaintGlobalState globalState(duModule, ptrAnalysis, ConfigFileName);
+	TaintGlobalState globalState(duModule, ptrAnalysis);
 	TaintAnalysisEngine engine(globalState);
 	engine.run();
 

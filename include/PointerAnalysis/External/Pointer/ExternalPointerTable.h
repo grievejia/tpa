@@ -16,17 +16,18 @@ private:
 	using MapType = std::unordered_map<std::string, PointerEffectSummary>;
 	MapType table;
 
-	static void buildTable(ExternalPointerTable& extTable, const llvm::StringRef& fileContent);
+	static ExternalPointerTable buildTable(const llvm::StringRef&);
 public:
 	using const_iterator = MapType::const_iterator;
 
-	const PointerEffectSummary* getSummary(const llvm::StringRef& name) const;
+	const PointerEffectSummary* lookup(const llvm::StringRef& name) const;
 
 	const_iterator begin() const { return table.begin(); }
 	const_iterator end() const { return table.end(); }
 	size_t getSize() const { return table.size(); }
 
 	static ExternalPointerTable loadFromFile(const llvm::StringRef& fileName);
+	static ExternalPointerTable loadFromFile();
 };
 
 }

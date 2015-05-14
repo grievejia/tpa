@@ -3,7 +3,7 @@
 
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/ControlFlow/PointerProgram.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 #include "TPA/Analysis/TunablePointerAnalysis.h"
 
 #include <memory>
@@ -27,12 +27,12 @@ private:
 	PointerProgram prog;
 	std::unique_ptr<TunablePointerAnalysis> ptrAnalysis;
 
-	ExternalPointerEffectTable extTable;
+	ExternalPointerTable extTable;
 public:
 	TunablePointerAnalysisWrapper();
 	~TunablePointerAnalysisWrapper();
 
-	const ExternalPointerEffectTable& getExtTable() const { return extTable; }
+	const ExternalPointerTable& getExtTable() const { return extTable; }
 	const PointerProgram& getPointerProgram() const { return prog; }
 	const TunablePointerAnalysis& getPointerAnalysis() const 
 	{

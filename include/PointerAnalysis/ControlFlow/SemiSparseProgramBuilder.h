@@ -6,7 +6,7 @@
 namespace tpa
 {
 
-class ExternalPointerEffectTable;
+class ExternalPointerTable;
 
 class SemiSparseProgramBuilder
 {
@@ -15,7 +15,7 @@ private:
 
 	void detachPreservingNodes(PointerCFG& cfg);
 public:
-	SemiSparseProgramBuilder(const ExternalPointerEffectTable& t): builder(t) {}
+	SemiSparseProgramBuilder() = default;
 
 	PointerProgram buildSemiSparseProgram(const llvm::Module& module);
 };

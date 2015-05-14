@@ -94,7 +94,7 @@ SinkViolationRecords SinkViolationChecker::checkSinkViolation(const SinkSignatur
 {
 	SinkViolationRecords violations;
 	
-	if (auto taintSummary = table.getSummary(sig.getCallee()->getName()))
+	if (auto taintSummary = table.lookup(sig.getCallee()->getName()))
 		violations = checkCallSiteWithSummary(sig.getCallSite(), *taintSummary);
 
 	return violations;

@@ -1,6 +1,6 @@
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
-#include "PointerAnalysis/External/ExternalPointerEffectTable.h"
+#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 #include "TPA/DataFlow/SemiSparseGlobalState.h"
 #include "TPA/DataFlow/TransferFunction.h"
 
@@ -16,6 +16,21 @@ namespace tpa
 static bool isPtrArrayStructType(Type* type)
 {
 	return (isa<SequentialType>(type) || type->isStructTy());
+}
+
+static const Value* getArgument(const CallNode* callNode, const APosition& pos)
+{
+	auto inst = callNode->getInstruction();
+	if (pos.isReturnPosition())
+		return inst;
+
+	ImmutableCallSite cs(inst);
+	assert(cs);
+	
+	auto argIdx = pos.getAsArgPosition().getArgIndex();
+	assert(cs.arg_size() > argIdx);
+
+	return cs.getArgument(argIdx)->stripPointerCasts();
 }
 
 static PointerType* getMallocType(const CallNode* callNode)
@@ -65,7 +80,7 @@ EvalStatus TransferFunction::evalMallocWithSizeValue(const CallNode* callNode, c
 	auto dstPtr = getOrCreatePointer(dstVal);
 
 	auto mallocType = getMallocType(callNode)->getPointerElementType();
-	auto mallocSize = getMallocSize(mallocType, sizeVal);
+	auto mallocSize = (sizeVal == nullptr) ? 0 : getMallocSize(mallocType, sizeVal);
 
 	auto sizeUnknown = (mallocSize == 0);
 	auto objType = sizeUnknown ? mallocType : ArrayType::get(mallocType, mallocSize);
@@ -73,11 +88,12 @@ EvalStatus TransferFunction::evalMallocWithSizeValue(const CallNode* callNode, c
 	return evalMemoryAllocation(dstPtr, objType, sizeUnknown);
 }
 
-EvalStatus TransferFunction::evalMalloc(const CallNode* callNode)
+EvalStatus TransferFunction::evalExternalAlloc(const CallNode* callNode, const PointerAllocEffect& allocEffect)
 {
-	ImmutableCallSite cs(callNode->getInstruction());
-	auto sizeVal = cs.getArgument(0);
-	return evalMallocWithSizeValue(callNode, sizeVal);
+	if (allocEffect.hasSizePosition())
+		return evalMallocWithSizeValue(callNode, getArgument(callNode, allocEffect.getSizePosition()));
+	else
+		return evalMallocWithSizeValue(callNode, nullptr);
 }
 
 EvalStatus TransferFunction::copyPointerPtsSet(const Pointer* dstPtr, const Pointer* srcPtr)
@@ -88,24 +104,6 @@ EvalStatus TransferFunction::copyPointerPtsSet(const Pointer* dstPtr, const Poin
 
 	auto envChanged = globalState.getEnv().weakUpdate(dstPtr, srcSet);
 	return EvalStatus::getValidStatus(envChanged, false);
-}
-
-EvalStatus TransferFunction::evalExternalReturnsArg(const CallNode* callNode, size_t argNum)
-{
-	assert(callNode->getNumArgument() > argNum);
-
-	// If the return value is not used, don't bother process it
-	auto dstVal = callNode->getDest();
-	if (dstVal == nullptr)
-		return EvalStatus::getValidStatus(false, false);
-
-	auto srcVal = callNode->getArgument(argNum);
-	auto srcPtr = getPointer(srcVal);
-	if (srcPtr == nullptr)
-		return EvalStatus::getValidStatus(false, false);
-	auto dstPtr = getOrCreatePointer(dstVal);
-	
-	return copyPointerPtsSet(dstPtr, srcPtr);
 }
 
 EvalStatus TransferFunction::evalRealloc(const CallNode* callNode)
@@ -119,36 +117,11 @@ EvalStatus TransferFunction::evalRealloc(const CallNode* callNode)
 		// Same as malloc
 		return evalMallocWithSizeValue(callNode, sizeVal);
 	else
+	{
 		// Same as ReturnArg0
-		return evalExternalReturnsArg(callNode, 0);
-}
-
-EvalStatus TransferFunction::evalExternalReturnsStatic(const CallNode* callNode)
-{
-	// We can, of course, create a special variable which represents all the static memory locations
-	// For now, however, just return a universal pointer
-	// If the return value is not used, don't bother process it
-	auto dstVal = callNode->getDest();
-	if (dstVal == nullptr)
-		return EvalStatus::getValidStatus(false, false);
-	auto dstPtr = getOrCreatePointer(dstVal);
-	
-	return copyPointerPtsSet(dstPtr, globalState.getPointerManager().getUniversalPtr());
-}
-
-EvalStatus TransferFunction::evalExternalStore(const CallNode* callNode, size_t dstNum, size_t srcNum)
-{
-	assert(callNode->getNumArgument() > dstNum && callNode->getNumArgument() > srcNum);
-	assert(store != nullptr);
-
-	auto dstPtr = getPointer(callNode->getArgument(dstNum));
-	if (dstPtr == nullptr)
-		return EvalStatus::getInvalidStatus();
-	auto srcPtr = getPointer(callNode->getArgument(srcNum));
-	if (srcPtr == nullptr)
-		return EvalStatus::getInvalidStatus();
-
-	return evalStore(dstPtr, srcPtr);
+		auto effect = PointerEffect::getCopyEffect(CopyDest::getValue(APosition::getReturnPosition()), CopySource::getValue(APosition::getArgPosition(0)));
+		return evalExternalCopy(callNode, effect.getAsCopyEffect());
+	}
 }
 
 bool TransferFunction::copyMemoryPtsSet(const MemoryLocation* dstLoc, const std::vector<const MemoryLocation*>& srcLocs, size_t startingOffset)
@@ -189,24 +162,19 @@ EvalStatus TransferFunction::evalMemcpyPointer(const Pointer* dstPtr, const Poin
 	return EvalStatus::getValidStatus(false, storeChanged);
 }
 
-EvalStatus TransferFunction::evalMemcpy(const CallNode* callNode, size_t dstNum, size_t srcNum)
+EvalStatus TransferFunction::evalMemcpy(const CallNode* callNode, const APosition& dstPos, const APosition& srcPos)
 {
-	assert(callNode->getNumArgument() > dstNum && callNode->getNumArgument() > srcNum);
 	assert(store != nullptr);
+	assert(dstPos.isArgPosition() && srcPos.isArgPosition() && "memcpy only operates on arguments");
 
-	auto dstPtr = getPointer(callNode->getArgument(dstNum));
+	auto dstPtr = getPointer(getArgument(callNode, dstPos));
 	if (dstPtr == nullptr)
 		return EvalStatus::getInvalidStatus();
-	auto srcPtr = getPointer(callNode->getArgument(srcNum));
+	auto srcPtr = getPointer(getArgument(callNode, srcPos));
 	if (srcPtr == nullptr)
 		return EvalStatus::getInvalidStatus();
 
 	auto result = evalMemcpyPointer(dstPtr, srcPtr);
-	if (auto retVal = callNode->getDest())
-	{
-		auto retPtr = getOrCreatePointer(retVal);
-		result = result || copyPointerPtsSet(retPtr, dstPtr);
-	}
 	return result;
 }
 
@@ -252,19 +220,18 @@ std::vector<const MemoryLocation*> TransferFunction::findPointerCandidates(const
 	return candidates;
 }
 
-bool TransferFunction::setMemoryLocationToNull(const MemoryLocation* loc, Type* type)
+bool TransferFunction::setMemoryLocationTo(const MemoryLocation* loc, Type* type, PtsSet srcSet)
 {
 	bool changed = false;
 	auto candidateLocs = findPointerCandidates(loc, type);
 
-	auto nullSet = PtsSet::getSingletonSet(globalState.getMemoryManager().getNullLocation());
 	for (auto loc: candidateLocs)
-		changed |= store->weakUpdate(loc, nullSet);
+		changed |= store->weakUpdate(loc, srcSet);
 
 	return changed;
 }
 
-EvalStatus TransferFunction::fillPtsSetWithNull(const Pointer* ptr)
+EvalStatus TransferFunction::fillPtsSetWith(const Pointer* ptr, PtsSet srcSet)
 {
 	// If the pointer points to a non-pointer, non-array and non-struct memory, just ignore it
 	auto elemType = ptr->getValue()->stripPointerCasts()->getType()->getPointerElementType();
@@ -281,7 +248,7 @@ EvalStatus TransferFunction::fillPtsSetWithNull(const Pointer* ptr)
 		if (loc == globalState.getMemoryManager().getUniversalLocation())
 			continue;
 
-		storeChanged |= setMemoryLocationToNull(loc, elemType);
+		storeChanged |= setMemoryLocationTo(loc, elemType, srcSet);
 	}
 
 	return EvalStatus::getValidStatus(false, storeChanged);
@@ -306,7 +273,7 @@ EvalStatus TransferFunction::evalMemset(const CallNode* callNode)
 	if (!setToNull)
 		return EvalStatus::getValidStatus(false, false);
 
-	auto result = fillPtsSetWithNull(dstPtr);
+	auto result = fillPtsSetWith(dstPtr, PtsSet::getSingletonSet(globalState.getMemoryManager().getNullLocation()));
 	if (auto retVal = callNode->getDest())
 	{
 		auto retPtr = getOrCreatePointer(retVal);
@@ -315,36 +282,116 @@ EvalStatus TransferFunction::evalMemset(const CallNode* callNode)
 	return result;
 }
 
+PtsSet TransferFunction::evalExternalCopySource(const CallNode* callNode, const CopySource& src)
+{
+	switch (src.getType())
+	{
+		case CopySource::SourceType::Value:
+		{
+			auto ptr = getPointer(getArgument(callNode, src.getPosition()));
+			if (ptr == nullptr)
+				return PtsSet::getEmptySet();
+			return globalState.getEnv().lookup(ptr);
+		}
+		case CopySource::SourceType::DirectMemory:
+		{
+			auto ptr = getPointer(getArgument(callNode, src.getPosition()));
+			if (ptr == nullptr)
+				return PtsSet::getEmptySet();
+			return loadFromPointer(ptr);
+		}
+		case CopySource::SourceType::Universal:
+		{
+			return PtsSet::getSingletonSet(globalState.getMemoryManager().getUniversalLocation());
+		}
+		case CopySource::SourceType::Null:
+		{
+			return PtsSet::getSingletonSet(globalState.getMemoryManager().getNullLocation());
+		}
+		case CopySource::SourceType::Static:
+			// TODO: model "static" memory
+			return PtsSet::getSingletonSet(globalState.getMemoryManager().getUniversalLocation());
+		case CopySource::SourceType::ReachableMemory:
+			llvm_unreachable("ReachableMemory src should be handled earlier");
+	}
+}
+
+EvalStatus TransferFunction::evalExternalCopyDest(const CallNode* callNode, const CopyDest& dest, PtsSet srcSet)
+{
+	// If the return value is not used, don't bother process it
+	if (callNode->getDest() == nullptr && dest.getPosition().isReturnPosition())
+		return EvalStatus::getValidStatus(false, false);
+
+	auto dstPtr = getOrCreatePointer(getArgument(callNode, dest.getPosition()));
+	switch (dest.getType())
+	{
+		case CopyDest::DestType::Value:
+		{
+			auto envChanged = globalState.getEnv().weakUpdate(dstPtr, srcSet);
+			return EvalStatus::getValidStatus(envChanged, false);
+		}
+		case CopyDest::DestType::DirectMemory:
+		{
+			auto dstSet = globalState.getEnv().lookup(dstPtr);
+			if (dstSet.isEmpty())
+				return EvalStatus::getInvalidStatus();
+
+			assert(store != nullptr);
+			return weakUpdateStore(dstSet, srcSet);
+		}
+		case CopyDest::DestType::ReachableMemory:
+			return fillPtsSetWith(dstPtr, srcSet);
+	}
+}
+
+EvalStatus TransferFunction::evalExternalCopy(const CallNode* callNode, const PointerCopyEffect& copyEffect)
+{
+	auto const& src = copyEffect.getSource();
+	auto const& dest = copyEffect.getDest();
+
+	// Special case for memcpy: the source is not a single ptr/mem
+	if (src.getType() == CopySource::SourceType::ReachableMemory)
+	{
+		assert(dest.getType() == CopyDest::DestType::ReachableMemory && "R src can only be assigned to R dest");
+		return evalMemcpy(callNode, dest.getPosition(), src.getPosition());
+	}
+
+	auto srcSet = evalExternalCopySource(callNode, src);
+	if (srcSet.isEmpty())
+		return EvalStatus::getInvalidStatus();
+
+	return evalExternalCopyDest(callNode, dest, srcSet);
+}
+
+EvalStatus TransferFunction::evalExternalCallByEffect(const CallNode* callNode, const PointerEffect& effect)
+{
+	switch (effect.getType())
+	{
+		case PointerEffectType::Alloc:
+			return evalExternalAlloc(callNode, effect.getAsAllocEffect());
+		case PointerEffectType::Copy:
+			return evalExternalCopy(callNode, effect.getAsCopyEffect());
+	}
+}
+
 EvalStatus TransferFunction::evalExternalCall(const CallNode* callNode, const Function* callee)
 {
-	auto extType = globalState.getExternalPointerEffectTable().lookup(callee->getName());
+	auto summary = globalState.getExternalPointerTable().lookup(callee->getName());
 
-	switch (extType)
+	if (summary == nullptr)
 	{
-		case PointerEffect::NoEffect:
-			// Do nothing
-			return EvalStatus::getValidStatus(false, false);
-		case PointerEffect::Realloc:
-			return evalRealloc(callNode);
-		case PointerEffect::Malloc:
-			return evalMalloc(callNode);
-		case PointerEffect::ReturnArg0:
-			return evalExternalReturnsArg(callNode, 0);
-		case PointerEffect::ReturnArg1:
-			return evalExternalReturnsArg(callNode, 1);
-		case PointerEffect::ReturnArg2:
-			return evalExternalReturnsArg(callNode, 2);
-		case PointerEffect::ReturnStatic:
-			return evalExternalReturnsStatic(callNode);
-		case PointerEffect::StoreArg0ToArg1:
-			return evalExternalStore(callNode, 1, 0);
-		case PointerEffect::MemcpyArg1ToArg0:
-			return evalMemcpy(callNode, 0, 1);
-		case PointerEffect::Memset:
-			return evalMemset(callNode);
-		default:
-			llvm_unreachable("Unhandled external call");
+		errs() << "Unhandled external call: " << callee->getName() << "\n";
+		llvm_unreachable("Consider annotate it in the config file");
 	}
+
+	EvalStatus retStatus = EvalStatus::getValidStatus(false, false);
+	for (auto const& effect: *summary)
+	{
+		retStatus = retStatus || evalExternalCallByEffect(callNode, effect);
+		if (!retStatus.isValid())
+			break;
+	}
+	return retStatus;
 }
 
 }
