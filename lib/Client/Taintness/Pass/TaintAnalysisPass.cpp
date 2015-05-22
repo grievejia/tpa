@@ -21,7 +21,7 @@ bool TaintAnalysisPass::runOnModule(Module& module)
 	tpaWrapper.runOnModule(module);
 	auto& tpa = tpaWrapper.getPointerAnalysis();
 
-	auto modRefTable = ExternalModRefTable::loadFromFile("mod_ref.conf");
+	auto modRefTable = ExternalModRefTable::loadFromFile();
 	ModRefModuleAnalysis modRefAnalysis(tpa, modRefTable);
 	auto summaryMap = modRefAnalysis.runOnModule(module);
 

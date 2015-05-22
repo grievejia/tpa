@@ -2,6 +2,7 @@
 #define TPA_TAINT_ENTRY_H
 
 #include "Client/Taintness/SourceSink/Table/TaintDescriptor.h"
+#include "Client/Lattice/TaintLattice.h"
 
 #include <cassert>
 
@@ -14,10 +15,14 @@ class SourceTaintEntry
 {
 private:
 	TPosition pos;
+	TClass tClass;
+	TaintLattice val;
 public:
-	SourceTaintEntry(TPosition p): pos(p) {}
+	SourceTaintEntry(TPosition p, TClass c, TaintLattice l): pos(p), tClass(c), val(l) {}
 
 	TPosition getTaintPosition() const { return pos; }
+	TClass getTaintClass() const { return tClass; }
+	TaintLattice getTaintValue() const { return val; }
 };
 
 class PipeTaintEntry
@@ -61,9 +66,9 @@ private:
 		SinkTaintEntry sink;
 	};
 
-	TaintEntry(TPosition p): type(TEnd::Source)
+	TaintEntry(TPosition p, TClass c, TaintLattice l): type(TEnd::Source)
 	{
-		new (&source) SourceTaintEntry(p);
+		new (&source) SourceTaintEntry(p, c, l);
 	}
 	TaintEntry(TPosition dp, TClass dc, TPosition sp, TClass sc): type(TEnd::Pipe)
 	{
@@ -74,10 +79,25 @@ private:
 		new (&sink) SinkTaintEntry(p, c);
 	}
 public:
-
-	static TaintEntry getSourceEntry(TPosition p)
+	TaintEntry(const TaintEntry& rhs): type(rhs.type)
 	{
-		return TaintEntry(p);
+		switch (type)
+		{
+			case TEnd::Source:
+				new (&source) SourceTaintEntry(rhs.source);
+				break;
+			case TEnd::Pipe:
+				new (&pipe) PipeTaintEntry(rhs.pipe);
+				break;
+			case TEnd::Sink:
+				new (&sink) SinkTaintEntry(rhs.sink);
+				break;
+		}
+	}
+
+	static TaintEntry getSourceEntry(TPosition p, TClass c, TaintLattice l)
+	{
+		return TaintEntry(p, c, l);
 	}
 	static TaintEntry getPipeEntry(TPosition dp, TClass dc, TPosition sp, TClass sc)
 	{
@@ -97,8 +117,10 @@ public:
 				break;
 			case TEnd::Pipe:
 				pipe.~PipeTaintEntry();
+				break;
 			case TEnd::Sink:
 				sink.~SinkTaintEntry();
+				break;
 		}
 	}
 

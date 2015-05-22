@@ -1,7 +1,7 @@
 #include "Client/Taintness/DataFlow/TaintEnv.h"
 #include "Client/Taintness/SourceSink/Checker/SinkSignature.h"
 #include "Client/Taintness/SourceSink/Checker/SinkViolationChecker.h"
-#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
 #include "MemoryModel/Memory/MemoryManager.h"
 #include "MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
@@ -20,11 +20,11 @@ namespace
 
 TEST(TaintnessTest, SourceSinkTest)
 {
-	auto ssTable = SourceSinkLookupTable();
+	auto ssTable = ExternalTaintTable();
 	EXPECT_EQ(ssTable.lookup("read"), nullptr);
 	EXPECT_EQ(ssTable.lookup("printf"), nullptr);
 
-	ssTable = SourceSinkLookupTable::loadFromFile("source_sink.conf");
+	ssTable = ExternalTaintTable::loadFromFile();
 	ASSERT_TRUE(ssTable.getSize() > 0);
 	EXPECT_NE(ssTable.lookup("read"), nullptr);
 	EXPECT_NE(ssTable.lookup("printf"), nullptr);
@@ -153,7 +153,7 @@ TEST(TaintnessTest, ViolationCheckerTest)
 	env.strongUpdate(z, TaintLattice::Either);
 	store.strongUpdate(locG, TaintLattice::Either);
 
-	auto ssLookupTable = SourceSinkLookupTable::loadFromFile("source_sink.conf");
+	auto ssLookupTable = ExternalTaintTable::loadFromFile();
 
 	// The real test actually starts here...
 	SinkViolationChecker checker(env, store, ssLookupTable, ptrAnalysis);

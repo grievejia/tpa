@@ -155,6 +155,19 @@ private:
 		new (&copy) PointerCopyEffect(d, s);
 	}
 public:
+	PointerEffect(const PointerEffect& rhs): type(rhs.type)
+	{
+		switch (type)
+		{
+			case PointerEffectType::Alloc:
+				new (&alloc) PointerAllocEffect(rhs.alloc);
+				break;
+			case PointerEffectType::Copy:
+				new (&copy) PointerCopyEffect(rhs.copy);
+				break;
+		}
+	}
+
 	PointerEffectType getType() const { return type; }
 
 	const PointerAllocEffect& getAsAllocEffect() const

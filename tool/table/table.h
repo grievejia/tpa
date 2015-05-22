@@ -14,6 +14,7 @@ enum class TableType
 enum class CommandType
 {
 	List,
+	Validate
 };
 
 }

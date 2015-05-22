@@ -1,7 +1,8 @@
-#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
 #include "Client/Taintness/SourceSink/Table/TablePrinter.h"
 
 #include <llvm/Support/Casting.h>
+#include <llvm/Support/ErrorHandling.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
@@ -13,6 +14,25 @@ namespace taint
 
 TablePrinter::TablePrinter(raw_ostream& o): os(o)
 {
+}
+
+static void printTLattice(raw_ostream& os, TaintLattice l)
+{
+	os << ", Value = ";
+	switch (l)
+	{
+		case TaintLattice::Tainted:
+			os << "{TAINT}";
+			break;
+		case TaintLattice::Untainted:
+			os << "{UNTAINT}";
+			break;
+		case TaintLattice::Either:
+			os << "{EITHER}";
+			break;
+		case TaintLattice::Unknown:
+			llvm_unreachable("Shouldn't get unknown entry in taint table");
+	}
 }
 
 static void printTClass(raw_ostream& os, TClass c)
@@ -47,6 +67,8 @@ static void printTEntry(raw_ostream& os, const TaintEntry& entry)
 			
 			os << "  Taint source at ";
 			printTPos(os, sourceEntry.getTaintPosition());
+			printTClass(os, sourceEntry.getTaintClass());
+			printTLattice(os, sourceEntry.getTaintValue());
 			break;
 		}
 		case TEnd::Pipe:
@@ -76,7 +98,7 @@ static void printTEntry(raw_ostream& os, const TaintEntry& entry)
 	os << "\n";
 }
 
-void TablePrinter::printTable(const SourceSinkLookupTable& table) const
+void TablePrinter::printTable(const ExternalTaintTable& table) const
 {
 	os << "\n----- TablePrinter -----\n";
 	for (auto const& mapping: table)

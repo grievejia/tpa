@@ -1,6 +1,7 @@
 #include "table.h"
 #include "TableManager/TableManager.h"
-#include "TableManager/TablePrinter.h"
+#include "TableManager/Printer/TablePrinter.h"
+#include "TableManager/Validator/TableValidator.h"
 
 #include <llvm/Support/raw_ostream.h>
 
@@ -27,12 +28,17 @@ void TableManager<Table>::processCommand(CommandType cmdType)
 			TablePrinter<Table>::printTable(outs(), table);
 			break;
 		}
+		case CommandType::Validate:
+		{
+			TableValidator<Table>::validateTable(table);
+			break;
+		}
 	}
 }
 
 // Explicit instantiation
 template class TableManager<ExternalPointerTable>;
 template class TableManager<ExternalModRefTable>;
-template class TableManager<SourceSinkLookupTable>;
+template class TableManager<ExternalTaintTable>;
 
 }

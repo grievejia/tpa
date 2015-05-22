@@ -11,7 +11,7 @@ namespace client
 namespace taint
 {
 
-class SourceSinkLookupTable;
+class ExternalTaintTable;
 
 class TablePrinter
 {
@@ -20,7 +20,7 @@ private:
 public:
 	TablePrinter(llvm::raw_ostream&);
 
-	void printTable(const SourceSinkLookupTable&) const;
+	void printTable(const ExternalTaintTable&) const;
 };
 
 }

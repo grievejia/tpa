@@ -1,7 +1,7 @@
 #ifndef TPA_TAINT_PRECISION_LOSS_TRACKING_ANALYSIS_H
 #define TPA_TAINT_PRECISION_LOSS_TRACKING_ANALYSIS_H
 
-#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
 
 namespace tpa
 {

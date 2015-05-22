@@ -29,9 +29,9 @@ struct TablePrinter<tpa::ExternalPointerTable>
 };
 
 template <>
-struct TablePrinter<client::taint::SourceSinkLookupTable>
+struct TablePrinter<client::taint::ExternalTaintTable>
 {
-	static void printTable(llvm::raw_ostream& os, const client::taint::SourceSinkLookupTable& table)
+	static void printTable(llvm::raw_ostream& os, const client::taint::ExternalTaintTable& table)
 	{
 		client::taint::TablePrinter(os).printTable(table);
 	}

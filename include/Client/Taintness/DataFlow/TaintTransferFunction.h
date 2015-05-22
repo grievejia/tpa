@@ -1,7 +1,7 @@
 #ifndef INFOFLOW_TRANSFER_FUNCTION_H
 #define INFOFLOW_TRANSFER_FUNCTION_H
 
-#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
 #include "Client/Taintness/DataFlow/TaintStore.h"
 #include "MemoryModel/PtsSet/PtsSet.h"
 #include "TPA/DataFlow/EvalStatus.h"
@@ -29,7 +29,7 @@ namespace client
 namespace taint
 {
 
-class SourceSinkLookupTable;
+class ExternalTaintTable;
 class TaintGlobalState;
 
 class TaintTransferFunction

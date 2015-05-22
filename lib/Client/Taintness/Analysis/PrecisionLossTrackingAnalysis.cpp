@@ -27,7 +27,7 @@ void PrecisionLossTrackingAnalysis::checkSinkViolation(const TaintGlobalState& g
 		auto optStore = globalState.getMemo().lookup(sinkSignature.getCallSite());
 		auto const& store = (optStore == nullptr) ? TaintStore() : *optStore;
 
-		auto checkResult = SinkViolationChecker(globalState.getEnv(), store, globalState.getSourceSinkLookupTable(), ptrAnalysis).checkSinkViolation(sinkSignature);
+		auto checkResult = SinkViolationChecker(globalState.getEnv(), store, globalState.getExternalTaintTable(), ptrAnalysis).checkSinkViolation(sinkSignature);
 
 		if (!checkResult.empty())
 		{

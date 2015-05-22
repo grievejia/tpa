@@ -15,7 +15,7 @@ set (ClientSourceCodes
 	Taintness/Precision/TrackingTransferFunction.cpp
 	Taintness/PrettyPrint.cpp
 	Taintness/SourceSink/SinkViolationChecker.cpp
-	Taintness/SourceSink/SourceSinkLookupTable.cpp
+	Taintness/SourceSink/ExternalTaintTable.cpp
 	Taintness/SourceSink/TablePrinter.cpp
 )
 

@@ -103,8 +103,11 @@ EvalStatus TaintTransferFunction::updateTaintCallByTPosition(const Instruction* 
 EvalStatus TaintTransferFunction::evalTaintSource(const Instruction* inst, const SourceTaintEntry& entry)
 {
 	auto tPos = entry.getTaintPosition();
-	auto tClass = (tPos.isReturnPosition()) ? TClass::ValueOnly : TClass::DirectMemory;
-	return updateTaintCallByTPosition(inst, tPos, tClass, TaintLattice::Tainted);
+	auto tClass = entry.getTaintClass();
+	if (tPos.isReturnPosition() && tClass != TClass::ValueOnly)
+		llvm_unreachable("Tainted return source can only be a value!");
+
+	return updateTaintCallByTPosition(inst, tPos, tClass, entry.getTaintValue());
 }
 
 TaintLattice TaintTransferFunction::getTaintValueByTClass(const Value* val, TClass taintClass)
@@ -237,7 +240,7 @@ EvalStatus TaintTransferFunction::evalExternalCall(const DefUseInstruction* duIn
 	assert(store != nullptr);
 
 	auto funName = callee->getName();
-	if (auto summary = globalState.getSourceSinkLookupTable().lookup(funName))
+	if (auto summary = globalState.getExternalTaintTable().lookup(funName))
 		return evalCallBySummary(duInst, callee, *summary);
 	else
 	{

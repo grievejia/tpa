@@ -16,7 +16,7 @@ namespace tpa
 class MemoryManager
 {
 private:
-	mutable std::unordered_map<ProgramLocation, MemoryObject> objPool;
+	std::unordered_map<ProgramLocation, MemoryObject> objPool;
 	mutable std::set<MemoryLocation> locSet;
 
 	MemoryObject universalObj;

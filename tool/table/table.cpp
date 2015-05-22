@@ -12,6 +12,7 @@ static cl::opt<CommandType> Command(
 	cl::desc("Choose command type"),
 	cl::values(
 		clEnumValN(CommandType::List, "list", "list table contents (default)"),
+		clEnumValN(CommandType::Validate, "validate", "check the validity of the tables"),
 		clEnumValEnd
 	),
 	cl::init(CommandType::List)

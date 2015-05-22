@@ -1,22 +1,22 @@
 #include "Utils/pcomb/pcomb.h"
 #include "Utils/ReadFile.h"
-#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
 
 #include <llvm/Support/CommandLine.h>
 
 using namespace llvm;
 using namespace pcomb;
 
-cl::opt<std::string> ConfigFileName("taint-config", cl::desc("Specify taint config filename"), cl::init("source_sink.conf"), cl::value_desc("filename"));
+cl::opt<std::string> ConfigFileName("taint-config", cl::desc("Specify taint config filename"), cl::init("taint.conf"), cl::value_desc("filename"));
 
 namespace client
 {
 namespace taint
 {
 
-SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRef& fileContent)
+ExternalTaintTable ExternalTaintTable::buildTableFromBuffer(const StringRef& fileContent)
 {
-	SourceSinkLookupTable table;
+	ExternalTaintTable table;
 
 	auto idx = rule(
 		regex("\\d+"),
@@ -28,10 +28,10 @@ SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRe
 		}
 	);
 
-	auto id = token(regex("[\\w\\.]+"));
+	auto id = regex("[\\w\\.]+");
 
 	auto tret = rule(
-		token(str("Ret")),
+		str("Ret"),
 		[] (auto const&)
 		{
 			return TPosition::getReturnPosition();
@@ -39,7 +39,7 @@ SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRe
 	);
 
 	auto targ = rule(
-		token(seq(str("Arg"), idx)),
+		seq(str("Arg"), idx),
 		[] (auto const& pair)
 		{
 			return TPosition::getArgPosition(std::get<1>(pair));
@@ -47,7 +47,7 @@ SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRe
 	);
 
 	auto tafterarg = rule(
-		token(seq(str("AfterArg"), idx)),
+		seq(str("AfterArg"), idx),
 		[] (auto const& pair)
 		{
 			return TPosition::getAfterArgPosition(std::get<1>(pair));
@@ -55,36 +55,61 @@ SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRe
 	);
 
 	auto vclass = rule(
-		token(ch('V')),
+		ch('V'),
 		[] (char)
 		{
 			return TClass::ValueOnly;
 		}
 	);
 	auto dclass = rule(
-		token(ch('D')),
+		ch('D'),
 		[] (char)
 		{
 			return TClass::DirectMemory;
 		}
 	);
 	auto rclass = rule(
-		token(ch('R')),
+		ch('R'),
 		[] (char)
 		{
 			return TClass::ReachableMemory;
 		}
 	);
 
+	auto tlattice = rule(
+		ch('T'),
+		[] (char)
+		{
+			return TaintLattice::Tainted;
+		}
+	);
+	auto ulattice = rule(
+		ch('U'),
+		[] (char)
+		{
+			return TaintLattice::Untainted;
+		}
+	);
+	auto elattice = rule(
+		ch('E'),
+		[] (char)
+		{
+			return TaintLattice::Either;
+		}
+	);
+	auto tval = alt(tlattice, ulattice, elattice);
+
 	auto srcEntry = rule(
 		seq(
 			rule(token(str("SOURCE")), [] (auto const&) { return TEnd::Source; }),
-			id,
-			alt(tret, targ, tafterarg)
+			token(id),
+			token(alt(tret, targ, tafterarg)),
+			token(alt(vclass, dclass, rclass)),
+			token(tval)
 		),
 		[&table] (auto const& tuple)
 		{
-			auto entry = TaintEntry::getSourceEntry(std::get<2>(tuple));
+			auto entry = TaintEntry::getSourceEntry(std::get<2>(tuple), std::get<3>(tuple), std::get<4>(tuple));
 			table.summaryMap[std::get<1>(tuple)].addEntry(std::move(entry));
 			return true;
 		}
@@ -93,11 +118,11 @@ SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRe
 	auto pipeEntry = rule(
 		seq(
 			rule(token(str("PIPE")), [] (auto const&) { return TEnd::Pipe; }),
-			id,
-			alt(tret, targ, tafterarg),
-			alt(vclass, dclass, rclass),
-			targ,
-			alt(vclass, dclass, rclass)
+			token(id),
+			token(alt(tret, targ, tafterarg)),
+			token(alt(vclass, dclass, rclass)),
+			token(targ),
+			token(alt(vclass, dclass, rclass))
 		),
 		[&table] (auto const& tuple)
 		{
@@ -110,9 +135,9 @@ SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRe
 	auto sinkEntry = rule(
 		seq(
 			rule(token(str("SINK")), [] (auto const&) { return TEnd::Sink; }),
-			id,
-			alt(targ, tafterarg),
-			alt(vclass, dclass)
+			token(id),
+			token(alt(targ, tafterarg)),
+			token(alt(vclass, dclass))
 		),
 		[&table] (auto const& tuple)
 		{
@@ -126,7 +151,7 @@ SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRe
 	auto ignoreEntry = rule(
 		seq(
 			token(str("IGNORE")),
-			id
+			token(id)
 		),
 		[&table] (auto const& tuple)
 		{
@@ -160,18 +185,18 @@ SourceSinkLookupTable SourceSinkLookupTable::buildTableFromBuffer(const StringRe
 	return table;
 }
 
-SourceSinkLookupTable SourceSinkLookupTable::loadFromFile(const std::string& fileName)
+ExternalTaintTable ExternalTaintTable::loadFromFile(const std::string& fileName)
 {
 	auto memBuf = tpa::readFileIntoBuffer(fileName);
 	return buildTableFromBuffer(memBuf->getBuffer());
 }
 
-SourceSinkLookupTable SourceSinkLookupTable::loadFromFile()
+ExternalTaintTable ExternalTaintTable::loadFromFile()
 {
 	return loadFromFile(ConfigFileName);
 }
 
-const TaintSummary* SourceSinkLookupTable::lookup(const std::string& name) const
+const TaintSummary* ExternalTaintTable::lookup(const std::string& name) const
 {
 	auto itr = summaryMap.find(name);
 	if (itr == summaryMap.end())

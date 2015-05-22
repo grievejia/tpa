@@ -3,7 +3,7 @@
 
 #include "table.h"
 
-#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
 #include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 #include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 
@@ -24,7 +24,7 @@ public:
 };
 
 using PointerTableManager = TableManager<tpa::ExternalPointerTable>;
-using TaintTableManager = TableManager<client::taint::SourceSinkLookupTable>;
+using TaintTableManager = TableManager<client::taint::ExternalTaintTable>;
 using ModRefTableManager = TableManager<tpa::ExternalModRefTable>;
 
 }

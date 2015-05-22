@@ -6,4 +6,4 @@ set (ptsdumpSourceCode
 )
 
 add_executable (pts-dump ${ptsdumpSourceCode})
-target_link_libraries (pts-dump TPAStatic TransformStatic LLVMIRReader LLVMAsmParser LLVMTransformUtils LLVMipo LLVMCore)
+target_link_libraries (pts-dump PointerAnalysisStatic TPAStatic TransformStatic LLVMIRReader LLVMAsmParser LLVMTransformUtils LLVMipo LLVMCore)

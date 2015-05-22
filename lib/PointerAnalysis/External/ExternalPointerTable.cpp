@@ -35,10 +35,10 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 		}
 	);
 
-	auto id = token(regex("[\\w\\.]+"));
+	auto id = regex("[\\w\\.]+");
 
 	auto pret = rule(
-		token(str("Ret")),
+		str("Ret"),
 		[] (auto const&)
 		{
 			return APosition::getReturnPosition();
@@ -46,7 +46,7 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 	);
 
 	auto parg = rule(
-		token(seq(str("Arg"), idx)),
+		seq(str("Arg"), idx),
 		[] (auto const& pair)
 		{
 			return APosition::getArgPosition(std::get<1>(pair));
@@ -75,7 +75,7 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 	);
 
 	auto nullsrc = rule(
-		token(str("NULL")),
+		str("NULL"),
 		[] (auto const&)
 		{
 			return CopySource::getNullPointer();
@@ -83,7 +83,7 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 	);
 
 	auto unknowsrc = rule(
-		token(str("UNKNOWN")),
+		str("UNKNOWN"),
 		[] (auto const&)
 		{
 			return CopySource::getUniversalPointer();
@@ -91,7 +91,7 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 	);
 
 	auto staticsrc = rule(
-		token(str("STATIC")),
+		str("STATIC"),
 		[] (auto const&)
 		{
 			return CopySource::getStaticPointer();
@@ -130,7 +130,7 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 	auto ignoreEntry = rule(
 		seq(
 			token(str("IGNORE")),
-			id
+			token(id)
 		),
 		[&extTable] (auto const& pair)
 		{
@@ -142,8 +142,8 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 
 	auto allocWithSize = rule(
 		seq(
-			token(str("ALLOC")),
-			parg
+			str("ALLOC"),
+			token(parg)
 		),
 		[&extTable] (auto const& pair)
 		{
@@ -152,7 +152,7 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 	);
 
 	auto allocWithoutSize = rule(
-		token(str("ALLOC")),
+		str("ALLOC"),
 		[] (auto const&)
 		{
 			return PointerEffect::getAllocEffect();
@@ -161,8 +161,8 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 
 	auto allocEntry = rule(
 		seq(
-			id,
-			alt(allocWithSize, allocWithoutSize)
+			token(id),
+			token(alt(allocWithSize, allocWithoutSize))
 		),
 		[&extTable] (auto&& pair)
 		{
@@ -173,10 +173,10 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 
 	auto copyEntry = rule(
 		seq(
-			id,
+			token(id),
 			token(str("COPY")),
-			copydest,
-			copysrc
+			token(copydest),
+			token(copysrc)
 		),
 		[&extTable] (auto const& tuple)
 		{

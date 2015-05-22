@@ -4,7 +4,7 @@
 #include "Client/Taintness/DataFlow/TaintEnv.h"
 #include "Client/Taintness/DataFlow/TaintMemo.h"
 #include "Client/Taintness/SourceSink/Checker/SinkSignature.h"
-#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
 
 namespace tpa
 {
@@ -28,7 +28,7 @@ private:
 	const tpa::PointerAnalysis& ptrAnalysis;
 
 	// External taink annotations
-	SourceSinkLookupTable sourceSinkLookupTable;
+	ExternalTaintTable extTaintTable;
 
 	// The environment
 	TaintEnv env;
@@ -43,13 +43,13 @@ private:
 public:
 	TaintGlobalState(const tpa::DefUseModule& m, const tpa::PointerAnalysis& p): duModule(m), ptrAnalysis(p)
 	{
-		sourceSinkLookupTable = SourceSinkLookupTable::loadFromFile();
+		extTaintTable = ExternalTaintTable::loadFromFile();
 	}
 
 	const tpa::DefUseModule& getProgram() const { return duModule; }
 
 	const tpa::PointerAnalysis& getPointerAnalysis() const { return ptrAnalysis; }
-	const SourceSinkLookupTable& getSourceSinkLookupTable() const { return sourceSinkLookupTable; }
+	const ExternalTaintTable& getExternalTaintTable() const { return extTaintTable; }
 
 	TaintEnv& getEnv() { return env; }
 	const TaintEnv& getEnv() const { return env; }

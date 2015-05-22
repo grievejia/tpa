@@ -1,20 +1,30 @@
 #include "TableChecker.h"
-#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
 #include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
 #include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
 
 #include <llvm/IR/Module.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace tpa;
 using namespace client::taint;
 
+static cl::opt<bool> OutputPlainText("plain", cl::desc("Output all missing function name without additional texts and fancy colors"));
+
 static void printWarning(const StringRef& msg, const StringRef& funName)
 {
-	errs().changeColor(raw_ostream::MAGENTA) << msg;
-	errs().changeColor(raw_ostream::YELLOW) << ": " << funName << "\n";
-	errs().resetColor();
+	if (OutputPlainText)
+	{
+		outs() << funName << "\n";
+	}
+	else
+	{
+		outs().changeColor(raw_ostream::MAGENTA) << msg;
+		outs().changeColor(raw_ostream::YELLOW) << ": " << funName << "\n";
+		outs().resetColor();
+	}
 }
 
 template <typename T>
@@ -55,10 +65,10 @@ void checkModRefEffectTable(const Module& m, const StringRef& fileName)
 
 void checkTaintTable(const Module& m , const StringRef& fileName)
 {
-	TableChecker<SourceSinkLookupTable>(fileName).check(m);
+	TableChecker<ExternalTaintTable>(fileName).check(m);
 }
 
 // Explicit instantiation
 template class TableChecker<ExternalPointerTable>;
 template class TableChecker<ExternalModRefTable>;
-template class TableChecker<SourceSinkLookupTable>;
+template class TableChecker<ExternalTaintTable>;

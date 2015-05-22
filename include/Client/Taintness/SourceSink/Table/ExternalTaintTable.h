@@ -17,16 +17,16 @@ namespace client
 namespace taint
 {
 
-class SourceSinkLookupTable
+class ExternalTaintTable
 {
 private:
 	std::unordered_map<std::string, TaintSummary> summaryMap;
 
-	static SourceSinkLookupTable buildTableFromBuffer(const llvm::StringRef&);
+	static ExternalTaintTable buildTableFromBuffer(const llvm::StringRef&);
 public:
 	using const_iterator = typename decltype(summaryMap)::const_iterator;
 
-	SourceSinkLookupTable() = default;
+	ExternalTaintTable() = default;
 
 	const TaintSummary* lookup(const std::string& name) const;
 
@@ -34,8 +34,8 @@ public:
 	const_iterator end() const { return summaryMap.end(); }
 	size_t getSize() const { return summaryMap.size(); }
 
-	static SourceSinkLookupTable loadFromFile(const std::string& fileName);
-	static SourceSinkLookupTable loadFromFile();
+	static ExternalTaintTable loadFromFile(const std::string& fileName);
+	static ExternalTaintTable loadFromFile();
 };
 
 }	// end of taint

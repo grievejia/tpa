@@ -36,10 +36,10 @@ ExternalModRefTable ExternalModRefTable::buildTable(const StringRef& fileContent
 		}
 	);
 
-	auto id = token(regex("[\\w\\.]+"));
+	auto id = regex("[\\w\\.]+");
 
 	auto marg = rule(
-		token(seq(str("Arg"), idx)),
+		seq(str("Arg"), idx),
 		[] (auto const& pair)
 		{
 			return APosition::getArgPosition(std::get<1>(pair));
@@ -47,7 +47,7 @@ ExternalModRefTable ExternalModRefTable::buildTable(const StringRef& fileContent
 	);
 
 	auto mafterarg = rule(
-		token(seq(str("AfterArg"), idx)),
+		seq(str("AfterArg"), idx),
 		[] (auto const& pair)
 		{
 			return APosition::getAfterArgPosition(std::get<1>(pair));
@@ -55,7 +55,7 @@ ExternalModRefTable ExternalModRefTable::buildTable(const StringRef& fileContent
 	);
 
 	auto mret = rule(
-		token(str("Ret")),
+		str("Ret"),
 		[] (auto const&)
 		{
 			return APosition::getReturnPosition();
@@ -80,31 +80,30 @@ ExternalModRefTable ExternalModRefTable::buildTable(const StringRef& fileContent
 		}
 	);
 
-	auto mtype = token(alt(modtype, reftype));
+	auto mtype = alt(modtype, reftype);
 
-	auto mclass = rule(
-		token(alt(ch('D'), ch('R'))),
-		[] (char c)
+	auto dclass = rule(
+		ch('D'),
+		[] (char)
 		{
-			switch (c)
-			{
-				case 'D':
-					return ModRefClass::DirectMemory;		
-				case 'R':
-					return ModRefClass::ReachableMemory;
-				default:
-					llvm_unreachable("ModRef type can only be D or R");
-			}
-			
+			return ModRefClass::DirectMemory;
 		}
 	);
+	auto rclass = rule(
+		ch('R'),
+		[] (char)
+		{
+			return ModRefClass::ReachableMemory;
+		}
+	);
+	auto mclass = alt(dclass, rclass);
 
 	auto regularEntry = rule(
 		seq(
-			id,
-			mtype,
-			mpos,
-			mclass
+			token(id),
+			token(mtype),
+			token(mpos),
+			token(mclass)
 		),
 		[&table] (auto const& tuple)
 		{
@@ -117,7 +116,7 @@ ExternalModRefTable ExternalModRefTable::buildTable(const StringRef& fileContent
 	auto ignoreEntry = rule(
 		seq(
 			token(str("IGNORE")),
-			id
+			token(id)
 		),
 		[&table] (auto const& pair)
 		{

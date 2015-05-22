@@ -1,11 +1,12 @@
 #include "Client/Taintness/DataFlow/TaintEnv.h"
 #include "Client/Taintness/SourceSink/Checker/SinkSignature.h"
 #include "Client/Taintness/SourceSink/Checker/SinkViolationChecker.h"
-#include "Client/Taintness/SourceSink/Table/SourceSinkLookupTable.h"
+#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
 #include "PointerAnalysis/Analysis/PointerAnalysis.h"
 
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Function.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace tpa;
@@ -15,7 +16,7 @@ namespace client
 namespace taint
 {
 
-SinkViolationChecker::SinkViolationChecker(const TaintEnv& e, const TaintStore& s, const SourceSinkLookupTable& t, const PointerAnalysis& p): env(e), store(s), table(t), ptrAnalysis(p)
+SinkViolationChecker::SinkViolationChecker(const TaintEnv& e, const TaintStore& s, const ExternalTaintTable& t, const PointerAnalysis& p): env(e), store(s), table(t), ptrAnalysis(p)
 {
 }
 
