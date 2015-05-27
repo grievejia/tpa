@@ -1,6 +1,10 @@
 #include "MemoryModel/Precision/KLimitContext.h"
 
+#include <llvm/Support/CommandLine.h>
+
 using namespace llvm;
+
+static cl::opt<unsigned, true> KLimitContextSensitivity("k", cl::desc("In k-limit stack-k-CFA settings, this is the value of k"), cl::location(tpa::KLimitContext::defaultLimit), cl::init(0));
 
 namespace tpa
 {

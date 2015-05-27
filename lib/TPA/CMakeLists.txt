@@ -7,6 +7,7 @@ set (TPASourceCodes
 	DataFlow/PointerCFGEvaluator.cpp
 	DataFlow/TransferFunction.cpp
 	Pass/CFGBuildingPass.cpp
+	Pass/DeadFunctionDetectionPass.cpp
 	Pass/DefUseGraphBuildingPass.cpp
 	Pass/DefUseModuleBuildingPass.cpp
 	Pass/GlobalPointerAnalysisPass.cpp

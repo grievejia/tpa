@@ -31,20 +31,17 @@ void DefUseFunctionEvaluator::propagateTopLevelChange(const DefUseInstruction* d
 void DefUseFunctionEvaluator::propagateMemLevelChange(const DefUseInstruction* duInst, const TaintStore& store, bool storeChanged, const Context* ctx, LocalWorkListType& workList)
 {
 	auto& memo = globalState.getMemo();
-	if (storeChanged)
+	
+	for (auto const& mapping: duInst->mem_succs())
 	{
-		for (auto const& mapping: duInst->mem_succs())
+		auto usedLoc = mapping.first;
+		auto locVal = store.lookup(usedLoc);
+		if (locVal == TaintLattice::Unknown)
+			continue;
+		for (auto succ: mapping.second)
 		{
-			auto usedLoc = mapping.first;
-			auto locVal = store.lookup(usedLoc);
-			if (locVal == TaintLattice::Unknown)
-				continue;
-			
-			for (auto succ: mapping.second)
-			{
-				if (memo.insert(DefUseProgramLocation(ctx, succ), usedLoc, locVal))
-					workList.enqueue(succ);
-			}
+			if (memo.insert(DefUseProgramLocation(ctx, succ), usedLoc, locVal))
+				workList.enqueue(succ);
 		}
 	}
 }

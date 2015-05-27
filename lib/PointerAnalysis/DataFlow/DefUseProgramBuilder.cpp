@@ -88,10 +88,11 @@ void buildTopLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap)
 
 void processValueRef(const Value* v, const NodeMap& nodeMap, const ReachingDefStore<PointerCFGNode>& rdStore, DefUseGraphNode* dstDefUseNode, const PointerAnalysis& ptrAnalysis, bool isReachableMemory)
 {
-	auto refLoc = [&rdStore, &nodeMap, dstDefUseNode] (const MemoryLocation* loc)
+	auto refLoc = [&rdStore, &nodeMap, dstDefUseNode, &ptrAnalysis] (const MemoryLocation* loc)
 	{
 		auto nodeSet = rdStore.getReachingDefs(loc);
-		assert(nodeSet != nullptr);
+		if (nodeSet == nullptr)
+			return;
 		for (auto srcNode: *nodeSet)
 		{
 			auto srcDefUseNode = getDefUseNode(nodeMap, srcNode);
@@ -158,6 +159,8 @@ void buildMemLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap, const Mod
 			auto dstDefUseNode = getDefUseNode(nodeMap, node);
 			for (auto loc: pSet)
 			{
+				if (ptrAnalysis.getMemoryManager().isSpecialMemoryLocation(loc))
+					continue;
 				auto nodeSet = rdStore.getReachingDefs(loc);
 				assert(nodeSet != nullptr);
 				for (auto srcNode: *nodeSet)
@@ -182,15 +185,6 @@ void buildMemLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap, const Mod
 
 				break;
 			}
-			case PointerCFGNodeType::Store:
-			{
-				auto storeNode = cast<StoreNode>(node);
-				auto storeSrc = storeNode->getSrc();
-
-				processMemRead(storeNode, storeSrc);
-
-				break;
-			}
 			case PointerCFGNodeType::Call:
 			{
 				auto callTgts = ptrAnalysis.getCallTargets(Context::getGlobalContext(), node->getInstruction());
@@ -208,7 +202,8 @@ void buildMemLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap, const Mod
 						for (auto loc: summary.mem_reads())
 						{
 							auto nodeSet = rdStore.getReachingDefs(loc);
-							assert(nodeSet != nullptr);
+							if (nodeSet == nullptr)
+								continue;
 							for (auto srcNode: *nodeSet)
 							{
 								auto srcDefUseNode = getDefUseNode(nodeMap, srcNode);
@@ -249,7 +244,8 @@ void DefUseProgramBuilder::buildDefUseGraph(DefUseGraph& dug, const PointerCFG& 
 	dug.setEntryNode(cast<EntryDefUseNode>(entryDefUseNode));
 	dug.setExitNode(cast<ReturnDefUseNode>(exitDefUseNode));
 	// This edge exists because we want the analysis to always reach the exit node
-	entryDefUseNode->insertTopLevelEdge(exitDefUseNode);
+	if (!cfg.doesNotReturn())
+		entryDefUseNode->insertTopLevelEdge(exitDefUseNode);
 
 	buildTopLevelEdges(cfg, nodeMap);
 	buildMemLevelEdges(cfg, nodeMap, summaryMap, rdMap, ptrAnalysis, modRefTable);

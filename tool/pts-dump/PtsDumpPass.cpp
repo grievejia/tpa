@@ -10,6 +10,11 @@
 using namespace llvm;
 using namespace tpa;
 
+static void dumpContext(const Context* ctx)
+{
+	errs() << *ctx << "::";
+}
+
 static void dumpValueName(const Value* value)
 {
 	if (auto inst = dyn_cast<Instruction>(value))
@@ -40,27 +45,37 @@ static void dumpPtsSet(PtsSet ptsSet, const MemoryManager& memManager)
 	errs() << "}\n";
 }
 
+static void dumpPtsSetForPointer(const Pointer* ptr, const PointerAnalysis& ptrAnalysis)
+{
+	dumpContext(ptr->getContext());
+	dumpValueName(ptr->getValue());
+	errs() << " -> ";
+	dumpPtsSet(ptrAnalysis.getPtsSet(ptr), ptrAnalysis.getMemoryManager());
+}
+
 static void dumpPtsSetForValue(const Value* value, const PointerAnalysis& ptrAnalysis)
 {
 	assert(value != nullptr);
-	assert(value->getType()->isPointerTy());
+	if (!value->getType()->isPointerTy())
+		return;
 
-	dumpValueName(value);
-	errs() << " -> ";
-	dumpPtsSet(ptrAnalysis.getPtsSet(value), ptrAnalysis.getMemoryManager());
+	auto ptrs = ptrAnalysis.getPointerManager().getPointersWithValue(value);
+	assert(!ptrs.empty() && "value-to-ptr-map is empty?");
+
+	for (auto const& ptr: ptrs)
+		dumpPtsSetForPointer(ptr, ptrAnalysis);
 }
 
 static void dumpPtsSetInBasicBlock(const BasicBlock& bb, const PointerAnalysis& ptrAnalysis)
 {
 	for (auto const& inst: bb)
-	{
-		if (inst.getType()->isPointerTy())
-			dumpPtsSetForValue(&inst, ptrAnalysis);
-	}
+		dumpPtsSetForValue(&inst, ptrAnalysis);
 }
 
 static void dumpPtsSetInFunction(const Function& f, const PointerAnalysis& ptrAnalysis)
 {
+	for (auto const& arg: f.args())
+		dumpPtsSetForValue(&arg, ptrAnalysis);
 	for (auto const& bb: f)
 		dumpPtsSetInBasicBlock(bb, ptrAnalysis);
 }
@@ -70,7 +85,10 @@ static void dumpPtsSetInModule(const Module& module, const PointerAnalysis& ptrA
 	for (auto const& g: module.globals())
 		dumpPtsSetForValue(&g, ptrAnalysis);
 	for (auto const& f: module)
-		dumpPtsSetInFunction(f, ptrAnalysis);
+	{
+		if (!f.isDeclaration())
+			dumpPtsSetInFunction(f, ptrAnalysis);
+	}
 }
 
 bool PtsDumpPass::runOnModule(Module& module)

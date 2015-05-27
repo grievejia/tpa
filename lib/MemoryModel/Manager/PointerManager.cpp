@@ -15,6 +15,7 @@ const Pointer* PointerManager::getPointer(const Context* ctx, const llvm::Value*
 {
 	assert(ctx != nullptr && val != nullptr && val->getType()->isPointerTy());
 
+	val = val->stripPointerCasts();
 	if (isa<ConstantPointerNull>(val))
 		return &nullPtr;
 	else if (isa<UndefValue>(val))
@@ -32,6 +33,7 @@ const Pointer* PointerManager::getOrCreatePointer(const Context* ctx, const llvm
 {
 	assert(ctx != nullptr && val != nullptr && val->getType()->isPointerTy());
 
+	val = val->stripPointerCasts();
 	if (isa<ConstantPointerNull>(val))
 		return &nullPtr;
 
@@ -48,7 +50,7 @@ const Pointer* PointerManager::getOrCreatePointer(const Context* ctx, const llvm
 
 PointerManager::PointerVector PointerManager::getPointersWithValue(const llvm::Value* val) const
 {
-	auto itr = valuePtrMap.find(val);
+	auto itr = valuePtrMap.find(val->stripPointerCasts());
 	if (itr == valuePtrMap.end())
 		return PointerVector();
 	else

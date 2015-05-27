@@ -269,14 +269,6 @@ void ModRefAnalysis::collectProcedureSummary(const PointerCFG& cfg, ModRefSummar
 				if (isa<GlobalValue>(storeDst))
 					summary.addValueRead(storeDst);
 
-				/*if (auto pSet = ptrAnalysis.getPtsSet(storeSrc))
-				{
-					for (auto loc: *pSet)
-					{
-						if (!isLocalStackLocation(loc, f))
-							summary.addMemoryRead(loc);
-					}
-				}*/
 				auto pSet = ptrAnalysis.getPtsSet(storeDst);
 				for (auto loc: pSet)
 				{

@@ -119,14 +119,17 @@ EvalStatus TransferFunction::copyWithOffset(const Pointer* dst, const Pointer* s
 	auto resSet = PtsSet::getEmptySet();
 	for (auto srcLoc: srcSet)
 	{
-		// For unknown location, we are unable to track its points-to set
-		// For null location, we assume that whenever pointer arithmetic happens, the pointer is known to be not NULL
+		// For unknown location, we need to return an unknown to the user. For null location, skip it for now
 		// TODO: report this to the user
 		if (srcLoc == globalState.getMemoryManager().getNullLocation())
 			continue;
 
 		resSet = updateOffsetLocation(resSet, srcLoc, offset, isArrayRef);
 	}
+
+	// For now let's assume that if srcSet contains only null loc, the result should be a universal loc
+	if (resSet.isEmpty())
+		resSet = PtsSet::getSingletonSet(globalState.getMemoryManager().getUniversalLocation());
 
 	auto envChanged = globalState.getEnv().strongUpdate(dst, resSet);
 	return EvalStatus::getValidStatus(envChanged, false);

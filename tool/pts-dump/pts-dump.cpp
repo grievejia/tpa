@@ -28,6 +28,8 @@ InputFilename(cl::Positional, cl::desc("<input bitcode file>"),
 
 static cl::opt<bool> PrintIROnly("ir-only", cl::desc("Print the transformed IR instead of the points-to sets"), cl::init(false));
 
+static cl::opt<bool> DisablePrepass("disable-prepass", cl::desc("Disable all optimization passes that get executed before dumping the pts-sets"), cl::init(false));
+
 void initializeLLVMPasses()
 {
 	PassRegistry &Registry = *PassRegistry::getPassRegistry();
@@ -52,23 +54,27 @@ legacy::PassManager getAllPasses(const Module& module)
 	passes.add(new TargetLibraryInfo(Triple(module.getTargetTriple())));
 	passes.add(new DataLayoutPass());
 
-	passes.add(createLowerAtomicPass());
-	passes.add(createLowerInvokePass());
-	passes.add(createLowerSwitchPass());
-	passes.add(new ResolveAliases());
-	passes.add(new ExpandIndirectBr());
-	passes.add(new ExpandByValPass());
-	passes.add(createGlobalOptimizerPass());
-	passes.add(createInstructionCombiningPass());
-	passes.add(new ExpandConstantExprPass());
-	passes.add(new ExpandGetElementPtrPass());
-	passes.add(createGlobalDCEPass());
-	passes.add(createAggressiveDCEPass());
-	passes.add(createLoopDeletionPass());
-	passes.add(createDeadArgEliminationPass());
-	passes.add(createCFGSimplificationPass());
-	passes.add(createUnifyFunctionExitNodesPass());
-	passes.add(createInstructionNamerPass());
+	if (!DisablePrepass)
+	{
+		passes.add(createLowerAtomicPass());
+		passes.add(createLowerInvokePass());
+		passes.add(createLowerSwitchPass());
+		passes.add(new ResolveAliases());
+		passes.add(new ExpandIndirectBr());
+		passes.add(new ExpandByValPass());
+		passes.add(createGlobalOptimizerPass());
+		passes.add(createInstructionCombiningPass());
+		passes.add(new ExpandConstantExprPass());
+		passes.add(new ExpandGetElementPtrPass());
+		passes.add(createGlobalDCEPass());
+		passes.add(createAggressiveDCEPass());
+		passes.add(createLoopDeletionPass());
+		passes.add(createDeadArgEliminationPass());
+		passes.add(createCFGSimplificationPass());
+		passes.add(createUnifyFunctionExitNodesPass());
+		passes.add(createInstructionNamerPass());
+	}
+	
 	if (!PrintIROnly)
 		passes.add(new PtsDumpPass());
 
@@ -82,7 +88,7 @@ int main(int argc, char** argv)
 	PrettyStackTraceProgram X(argc, argv);
 
 	// Parsing command line
-	cl::ParseCommandLineOptions(argc, argv, "Tunable Pointer Analysis\n");
+	cl::ParseCommandLineOptions(argc, argv, "TPA pts-to set dumper\n");
 
 	// Initialize LLVM passes
 	initializeLLVMPasses();

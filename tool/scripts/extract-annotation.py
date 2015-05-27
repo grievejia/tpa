@@ -6,7 +6,7 @@ def getFunName(line):
 	words = line.split()
 	assert len(words) > 1
 
-	if words[0] in ['IGNORE', 'SOURCE', 'PIPE' 'SINK']:
+	if words[0] in ['IGNORE', 'SOURCE', 'PIPE', 'SINK']:
 		return words[1]
 	else:
 		return words[0]

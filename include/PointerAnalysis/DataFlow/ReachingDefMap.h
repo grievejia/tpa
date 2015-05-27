@@ -71,6 +71,7 @@ public:
 
 	const_iterator begin() const { return store.begin(); }
 	const_iterator end() const { return store.end(); }
+	size_t getSize() const { return store.size(); }
 };
 
 template <typename NodeType>

@@ -42,6 +42,7 @@ public:
 	PtsSet getPtsSet(const Pointer* ptr) const;
 
 	const MemoryManager& getMemoryManager() const { return memManager; }
+	const PointerManager& getPointerManager() const { return ptrManager; }
 	const StaticCallGraph& getCallGraph() const { return callGraph; }
 	std::vector<const llvm::Function*> getCallTargets(const Context*, const llvm::Instruction*) const;
 };
