@@ -62,16 +62,19 @@ legacy::PassManager getAllPasses(const Module& module)
 		passes.add(new ResolveAliases());
 		passes.add(new ExpandIndirectBr());
 		passes.add(new ExpandByValPass());
-		passes.add(createGlobalOptimizerPass());
 		passes.add(createInstructionCombiningPass());
-		passes.add(new ExpandConstantExprPass());
-		passes.add(new ExpandGetElementPtrPass());
+		passes.add(createIPConstantPropagationPass());
+		passes.add(createDeadArgEliminationPass());
+		passes.add(createConstantPropagationPass());
+		passes.add(createCFGSimplificationPass());
 		passes.add(createGlobalDCEPass());
 		passes.add(createAggressiveDCEPass());
 		passes.add(createLoopDeletionPass());
-		passes.add(createDeadArgEliminationPass());
+		passes.add(createGlobalOptimizerPass());
 		passes.add(createCFGSimplificationPass());
 		passes.add(createUnifyFunctionExitNodesPass());
+		passes.add(new ExpandConstantExprPass());
+		passes.add(new ExpandGetElementPtrPass());
 		passes.add(createInstructionNamerPass());
 	}
 	

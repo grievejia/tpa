@@ -40,7 +40,6 @@ TaintLattice InterProcDataFlowTracker::getTaintValue(const DefUseProgramLocation
 	assert(store != nullptr);
 
 	auto ret = store->lookup(loc);
-	assert(ret != TaintLattice::Unknown);
 	return ret;
 }
 
@@ -269,13 +268,16 @@ void CallDataFlowTracker::trackValue(const DefUseFunction* duFunc, const DefUseC
 
 CallDataFlowTracker::TaintVector CallDataFlowTracker::getMemoryTaintValues(const DefUseCallerVector& callers, const MemoryLocation* loc)
 {
-	return vectorTransform(
-		callers,
-		[this, loc] (auto const& callTgt)
-		{
-			return getTaintValue(callTgt, loc);
-		}
-	);
+	auto retVec = std::vector<TaintLattice>();
+	retVec.reserve(callers.size());
+
+	for (auto const& callTgt: callers)
+	{
+		auto tVal = getTaintValue(callTgt, loc);
+		if (tVal != TaintLattice::Unknown)
+			retVec.push_back(tVal);
+	}
+	return retVec;
 }
 
 void CallDataFlowTracker::trackMemory(const MemoryLocation* loc, const DefUseCallerVector& callers)

@@ -169,6 +169,7 @@ void FunctionPrecisionLossTracker::track()
 			evalEntryInst(duInst);
 		else
 		{
+			errs() << "tracking " << *duInst->getInstruction() << "\n";
 			auto optStore = globalState.getMemo().lookup(DefUseProgramLocation(ctx, duInst));
 			auto const& store = (optStore == nullptr) ? TaintStore() : *optStore;
 			evalInst(duInst, store);
