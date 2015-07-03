@@ -42,7 +42,7 @@ void PrecisionLossTracker::addSinkViolation(const DefUseProgramLocation& pLoc, c
 		else
 		{
 			auto pSet = ptrAnalysis.getPtsSet(pLoc.getContext(), argVal);
-			assert(!pSet.isEmpty());
+			assert(!pSet.empty());
 
 			locs.insert(pSet.begin(), pSet.end());
 		}
@@ -62,7 +62,7 @@ DefUseProgramLocationSet PrecisionLossTracker::trackImprecisionSource()
 	DefUseProgramLocationSet retSet;
 	PrecisionLossGlobalState precGlobalState(retSet);
 
-	while (!globalWorkList.isEmpty())
+	while (!globalWorkList.empty())
 	{
 		const Context* ctx;
 		const DefUseFunction* duFunc;

@@ -14,7 +14,7 @@ template <typename NodeType>
 class ReachingDefStore
 {
 private:
-	using NodeSet = VectorSet<const NodeType*>;
+	using NodeSet = util::VectorSet<const NodeType*>;
 	std::unordered_map<const MemoryLocation*, NodeSet> store;
 public:
 	using const_iterator = typename decltype(store)::const_iterator;
@@ -26,10 +26,10 @@ public:
 			itr = store.insert(itr, std::make_pair(loc, NodeSet()));
 
 		auto& set = itr->second;
-		if (set.getSize() == 1 && *set.begin() == node)
+		if (set.size() == 1 && *set.begin() == node)
 			return false;
 		set.clear();
-		return set.insert(node);
+		return set.insert(node).second;
 	}
 	bool insertBinding(const MemoryLocation* loc, const NodeType* node)
 	{
@@ -37,7 +37,7 @@ public:
 		if (itr == store.end())
 			itr = store.insert(itr, std::make_pair(loc, NodeSet()));
 
-		return itr->second.insert(node);
+		return itr->second.insert(node).second;
 	}
 	bool mergeWith(const ReachingDefStore& rhs)
 	{
@@ -53,7 +53,7 @@ public:
 			}
 			else
 			{
-				changed |= itr->second.mergeWith(mapping.second);
+				changed |= itr->second.merge(mapping.second);
 			}
 		}
 		return changed;
@@ -71,7 +71,7 @@ public:
 
 	const_iterator begin() const { return store.begin(); }
 	const_iterator end() const { return store.end(); }
-	size_t getSize() const { return store.size(); }
+	size_t size() const { return store.size(); }
 };
 
 template <typename NodeType>

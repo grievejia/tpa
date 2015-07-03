@@ -21,7 +21,7 @@ private:
 	// The reverse postorder number of this node
 	size_t rpo;
 
-	using NodeSet = VectorSet<DefUseGraphNode*>;
+	using NodeSet = util::VectorSet<DefUseGraphNode*>;
 	NodeSet topSucc;
 
 	using NodeMap = std::unordered_map<const MemoryLocation*, NodeSet>;

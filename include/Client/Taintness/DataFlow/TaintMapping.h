@@ -70,7 +70,7 @@ public:
 
 	const_iterator begin() const { return taintMap.begin(); }
 	const_iterator end() const { return taintMap.end(); }
-	size_t getSize() const { return taintMap.size(); }
+	size_t size() const { return taintMap.size(); }
 };
 
 }

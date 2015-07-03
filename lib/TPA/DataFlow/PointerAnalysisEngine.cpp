@@ -32,7 +32,7 @@ void PointerAnalysisEngine::evalFunction(const Context* ctx, const PointerCFG* c
 
 void PointerAnalysisEngine::run()
 {
-	while (!globalWorkList.isEmpty())
+	while (!globalWorkList.empty())
 	{
 		const Context* ctx;
 		const PointerCFG* cfg;

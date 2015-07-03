@@ -75,7 +75,7 @@ EvalStatus TransferFunction::evalCopyNodeWithZeroOffset(const CopyNode* copyNode
 			continue;
 
 		auto pSet = globalState.getEnv().lookup(srcPtr);
-		if (pSet.isEmpty())
+		if (pSet.empty())
 			return EvalStatus::getInvalidStatus();
 
 		resSet = resSet.merge(pSet);
@@ -94,7 +94,7 @@ PtsSet TransferFunction::updateOffsetLocation(PtsSet pSet, const MemoryLocation*
 	// - For array reference, we have to examine the variables with offset * 0, offset * 1, offset * 2... all the way till the memory region boundary, if the memory object is not known to be an array previously (this may happen if the program contains nonarray-to-array bitcast)
 	if (isArrayRef && !srcLoc->isSummaryLocation())
 	{
-		auto objSize = srcLoc->getMemoryObject()->getSize();
+		auto objSize = srcLoc->getMemoryObject()->size();
 
 		for (unsigned i = 0, e = objSize - srcLoc->getOffset(); i < e; i += offset)
 		{
@@ -113,7 +113,7 @@ PtsSet TransferFunction::updateOffsetLocation(PtsSet pSet, const MemoryLocation*
 EvalStatus TransferFunction::copyWithOffset(const Pointer* dst, const Pointer* src, size_t offset, bool isArrayRef)
 {
 	auto srcSet = globalState.getEnv().lookup(src);
-	if (srcSet.isEmpty())
+	if (srcSet.empty())
 		return EvalStatus::getInvalidStatus();
 
 	auto resSet = PtsSet::getEmptySet();
@@ -128,7 +128,7 @@ EvalStatus TransferFunction::copyWithOffset(const Pointer* dst, const Pointer* s
 	}
 
 	// For now let's assume that if srcSet contains only null loc, the result should be a universal loc
-	if (resSet.isEmpty())
+	if (resSet.empty())
 		resSet = PtsSet::getSingletonSet(globalState.getMemoryManager().getUniversalLocation());
 
 	auto envChanged = globalState.getEnv().strongUpdate(dst, resSet);
@@ -161,14 +161,14 @@ PtsSet TransferFunction::loadFromPointer(const Pointer* srcPtr)
 	assert(srcPtr != nullptr);
 
 	auto srcSet = globalState.getEnv().lookup(srcPtr);
-	if (srcSet.isEmpty())
+	if (srcSet.empty())
 		return srcSet;
 
 	auto resSet = PtsSet::getEmptySet();
 	for (auto tgtLoc: srcSet)
 	{
 		auto tgtSet = store->lookup(tgtLoc);
-		if (!tgtSet.isEmpty())
+		if (!tgtSet.empty())
 			resSet = resSet.merge(tgtSet);
 	}
 	return resSet;
@@ -212,16 +212,16 @@ EvalStatus TransferFunction::weakUpdateStore(PtsSet dstSet, PtsSet srcSet)
 EvalStatus TransferFunction::evalStore(const Pointer* dst, const Pointer* src)
 {
 	auto srcSet = globalState.getEnv().lookup(src);
-	if (srcSet.isEmpty())
+	if (srcSet.empty())
 		return EvalStatus::getInvalidStatus();
 
 	auto dstSet = globalState.getEnv().lookup(dst);
-	if (dstSet.isEmpty())
+	if (dstSet.empty())
 		return EvalStatus::getInvalidStatus();
 
 	auto dstLoc = *dstSet.begin();
 	// If the store target is precise and the target location is not unknown/null
-	if (dstSet.getSize() == 1 && !dstLoc->isSummaryLocation())
+	if (dstSet.size() == 1 && !dstLoc->isSummaryLocation())
 		return strongUpdateStore(dstLoc, srcSet);
 	return weakUpdateStore(dstSet, srcSet);
 }
@@ -285,7 +285,7 @@ std::vector<PtsSet> TransferFunction::collectArgumentPtsSets(const CallNode* cal
 			break;
 
 		auto pSet = globalState.getEnv().lookup(argPtr);
-		if (pSet.isEmpty())
+		if (pSet.empty())
 			break;
 
 		result.push_back(pSet);
@@ -355,7 +355,7 @@ EvalStatus TransferFunction::evalReturnValue(const ReturnNode* retNode, const Co
 		return EvalStatus::getInvalidStatus();
 
 	auto retSet = globalState.getEnv().lookup(retPtr);
-	if (retSet.isEmpty())
+	if (retSet.empty())
 		return EvalStatus::getInvalidStatus();
 
 	auto dstPtr = getOrCreatePointer(oldCtx, dstVal);
@@ -371,7 +371,7 @@ std::vector<const llvm::Function*> TransferFunction::resolveCallTarget(const Cal
 	if (funPtr != nullptr)
 	{
 		auto funSet = globalState.getEnv().lookup(funPtr);
-		if (!funSet.isEmpty())
+		if (!funSet.empty())
 			callees = findFunctionsInPtsSet(funSet, callNode);
 	}
 

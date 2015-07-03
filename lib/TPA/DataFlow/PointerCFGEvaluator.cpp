@@ -199,7 +199,7 @@ void PointerCFGEvaluator::applyReturn(const ReturnNode* retNode, const Context* 
 void PointerCFGEvaluator::eval()
 {
 	//errs() << "<Function " << cfg->getFunction()->getName() << ">\n";
-	while (!localWorkList.isEmpty())
+	while (!localWorkList.empty())
 	{
 		auto node = localWorkList.dequeue();
 		//errs() << "node = " << *node << "\n";

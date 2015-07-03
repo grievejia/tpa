@@ -158,7 +158,7 @@ void FunctionPrecisionLossTracker::evalInst(const DefUseInstruction* duInst, con
 
 void FunctionPrecisionLossTracker::track()
 {
-	while (!localWorkList.isEmpty())
+	while (!localWorkList.empty())
 	{
 		auto duInst = localWorkList.dequeue();
 

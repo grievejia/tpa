@@ -15,8 +15,8 @@ const Context* KLimitContext::pushContext(const Context* ctx, const Instruction*
 {
 	size_t k = defaultLimit;
 	
-	assert(ctx->getSize() <= k);
-	if (ctx->getSize() == k)
+	assert(ctx->size() <= k);
+	if (ctx->size() == k)
 		return ctx;
 	else
 		return Context::pushContext(ctx, inst);

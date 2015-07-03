@@ -24,8 +24,8 @@ public:
 	using CallSiteType = std::pair<const Context*, const llvm::Instruction*>;
 	using CallTargetType = std::pair<const Context*, const llvm::Function*>;
 private:
-	using CallSiteVector = VectorSet<CallSiteType>;
-	using CallTargetVector = VectorSet<CallTargetType>;
+	using CallSiteVector = util::VectorSet<CallSiteType>;
+	using CallTargetVector = util::VectorSet<CallTargetType>;
 	llvm::DenseMap<CallSiteType, CallTargetVector> callMap;
 	llvm::DenseMap<CallTargetType, CallSiteVector> revCallMap;
 

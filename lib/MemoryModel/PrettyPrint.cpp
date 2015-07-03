@@ -14,7 +14,7 @@ raw_ostream& operator<< (raw_ostream& os, const Context& c)
 {
 	os << "< ";
 	auto ctx = &c;
-	while (ctx->size > 0)
+	while (ctx->sz > 0)
 	{
 		ImmutableCallSite cs(ctx->callSite);
 		assert(cs);
@@ -48,7 +48,7 @@ raw_ostream& operator<<(raw_ostream& os, const ProgramLocation& p)
 
 raw_ostream& operator<<(raw_ostream& os, const MemoryObject& o)
 {
-	os << "MemObj(" << o.getAllocationSite() << ", " << o.getSize() << ")";
+	os << "MemObj(" << o.getAllocationSite() << ", " << o.size() << ")";
 	return os;
 }
 

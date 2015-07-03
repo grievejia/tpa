@@ -19,7 +19,7 @@ const PtsSet::SetType* PtsSet::uniquifySet(SetType&& set)
 
 PtsSet PtsSet::insert(const MemoryLocation* loc)
 {
-	if (pSet->has(loc))
+	if (pSet->count(loc))
 		return *this;
 	
 	SetType newSet(*pSet);
@@ -40,10 +40,10 @@ PtsSet PtsSet::merge(const PtsSet& rhs)
 
 	// We prefer to merge the smaller set into the larger set
 	auto set0 = pSet, set1 = rhs.pSet;
-	if (set0->getSize() < set1->getSize())
+	if (set0->size() < set1->size())
 		std::swap(set0, set1);
 	SetType newSet(*set0);
-	newSet.mergeWith(*set1);
+	newSet.merge(*set1);
 
 	return PtsSet(uniquifySet(std::move(newSet)));
 }
@@ -55,7 +55,7 @@ PtsSet PtsSet::getEmptySet()
 
 PtsSet PtsSet::getSingletonSet(const MemoryLocation* loc)
 {
-	SetType newSet(loc);
+	SetType newSet = { loc };
 	return PtsSet(uniquifySet(std::move(newSet)));
 }
 

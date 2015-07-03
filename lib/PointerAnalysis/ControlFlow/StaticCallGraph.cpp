@@ -8,12 +8,12 @@ namespace tpa
 template <typename MapType, typename KeyType, typename ValueType>
 static inline bool insertMap(MapType& m, const KeyType& k, const ValueType& v)
 {
-	using VectorType = VectorSet<ValueType>;
+	using VectorType = util::VectorSet<ValueType>;
 
-	auto insertPair = m.insert(std::make_pair(k, VectorType()));
-	auto setChanged = insertPair.first->second.insert(v);
+	auto mapInsertPair = m.insert(std::make_pair(k, VectorType()));
+	auto setInsertPair = mapInsertPair.first->second.insert(v);
 
-	return insertPair.second || setChanged;
+	return mapInsertPair.second || setInsertPair.second;
 }
 
 bool StaticCallGraph::insertCallEdge(CallSiteType callSite, CallTargetType callTgt)

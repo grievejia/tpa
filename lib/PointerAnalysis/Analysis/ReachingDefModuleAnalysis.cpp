@@ -41,7 +41,7 @@ private:
 	{
 		auto pSet = ptrAnalysis.getPtsSet(ptr);
 		bool needWeekUpdate = true;
-		if (pSet.getSize() == 1)
+		if (pSet.size() == 1)
 		{
 			auto loc = *pSet.begin();
 			if (!loc->isSummaryLocation())
@@ -119,7 +119,7 @@ public:
 	void visitAllocaInst(AllocaInst& allocInst)
 	{
 		auto pSet = ptrAnalysis.getPtsSet(&allocInst);
-		assert(pSet.getSize() == 1);
+		assert(pSet.size() == 1);
 		store.insertBinding(*pSet.begin(), &allocInst);
 	}
 
@@ -163,7 +163,7 @@ ReachingDefMap<Instruction> ReachingDefModuleAnalysis::runOnFunction(const Funct
 	WorkList<const Instruction*> workList;
 	workList.enqueue(entryInst);
 
-	while (!workList.isEmpty())
+	while (!workList.empty())
 	{
 		auto inst = workList.dequeue();
 		

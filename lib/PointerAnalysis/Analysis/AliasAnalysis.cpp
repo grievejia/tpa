@@ -11,7 +11,7 @@ AliasAnalysis::AliasAnalysis(const PointerAnalysis& p): ptrAnalysis(p), uLoc(ptr
 
 AliasResult AliasAnalysis::checkAlias(PtsSet pSet0, PtsSet pSet1)
 {
-	if (pSet0.isEmpty()|| pSet1.isEmpty())
+	if (pSet0.empty()|| pSet1.empty())
 		return AliasResult::NoAlias;
 
 	if (pSet0.has(uLoc) || pSet1.has(uLoc))
@@ -24,7 +24,7 @@ AliasResult AliasAnalysis::checkAlias(PtsSet pSet0, PtsSet pSet1)
 		{
 			if (intersectSet[0] == nLoc)
 				return AliasResult::NoAlias;
-			else if (pSet0.getSize() == 1 && pSet1.getSize() == 1)
+			else if (pSet0.size() == 1 && pSet1.size() == 1)
 				return AliasResult::MustAlias;
 		}
 		

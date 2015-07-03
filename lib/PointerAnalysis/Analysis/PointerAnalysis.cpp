@@ -16,7 +16,7 @@ PtsSet PointerAnalysis::getPtsSet(const Value* val) const
 	for (auto ptr: ptrs)
 	{
 		auto newSet = getPtsSet(ptr);
-		if (!newSet.isEmpty())
+		if (!newSet.empty())
 			retSet = retSet.merge(newSet);
 	}
 	return retSet;
@@ -39,7 +39,7 @@ PtsSet PointerAnalysis::getPtsSet(const Pointer* ptr) const
 	assert(ptr != nullptr);
 
 	auto pSet = env.lookup(ptr);
-	assert(!pSet.isEmpty());
+	assert(!pSet.empty());
 
 	return pSet;
 }

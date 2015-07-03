@@ -32,9 +32,9 @@ private:
 public:
 	EvaluationWorkList(const ElemPrioComparator& c = ElemPrioComparator()): comp(c) {}
 
-	bool isEmpty() const
+	bool empty() const
 	{
-		return funWorkList.isEmpty();
+		return funWorkList.empty();
 	}
 
 	void enqueue(const Context* ctx, const ElemListType* g, const ElemType* node)
@@ -50,7 +50,7 @@ public:
 
 	ContextFunctionPair dequeue()
 	{
-		assert(!funWorkList.isEmpty());
+		assert(!funWorkList.empty());
 		return funWorkList.dequeue();
 	}
 
@@ -62,7 +62,7 @@ public:
 			itr = workListMap.insert(std::make_pair(pair, LocalWorkList(comp))).first;
 		//assert(itr != workListMap.end());
 		// The dequeued worklist may be empty if recursive call is involved
-		//assert(!itr->second.isEmpty());
+		//assert(!itr->second.empty());
 		return itr->second;
 	}
 

@@ -25,7 +25,7 @@ TEST(TaintnessTest, SourceSinkTest)
 	EXPECT_EQ(ssTable.lookup("printf"), nullptr);
 
 	ssTable = ExternalTaintTable::loadFromFile();
-	ASSERT_TRUE(ssTable.getSize() > 0);
+	ASSERT_TRUE(ssTable.size() > 0);
 	EXPECT_NE(ssTable.lookup("read"), nullptr);
 	EXPECT_NE(ssTable.lookup("printf"), nullptr);
 }
@@ -54,7 +54,7 @@ TEST(TaintnessTest, EnvTest)
 	auto env = TaintEnv();
 	EXPECT_TRUE(env.weakUpdate(x, TaintLattice::Untainted));
 	EXPECT_TRUE(env.weakUpdate(y, TaintLattice::Tainted));
-	EXPECT_EQ(env.getSize(), 2u);
+	EXPECT_EQ(env.size(), 2u);
 	EXPECT_EQ(env.lookup(x), TaintLattice::Untainted);
 	EXPECT_EQ(env.lookup(y), TaintLattice::Tainted);
 	EXPECT_EQ(env.lookup(z), TaintLattice::Unknown);

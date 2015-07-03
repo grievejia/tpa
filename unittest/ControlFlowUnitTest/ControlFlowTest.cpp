@@ -52,22 +52,22 @@ TEST(ControlFlowTest, PointerCFGTest)
 	node4->insertEdge(node5);
 	node5->insertEdge(node6);
 
-	EXPECT_EQ(node1->pred_getSize(), 1u);
-	EXPECT_EQ(node1->succ_getSize(), 1u);
-	EXPECT_EQ(node2->pred_getSize(), 1u);
-	EXPECT_EQ(node2->succ_getSize(), 2u);
-	EXPECT_EQ(node3->pred_getSize(), 1u);
-	EXPECT_EQ(node3->succ_getSize(), 1u);
-	EXPECT_EQ(node4->pred_getSize(), 1u);
-	EXPECT_EQ(node4->succ_getSize(), 1u);
-	EXPECT_EQ(node5->pred_getSize(), 2u);
-	EXPECT_EQ(node5->succ_getSize(), 1u);
-	EXPECT_EQ(node6->pred_getSize(), 1u);
-	EXPECT_EQ(node6->succ_getSize(), 0u);
+	EXPECT_EQ(node1->pred_size(), 1u);
+	EXPECT_EQ(node1->succ_size(), 1u);
+	EXPECT_EQ(node2->pred_size(), 1u);
+	EXPECT_EQ(node2->succ_size(), 2u);
+	EXPECT_EQ(node3->pred_size(), 1u);
+	EXPECT_EQ(node3->succ_size(), 1u);
+	EXPECT_EQ(node4->pred_size(), 1u);
+	EXPECT_EQ(node4->succ_size(), 1u);
+	EXPECT_EQ(node5->pred_size(), 2u);
+	EXPECT_EQ(node5->succ_size(), 1u);
+	EXPECT_EQ(node6->pred_size(), 1u);
+	EXPECT_EQ(node6->succ_size(), 0u);
 
 	node4->removeEdge(node5);
-	EXPECT_EQ(node5->pred_getSize(), 1u);
-	EXPECT_EQ(node4->succ_getSize(), 0u);
+	EXPECT_EQ(node5->pred_size(), 1u);
+	EXPECT_EQ(node4->succ_size(), 0u);
 }
 
 TEST(ControlFlowTest, PointerCFGBuilderTest)
@@ -109,40 +109,40 @@ TEST(ControlFlowTest, PointerCFGBuilderTest)
 	EXPECT_TRUE(node1 != nullptr);
 	EXPECT_TRUE(isa<AllocNode>(node1));
 	EXPECT_EQ(cast<AllocNode>(node1)->getAllocType(), Type::getInt32Ty(testModule->getContext()));
-	EXPECT_EQ(node1->succ_getSize(), 1u);
+	EXPECT_EQ(node1->succ_size(), 1u);
 
 	auto node2 = *node1->succ_begin();
 	EXPECT_TRUE(isa<AllocNode>(node2));
-	EXPECT_EQ(node2->succ_getSize(), 1u);
+	EXPECT_EQ(node2->succ_size(), 1u);
 
 	auto node3 = *node2->succ_begin();
 	EXPECT_TRUE(isa<AllocNode>(node3));
-	EXPECT_EQ(node3->succ_getSize(), 1u);
+	EXPECT_EQ(node3->succ_size(), 1u);
 
 	auto node4 = *node3->succ_begin();
 	EXPECT_TRUE(isa<AllocNode>(node4));
-	EXPECT_EQ(node4->succ_getSize(), 2u);
+	EXPECT_EQ(node4->succ_size(), 2u);
 
 	auto node5 = *node4->succ_begin();
 	EXPECT_TRUE(isa<StoreNode>(node5));
-	EXPECT_EQ(node5->succ_getSize(), 1u);
+	EXPECT_EQ(node5->succ_size(), 1u);
 	auto node6 = *(node4->succ_begin() + 1);
 	EXPECT_TRUE(isa<StoreNode>(node6));
-	EXPECT_EQ(node6->succ_getSize(), 1u);
+	EXPECT_EQ(node6->succ_size(), 1u);
 
 	auto node7 = *node5->succ_begin();
 	EXPECT_TRUE(isa<CopyNode>(node7));
-	EXPECT_EQ(node7->succ_getSize(), 1u);
-	EXPECT_EQ(node7->pred_getSize(), 2u);
+	EXPECT_EQ(node7->succ_size(), 1u);
+	EXPECT_EQ(node7->pred_size(), 2u);
 	EXPECT_EQ(*node6->succ_begin(), node7);
 
 	auto node8 = *node7->succ_begin();
 	EXPECT_TRUE(isa<LoadNode>(node8));
-	EXPECT_EQ(node8->succ_getSize(), 1u);
+	EXPECT_EQ(node8->succ_size(), 1u);
 
 	auto node9 = *node8->succ_begin();
 	EXPECT_TRUE(isa<ReturnNode>(node9));
-	EXPECT_EQ(node9->succ_getSize(), 0u);
+	EXPECT_EQ(node9->succ_size(), 0u);
 	EXPECT_EQ(cfg->getExitNode(), node9);
 }
 

@@ -70,7 +70,7 @@ void ExternalModRefTablePrinter::printTable(const ExternalModRefTable& table)
 		os.changeColor(raw_ostream::GREEN);
 		os << mapping.first << ":\n";
 		
-		if (mapping.second.isEmpty())
+		if (mapping.second.empty())
 		{
 			os.changeColor(raw_ostream::RED);
 			os << "  Ignored\n";

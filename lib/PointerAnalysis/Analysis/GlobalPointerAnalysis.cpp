@@ -48,7 +48,7 @@ void GlobalPointerAnalysis::initializeGlobalValues(Env& env, Store& store, const
 		auto gPtr = ptrManager.getPointer(globalCtx, &gVal);
 		assert(gPtr != nullptr && "Cannot find global ptr!");
 		auto gSet = env.lookup(gPtr);
-		assert(gSet.getSize() == 1 && "Cannot find pSet of global ptr!");
+		assert(gSet.size() == 1 && "Cannot find pSet of global ptr!");
 		auto gLoc = *gSet.begin();
 		assert(gLoc != nullptr);
 
@@ -104,7 +104,7 @@ void GlobalPointerAnalysis::processGlobalInitializer(const MemoryLocation* gLoc,
 				auto iPtr = ptrManager.getPointer(globalCtx, initializer);
 				assert(iPtr != nullptr && "rhs ptr not found");
 				auto iSet = env.lookup(iPtr);
-				assert(!iSet.isEmpty() && "Cannot find pSet of global ptr!");
+				assert(!iSet.empty() && "Cannot find pSet of global ptr!");
 
 				store.weakUpdate(gLoc, iSet);
 			}
@@ -193,7 +193,7 @@ const MemoryLocation* GlobalPointerAnalysis::processConstantGEP(const llvm::Cons
 		auto iPtr = ptrManager.getPointer(globalCtx, base);
 		assert(iPtr != nullptr && "rhs ptr not found");
 		auto iSet = env.lookup(iPtr);
-		assert(iSet.getSize() == 1 && "rhs obj not found");
+		assert(iSet.size() == 1 && "rhs obj not found");
 		auto iLoc = *iSet.begin();
 
 		return memManager.offsetMemory(iLoc, offset);

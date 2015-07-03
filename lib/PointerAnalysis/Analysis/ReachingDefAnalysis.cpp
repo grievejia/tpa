@@ -100,7 +100,7 @@ void ReachingDefAnalysis::evalNode(const PointerCFGNode* node, ReachingDefStore<
 		case PointerCFGNodeType::Alloc:
 		{
 			auto pSet = ptrAnalysis.getPtsSet(node->getInstruction());
-			assert(pSet.getSize() == 1);
+			assert(pSet.size() == 1);
 
 			retStore.insertBinding(*pSet.begin(), node);
 
@@ -149,7 +149,7 @@ ReachingDefMap<PointerCFGNode> ReachingDefAnalysis::runOnPointerCFG(const Pointe
 
 	workList.enqueue(cfg.getEntryNode());
 
-	while (!workList.isEmpty())
+	while (!workList.empty())
 	{
 		auto node = workList.dequeue();
 		auto store = rdMap.getReachingDefStore(node);

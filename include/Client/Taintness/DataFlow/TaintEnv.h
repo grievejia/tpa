@@ -45,7 +45,7 @@ public:
 
 	const_iterator begin() const { return env.begin(); }
 	const_iterator end() const { return env.end(); }
-	size_t getSize() const { return env.getSize(); }
+	size_t size() const { return env.size(); }
 };
 
 }

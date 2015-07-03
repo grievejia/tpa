@@ -50,10 +50,10 @@ TEST(MemoryTest, BasicMemoryObjectTest)
 	auto uObj = memManager.getUniversalObject();
 	auto nObj = memManager.getNullObject();
 	EXPECT_EQ(uObj->getAllocationSite(), mysterySite);
-	EXPECT_EQ(uObj->getSize(), 1u);
+	EXPECT_EQ(uObj->size(), 1u);
 	EXPECT_TRUE(uObj->isGlobalObject());
 	EXPECT_EQ(nObj->getAllocationSite(), mysterySite);
-	EXPECT_EQ(nObj->getSize(), 0u);
+	EXPECT_EQ(nObj->size(), 0u);
 	EXPECT_TRUE(nObj->isGlobalObject());
 
 	auto objG1 = memManager.allocateMemory(ProgramLocation(globalCtx, g1), g1->getType()->getElementType());
@@ -67,11 +67,11 @@ TEST(MemoryTest, BasicMemoryObjectTest)
 	auto objY = memManager.allocateMemory(ProgramLocation(globalCtx, y), y->getType());
 	EXPECT_TRUE(objY != nullptr);
 
-	EXPECT_EQ(objG1->getSize(), dataLayout.getTypeAllocSize(g1->getType()->getElementType()));
-	EXPECT_EQ(objG2->getSize(), dataLayout.getTypeAllocSize(g2->getType()->getElementType()));
-	EXPECT_EQ(objArr->getSize(), dataLayout.getPointerSize());
-	EXPECT_EQ(objX->getSize(), dataLayout.getTypeAllocSize(x->getType()));
-	EXPECT_EQ(objY->getSize(), dataLayout.getTypeAllocSize(y->getType()));
+	EXPECT_EQ(objG1->size(), dataLayout.getTypeAllocSize(g1->getType()->getElementType()));
+	EXPECT_EQ(objG2->size(), dataLayout.getTypeAllocSize(g2->getType()->getElementType()));
+	EXPECT_EQ(objArr->size(), dataLayout.getPointerSize());
+	EXPECT_EQ(objX->size(), dataLayout.getTypeAllocSize(x->getType()));
+	EXPECT_EQ(objY->size(), dataLayout.getTypeAllocSize(y->getType()));
 
 	EXPECT_TRUE(objG1->isGlobalObject());
 	EXPECT_TRUE(objG2->isGlobalObject());

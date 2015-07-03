@@ -65,7 +65,7 @@ MemorySet TrackingTransferFunction::evalPtsSet(const DefUseInstruction* duInst, 
 
 	// Remove uLoc and nLoc
 	std::vector<const MemoryLocation*> validLocs;
-	validLocs.reserve(ptsSet.getSize());
+	validLocs.reserve(ptsSet.size());
 	for (auto loc: ptsSet)
 		if (!memManager.isSpecialMemoryLocation(loc))
 			validLocs.push_back(loc);
@@ -91,7 +91,7 @@ MemorySet TrackingTransferFunction::evalLoad(const DefUseInstruction* duInst)
 
 	auto ptrOp = loadInst->getPointerOperand();
 	auto ptsSet = globalState.getPointerAnalysis().getPtsSet(ctx, ptrOp);
-	assert(!ptsSet.isEmpty());
+	assert(!ptsSet.empty());
 
 	return evalPtsSet(duInst, ptsSet);
 }

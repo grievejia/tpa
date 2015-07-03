@@ -141,7 +141,7 @@ private:
 	void processMemRead(Instruction& inst, Value* ptr, bool isReachableMemory)
 	{
 		auto pSet = ptrAnalysis.getPtsSet(ptr);
-		if (!pSet.isEmpty())
+		if (!pSet.empty())
 		{
 			auto& rdStore = rdMap.getReachingDefStore(&inst);
 			auto dstDuInst = duFunc.getDefUseInstruction(&inst);

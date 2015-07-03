@@ -28,7 +28,7 @@ private:
 	// 0 = unset
 	size_t rpo;
 
-	using NodeSet = VectorSet<PointerCFGNode*>;
+	using NodeSet = util::VectorSet<PointerCFGNode*>;
 	// CFG edges
 	NodeSet pred, succ;
 	// Top-level def-use edges
@@ -68,7 +68,7 @@ public:
 	{
 		return llvm::iterator_range<const_iterator>(pred_begin(), pred_end());
 	}
-	unsigned pred_getSize() const { return pred.getSize(); }
+	unsigned pred_size() const { return pred.size(); }
 
 	iterator succ_begin() { return succ.begin(); }
 	iterator succ_end() { return succ.end(); }
@@ -78,7 +78,7 @@ public:
 	{
 		return llvm::iterator_range<const_iterator>(succ_begin(), succ_end());
 	}
-	unsigned succ_getSize() const { return succ.getSize(); }
+	unsigned succ_size() const { return succ.size(); }
 
 	const_iterator def_begin() const { return def.begin(); }
 	const_iterator def_end() const { return def.end(); }
@@ -86,7 +86,7 @@ public:
 	{
 		return llvm::iterator_range<const_iterator>(def_begin(), def_end());
 	}
-	unsigned def_getSize() const { return def.getSize(); }
+	unsigned def_size() const { return def.size(); }
 
 	const_iterator use_begin() const { return use.begin(); }
 	const_iterator use_end() const { return use.end(); }
@@ -94,15 +94,15 @@ public:
 	{
 		return llvm::iterator_range<const_iterator>(use_begin(), use_end());
 	}
-	unsigned use_getSize() const { return use.getSize(); }
+	unsigned use_size() const { return use.size(); }
 
 	bool hasSuccessor(const PointerCFGNode* node) const
 	{
-		return succ.has(const_cast<PointerCFGNode*>(node));
+		return succ.count(const_cast<PointerCFGNode*>(node));
 	}
 	bool hasUse(const PointerCFGNode* node) const
 	{
-		return use.has(const_cast<PointerCFGNode*>(node));
+		return use.count(const_cast<PointerCFGNode*>(node));
 	}
 
 	// Edge modifiers

@@ -101,10 +101,10 @@ EvalStatus TaintTransferFunction::evalStore(const llvm::Instruction* inst)
 		return EvalStatus::getInvalidStatus();
 
 	auto ptsSet = globalState.getPointerAnalysis().getPtsSet(ctx, ptrOp);
-	assert(!ptsSet.isEmpty());
+	assert(!ptsSet.empty());
 	auto loc = *ptsSet.begin();
 	
-	if (ptsSet.getSize() == 1 && !loc->isSummaryLocation())
+	if (ptsSet.size() == 1 && !loc->isSummaryLocation())
 		return strongUpdateStore(loc, val);
 	else
 		return weakUpdateStore(ptsSet, val);
@@ -141,7 +141,7 @@ EvalStatus TaintTransferFunction::evalLoad(const llvm::Instruction* inst)
 
 	auto ptrOp = loadInst->getPointerOperand();
 	auto ptsSet = globalState.getPointerAnalysis().getPtsSet(ctx, ptrOp);
-	assert(!ptsSet.isEmpty());
+	assert(!ptsSet.empty());
 
 	auto loadVal = loadTaintFromPtsSet(ptsSet);
 	if (loadVal == TaintLattice::Unknown)

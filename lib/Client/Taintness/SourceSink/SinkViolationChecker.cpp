@@ -29,7 +29,7 @@ TaintLattice SinkViolationChecker::lookupTaint(const tpa::ProgramLocation& pLoc,
 		case TClass::DirectMemory:
 		{
 			auto pSet = ptrAnalysis.getPtsSet(pLoc.getContext(), pLoc.getInstruction());
-			assert(!pSet.isEmpty());
+			assert(!pSet.empty());
 			auto res = TaintLattice::Unknown;
 			for (auto loc: pSet)
 			{

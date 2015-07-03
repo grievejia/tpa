@@ -31,7 +31,7 @@ public:
 	}
 	bool contains(T key) const
 	{
-		return !lookup(key).isEmpty();
+		return !lookup(key).empty();
 	}
 
 	bool insert(T key, const MemoryLocation* loc)
@@ -108,7 +108,7 @@ public:
 		return ret;
 	}
 
-	size_t getSize() const { return mapping.size(); }
+	size_t size() const { return mapping.size(); }
 	const_iterator begin() const { return mapping.begin(); }
 	const_iterator end() const { return mapping.end(); }
 };

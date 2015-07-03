@@ -251,7 +251,7 @@ void DefUseFunctionEvaluator::eval()
 	//errs() << "Context = " << *ctx << "\n";
 	//errs() << "Function = " << duFunc->getFunction().getName() << "\n";
 
-	while (!localWorkList.isEmpty())
+	while (!localWorkList.empty())
 	{
 		auto duInst = localWorkList.dequeue();
 

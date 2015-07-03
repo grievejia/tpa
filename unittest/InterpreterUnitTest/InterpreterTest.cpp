@@ -75,20 +75,20 @@ TEST_F(InterpreterTest, MemoTest)
 	auto set0 = PtsSet::getSingletonSet(xLoc);
 	testMemo.updateMemo(globalCtx, &n0, memManager.getUniversalLocation(), set0);
 	ASSERT_TRUE(testMemo.hasMemoState(globalCtx, &n0));
-	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->getSize(), 1u);
+	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->size(), 1u);
 	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->lookup(memManager.getUniversalLocation()), set0);
 
 	auto store = Store();
 	store.insert(memManager.getUniversalLocation(), yLoc);
 	testMemo.updateMemo(globalCtx, &n0, store);
-	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->getSize(), 1u);
+	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->size(), 1u);
 	auto set1 = set0.insert(yLoc);
 	EXPECT_EQ(testMemo.lookup(globalCtx, &n0)->lookup(memManager.getUniversalLocation()), set1);
 
 	auto set2 = PtsSet::getSingletonSet(yLoc);
 	testMemo.updateMemo(globalCtx, &n1, xLoc, set2);
 	ASSERT_TRUE(testMemo.hasMemoState(globalCtx, &n1));
-	EXPECT_EQ(testMemo.lookup(globalCtx, &n1)->getSize(), 1u);
+	EXPECT_EQ(testMemo.lookup(globalCtx, &n1)->size(), 1u);
 	EXPECT_EQ(testMemo.lookup(globalCtx, &n1)->lookup(xLoc), set2);
 }
 
@@ -148,7 +148,7 @@ TEST_F(InterpreterTest, TransferCopyTest3)
 	EXPECT_TRUE(status.isValid());
 	EXPECT_TRUE(status.hasEnvChanged());
 	EXPECT_FALSE(status.hasStoreChanged());
-	EXPECT_EQ(env.lookup(ptrY).getSize(), 1u);
+	EXPECT_EQ(env.lookup(ptrY).size(), 1u);
 	EXPECT_TRUE(env.lookup(ptrY).has(xLoc2));
 }
 
@@ -179,7 +179,7 @@ TEST_F(InterpreterTest, TransferCopyTest5)
 	EXPECT_TRUE(status.isValid());
 	EXPECT_TRUE(status.hasEnvChanged());
 	EXPECT_FALSE(status.hasStoreChanged());
-	EXPECT_EQ(env.lookup(ptrX).getSize(), 6u);
+	EXPECT_EQ(env.lookup(ptrX).size(), 6u);
 	EXPECT_TRUE(env.lookup(ptrX).has(yLoc));
 	EXPECT_TRUE(env.lookup(ptrX).has(memManager.offsetMemory(yLoc, 4)));
 	EXPECT_TRUE(env.lookup(ptrX).has(memManager.offsetMemory(yLoc, 8)));
@@ -206,7 +206,7 @@ TEST_F(InterpreterTest, TransferCopyTest6)
 	EXPECT_TRUE(status.isValid());
 	EXPECT_TRUE(status.hasEnvChanged());
 	EXPECT_FALSE(status.hasStoreChanged());
-	EXPECT_EQ(env.lookup(ptrZ).getSize(), 3u);
+	EXPECT_EQ(env.lookup(ptrZ).size(), 3u);
 	EXPECT_TRUE(env.lookup(ptrZ).has(xLoc));
 	EXPECT_TRUE(env.lookup(ptrZ).has(yLoc));
 	EXPECT_TRUE(env.lookup(ptrZ).has(yLoc2));
@@ -236,7 +236,7 @@ TEST_F(InterpreterTest, TransferLoadTest1)
 	EXPECT_TRUE(status.isValid());
 	EXPECT_TRUE(status.hasEnvChanged());
 	EXPECT_FALSE(status.hasStoreChanged());
-	EXPECT_EQ(env.lookup(ptrY).getSize(), 1u);
+	EXPECT_EQ(env.lookup(ptrY).size(), 1u);
 	EXPECT_TRUE(env.lookup(ptrY).has(zLoc));
 }
 
@@ -259,7 +259,7 @@ TEST_F(InterpreterTest, TransferLoadTest2)
 	EXPECT_TRUE(status.isValid());
 	EXPECT_TRUE(status.hasEnvChanged());
 	EXPECT_FALSE(status.hasStoreChanged());
-	EXPECT_EQ(env.lookup(ptrY).getSize(), 3u);
+	EXPECT_EQ(env.lookup(ptrY).size(), 3u);
 	EXPECT_TRUE(env.lookup(ptrY).has(yLoc2));
 	EXPECT_TRUE(env.lookup(ptrY).has(yLoc3));
 	EXPECT_TRUE(env.lookup(ptrY).has(zLoc));
@@ -279,7 +279,7 @@ TEST_F(InterpreterTest, TransferStoreTest1)
 	EXPECT_TRUE(status.isValid());
 	EXPECT_FALSE(status.hasEnvChanged());
 	EXPECT_TRUE(status.hasStoreChanged());
-	EXPECT_EQ(store.lookup(yLoc).getSize(), 1u);
+	EXPECT_EQ(store.lookup(yLoc).size(), 1u);
 	EXPECT_TRUE(store.lookup(yLoc).has(xLoc));
 }
 
@@ -302,10 +302,10 @@ TEST_F(InterpreterTest, TransferStoreTest2)
 	EXPECT_FALSE(status.hasEnvChanged());
 	EXPECT_TRUE(status.hasStoreChanged());
 
-	EXPECT_EQ(store.lookup(yLoc).getSize(), 2u);
+	EXPECT_EQ(store.lookup(yLoc).size(), 2u);
 	EXPECT_TRUE(store.lookup(yLoc).has(xLoc));
 	EXPECT_TRUE(store.lookup(yLoc).has(zLoc));
-	EXPECT_EQ(store.lookup(yLoc2).getSize(), 2u);
+	EXPECT_EQ(store.lookup(yLoc2).size(), 2u);
 	EXPECT_TRUE(store.lookup(yLoc2).has(yLoc3));
 	EXPECT_TRUE(store.lookup(yLoc2).has(xLoc));
 }
@@ -325,7 +325,7 @@ TEST_F(InterpreterTest, TransferStoreTest3)
 	EXPECT_FALSE(status.hasEnvChanged());
 	EXPECT_TRUE(status.hasStoreChanged());
 
-	EXPECT_EQ(store.lookup(zLoc).getSize(), 2u);
+	EXPECT_EQ(store.lookup(zLoc).size(), 2u);
 	EXPECT_TRUE(store.lookup(zLoc).has(xLoc));
 	EXPECT_TRUE(store.lookup(zLoc).has(yLoc));
 }

@@ -93,7 +93,7 @@ void TaintAnalysisEngine::initializeWorkList()
 
 void TaintAnalysisEngine::run()
 {
-	while (!globalWorkList.isEmpty())
+	while (!globalWorkList.empty())
 	{
 		const Context* ctx;
 		const DefUseFunction* duFunc;

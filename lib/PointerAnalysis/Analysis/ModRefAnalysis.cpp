@@ -16,7 +16,7 @@ namespace tpa
 namespace
 {
 
-using RevCallMapType = std::unordered_map<const Function*, VectorSet<const Instruction*>>;
+using RevCallMapType = std::unordered_map<const Function*, util::VectorSet<const Instruction*>>;
 
 void updateRevCallGraph(RevCallMapType& revCallGraph, const PointerCFG& cfg, const PointerAnalysis& ptrAnalysis)
 {
@@ -187,7 +187,7 @@ void propagateSummary(ModRefSummaryMap& summaryMap, const RevCallMapType& revCal
 		workList.enqueue(mapping.first);
 
 	// Each function "push"es its info back into its callers
-	while (!workList.isEmpty())
+	while (!workList.empty())
 	{
 		auto f = workList.dequeue();
 

@@ -16,7 +16,7 @@ class MemoryObject
 {
 private:
 	ProgramLocation allocSite;
-	size_t size;
+	size_t sz;
 
 	struct ArrayTriple
 	{
@@ -25,10 +25,10 @@ private:
 
 	std::vector<ArrayTriple> arrayLayout;
 
-	MemoryObject(const ProgramLocation& loc): allocSite(loc), size(0) {}
+	MemoryObject(const ProgramLocation& loc): allocSite(loc), sz(0) {}
 public:
 	const ProgramLocation& getAllocationSite() const { return allocSite; }
-	size_t getSize() const { return size; }
+	size_t size() const { return sz; }
 
 	bool isGlobalObject() const;
 	bool isStackObject() const;

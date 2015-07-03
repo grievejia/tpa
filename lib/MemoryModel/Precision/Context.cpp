@@ -16,7 +16,7 @@ const Context* Context::pushContext(const Context* ctx, const Instruction* inst)
 
 const Context* Context::popContext(const Context* ctx)
 {
-	assert(ctx->size != 0 && "Trying to pop an empty context");
+	assert(ctx->sz != 0 && "Trying to pop an empty context");
 	return ctx->predContext;
 }
 

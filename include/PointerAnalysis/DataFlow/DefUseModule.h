@@ -29,7 +29,7 @@ private:
 	// The reverse postorder number of this node
 	size_t rpo;
 
-	using NodeSet = VectorSet<DefUseInstruction*>;
+	using NodeSet = util::VectorSet<DefUseInstruction*>;
 	NodeSet topSucc, topPred;
 
 	using NodeMap = std::unordered_map<const MemoryLocation*, NodeSet>;

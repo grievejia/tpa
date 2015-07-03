@@ -25,7 +25,7 @@ public:
 
 	const_iterator begin() const { return list.begin(); }
 	const_iterator end() const { return list.end(); }
-	bool isEmpty() const { return list.empty(); }
+	bool empty() const { return list.empty(); }
 };
 
 }

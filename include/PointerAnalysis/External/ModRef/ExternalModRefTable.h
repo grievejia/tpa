@@ -29,7 +29,7 @@ public:
 
 	const_iterator begin() const { return table.begin(); }
 	const_iterator end() const { return table.end(); }
-	size_t getSize() const { return table.size(); }
+	size_t size() const { return table.size(); }
 
 	static ExternalModRefTable loadFromFile(const llvm::StringRef& fileName);
 	static ExternalModRefTable loadFromFile();

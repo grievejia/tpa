@@ -34,7 +34,7 @@ MemoryManager::MemoryManager(DataLayout& d):
 	nullObj(ProgramLocation(Context::getGlobalContext(), nullptr)),
 	dataLayout(d)
 {
-	universalObj.size = 1;
+	universalObj.sz = 1;
 	universalObj.arrayLayout.push_back(MemoryObject::ArrayTriple{0, std::numeric_limits<size_t>::max(), 1});
 
 	universalLoc = getMemoryLocation(&universalObj, 0, true);
@@ -114,7 +114,7 @@ const MemoryObject* MemoryManager::allocateMemory(const ProgramLocation& loc, ll
 
 	auto totSize = forceSummary? initializeSummaryObject(memObj, type) : initializeMemoryObject(memObj, 0, type);
 	assert(totSize != 0 && "allocating a size-0 object?");
-	memObj.size = totSize;
+	memObj.sz = totSize;
 	return &memObj;
 }
 
@@ -155,14 +155,14 @@ const MemoryLocation* MemoryManager::offsetMemory(const MemoryObject* obj, size_
 		}
 	}
 
-	if (offset >= obj->size)
+	if (offset >= obj->sz)
 	{
 		// Our intent here is to capture obvious out-of-bound pointer arithmetics. If such case is detected, return a universal object immediately, indicating that we have no idea where the out-of-bound pointer might points to
 		// TODO: add a "strict mode" flag that, when set, will report an error instead of trying to carry on the analysis
 		if (OutOfBoundWarning)
 		{
 			errs() << "Warning: out-of-bound pointer arithmetic\n";
-			errs() << "\twhen computing " << *obj << " + " << offset << " (the bound is " << obj->size << ")\n";
+			errs() << "\twhen computing " << *obj << " + " << offset << " (the bound is " << obj->sz << ")\n";
 		}
 		return universalLoc;
 	}

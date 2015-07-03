@@ -32,7 +32,7 @@ public:
 
 	const_iterator begin() const { return summaryMap.begin(); }
 	const_iterator end() const { return summaryMap.end(); }
-	size_t getSize() const { return summaryMap.size(); }
+	size_t size() const { return summaryMap.size(); }
 
 	static ExternalTaintTable loadFromFile(const std::string& fileName);
 	static ExternalTaintTable loadFromFile();

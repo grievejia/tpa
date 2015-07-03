@@ -89,7 +89,7 @@ public:
 		return llvm::iterator_range<const_mem_iterator>(memWriteSet.begin(), memWriteSet.end());
 	}
 
-	bool isEmpty() const
+	bool empty() const
 	{
 		return valueReadSet.empty() && memReadSet.empty() && memWriteSet.empty();
 	}

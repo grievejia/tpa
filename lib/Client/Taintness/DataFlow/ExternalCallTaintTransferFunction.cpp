@@ -123,7 +123,7 @@ TaintLattice TaintTransferFunction::getTaintValueByTClass(const Value* val, TCla
 			auto const& ptrAnalysis = globalState.getPointerAnalysis();
 
 			auto pSet = ptrAnalysis.getPtsSet(ctx, val);
-			assert(!pSet.isEmpty());
+			assert(!pSet.empty());
 
 			TaintLattice retVal = loadTaintFromPtsSet(pSet);
 			
@@ -141,7 +141,7 @@ EvalStatus TaintTransferFunction::evalMemcpy(const Value* dstVal, const Value* s
 
 	auto dstSet = ptrAnalysis.getPtsSet(ctx, dstVal);
 	auto srcSet = ptrAnalysis.getPtsSet(ctx, srcVal);
-	assert(!dstSet.isEmpty() && !srcSet.isEmpty());
+	assert(!dstSet.empty() && !srcSet.empty());
 
 	bool changed = false;
 	for (auto srcLoc: srcSet)

@@ -27,15 +27,15 @@ TEST(ContextTest, ContextTest)
 
 	auto globalCtx = Context::getGlobalContext();
 	EXPECT_TRUE(globalCtx->isGlobalContext());
-	EXPECT_EQ(globalCtx->getSize(), 0u);
+	EXPECT_EQ(globalCtx->size(), 0u);
 
 	auto ctxX = Context::pushContext(globalCtx, x);
 	auto ctxY = Context::pushContext(globalCtx, y);
 	auto ctxXY = Context::pushContext(ctxX, y);
 	EXPECT_FALSE(ctxX->isGlobalContext());
-	EXPECT_EQ(ctxX->getSize(), 1u);
-	EXPECT_EQ(ctxY->getSize(), 1u);
-	EXPECT_EQ(ctxXY->getSize(), 2u);
+	EXPECT_EQ(ctxX->size(), 1u);
+	EXPECT_EQ(ctxY->size(), 1u);
+	EXPECT_EQ(ctxXY->size(), 2u);
 
 	EXPECT_NE(ctxX, globalCtx);
 	EXPECT_NE(ctxY, ctxX);

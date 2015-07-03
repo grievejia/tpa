@@ -17,7 +17,7 @@ void writeGraph(raw_ostream& os, const DefUseFunction& duFunc)
 {
 	os << "digraph \"" << "DefUseGraph for function " << duFunc.getFunction().getName() << "\" {\n";
 
-	using MemSet = VectorSet<const MemoryLocation*>;
+	using MemSet = util::VectorSet<const MemoryLocation*>;
 
 	auto dumpInst = [&os] (const DefUseInstruction* duInst)
 	{
@@ -61,7 +61,7 @@ void writeGraph(raw_ostream& os, const DefUseGraph& dug)
 {
 	os << "digraph \"" << "DefUseGraph for function " << dug.getFunction()->getName() << "\" {\n";
 
-	using MemSet = VectorSet<const MemoryLocation*>;
+	using MemSet = util::VectorSet<const MemoryLocation*>;
 
 	for (auto node: dug)
 	{

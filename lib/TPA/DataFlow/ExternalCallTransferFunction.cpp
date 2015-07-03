@@ -99,7 +99,7 @@ EvalStatus TransferFunction::evalExternalAlloc(const CallNode* callNode, const P
 EvalStatus TransferFunction::copyPointerPtsSet(const Pointer* dstPtr, const Pointer* srcPtr)
 {
 	auto srcSet = globalState.getEnv().lookup(srcPtr);
-	if (srcSet.isEmpty())
+	if (srcSet.empty())
 		return EvalStatus::getInvalidStatus();
 
 	auto envChanged = globalState.getEnv().weakUpdate(dstPtr, srcSet);
@@ -130,7 +130,7 @@ bool TransferFunction::copyMemoryPtsSet(const MemoryLocation* dstLoc, const std:
 	for (auto oLoc: srcLocs)
 	{
 		auto oSet = store->lookup(oLoc);
-		if (oSet.isEmpty())
+		if (oSet.empty())
 			continue;
 
 		auto offset = oLoc->getOffset() - startingOffset;
@@ -145,10 +145,10 @@ bool TransferFunction::copyMemoryPtsSet(const MemoryLocation* dstLoc, const std:
 EvalStatus TransferFunction::evalMemcpyPointer(const Pointer* dstPtr, const Pointer* srcPtr)
 {
 	auto dstSet = globalState.getEnv().lookup(dstPtr);
-	if (dstSet.isEmpty())
+	if (dstSet.empty())
 		return EvalStatus::getInvalidStatus();
 	auto srcSet = globalState.getEnv().lookup(srcPtr);
-	if (srcSet.isEmpty())
+	if (srcSet.empty())
 		return EvalStatus::getInvalidStatus();
 
 	bool storeChanged = false;
@@ -239,13 +239,13 @@ EvalStatus TransferFunction::fillPtsSetWith(const Pointer* ptr, PtsSet srcSet)
 		return EvalStatus::getValidStatus(false, false);
 
 	auto pSet = globalState.getEnv().lookup(ptr);
-	if (pSet.isEmpty())
+	if (pSet.empty())
 		return EvalStatus::getInvalidStatus();
 
 	auto storeChanged = false;
 	for (auto loc: pSet)
 	{
-		if (loc == globalState.getMemoryManager().getUniversalLocation())
+		if (globalState.getMemoryManager().isSpecialMemoryLocation(loc))
 			continue;
 
 		storeChanged |= setMemoryLocationTo(loc, elemType, srcSet);
@@ -333,7 +333,7 @@ EvalStatus TransferFunction::evalExternalCopyDest(const CallNode* callNode, cons
 		case CopyDest::DestType::DirectMemory:
 		{
 			auto dstSet = globalState.getEnv().lookup(dstPtr);
-			if (dstSet.isEmpty())
+			if (dstSet.empty())
 				return EvalStatus::getInvalidStatus();
 
 			assert(store != nullptr);
@@ -357,7 +357,7 @@ EvalStatus TransferFunction::evalExternalCopy(const CallNode* callNode, const Po
 	}
 
 	auto srcSet = evalExternalCopySource(callNode, src);
-	if (srcSet.isEmpty())
+	if (srcSet.empty())
 		return EvalStatus::getInvalidStatus();
 
 	return evalExternalCopyDest(callNode, dest, srcSet);

@@ -153,7 +153,7 @@ void buildMemLevelEdges(const PointerCFG& cfg, const NodeMap& nodeMap, const Mod
 	auto processMemRead = [&nodeMap, &rdMap, &ptrAnalysis] (const PointerCFGNode* node, const llvm::Value* val)
 	{
 		auto pSet = ptrAnalysis.getPtsSet(val);
-		if (!pSet.isEmpty())
+		if (!pSet.empty())
 		{
 			auto& rdStore = rdMap.getReachingDefStore(node);
 			auto dstDefUseNode = getDefUseNode(nodeMap, node);

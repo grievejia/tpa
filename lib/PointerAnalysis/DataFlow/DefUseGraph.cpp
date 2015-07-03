@@ -9,7 +9,7 @@ bool DefUseGraphNode::insertTopLevelEdge(DefUseGraphNode* node)
 {
 	assert(node != nullptr);
 	
-	return topSucc.insert(node);
+	return topSucc.insert(node).second;
 }
 
 void DefUseGraphNode::insertMemLevelEdge(const MemoryLocation* loc, DefUseGraphNode* node)

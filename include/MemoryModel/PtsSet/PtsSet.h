@@ -13,7 +13,7 @@ namespace tpa
 class PtsSet
 {
 private:
-	using SetType = VectorSet<const MemoryLocation*>;
+	using SetType = util::VectorSet<const MemoryLocation*>;
 	const SetType* pSet;
 
 	static std::unordered_set<SetType, ContainerHasher<SetType>>existingSet;
@@ -31,20 +31,20 @@ public:
 
 	bool has(const MemoryLocation* loc) const
 	{
-		return pSet->has(loc);
+		return pSet->count(loc);
 	}
 	bool contains(const PtsSet& rhs) const
 	{
-		return pSet->contains(*rhs.pSet);
+		return pSet->includes(*rhs.pSet);
 	}
 
-	bool isEmpty() const
+	bool empty() const
 	{
-		return pSet->isEmpty();
+		return pSet->empty();
 	}
-	size_t getSize() const
+	size_t size() const
 	{
-		return pSet->getSize();
+		return pSet->size();
 	}
 
 	bool operator==(const PtsSet& rhs) const

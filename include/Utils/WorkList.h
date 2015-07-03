@@ -38,7 +38,7 @@ public:
 		set.erase(ret);
 		return ret;
 	}
-	bool isEmpty() const { return list.empty(); }
+	bool empty() const { return list.empty(); }
 };
 
 // This worklist implementation is a priority queue with an additional set to help remove duplicate entries
@@ -73,7 +73,7 @@ public:
 		set.erase(ret);
 		return ret;
 	}
-	bool isEmpty() const { return list.empty(); }
+	bool empty() const { return list.empty(); }
 };
 
 }

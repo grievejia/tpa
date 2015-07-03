@@ -62,7 +62,7 @@ void TableValidator<ExternalModRefTable>::validateTable(const ExternalModRefTabl
 {
 	for (auto const& mapping: table)
 	{
-		if (!mapping.second.isEmpty())
+		if (!mapping.second.empty())
 		{
 			validateSummary(mapping.first, mapping.second);
 		}

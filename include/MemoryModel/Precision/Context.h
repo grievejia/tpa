@@ -22,16 +22,16 @@ private:
 	// The call stack is implemented by a linked list
 	const llvm::Instruction* callSite;
 	const Context* predContext;
-	size_t size;
+	size_t sz;
 
 	static std::unordered_set<Context> ctxSet;
 
-	Context(): callSite(nullptr), predContext(nullptr), size(0) {}
-	Context(const llvm::Instruction* c, const Context* p): callSite(c), predContext(p), size(p == nullptr ? 1 : p->size + 1) {}
+	Context(): callSite(nullptr), predContext(nullptr), sz(0) {}
+	Context(const llvm::Instruction* c, const Context* p): callSite(c), predContext(p), sz(p == nullptr ? 1 : p->sz + 1) {}
 public:
 	const llvm::Instruction* getCallSite() const { return callSite; }
-	size_t getSize() const { return size; }
-	bool isGlobalContext() const { return size == 0; }
+	size_t size() const { return sz; }
+	bool isGlobalContext() const { return sz == 0; }
 
 	bool operator==(const Context& other) const
 	{

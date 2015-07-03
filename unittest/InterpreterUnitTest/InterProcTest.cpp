@@ -114,11 +114,11 @@ TEST_F(InterProcTest, CallTest)
 	EXPECT_TRUE(status.hasEnvChanged());
 	EXPECT_FALSE(status.hasStoreChanged());
 
-	EXPECT_EQ(env.lookup(param0).getSize(), 1u);
+	EXPECT_EQ(env.lookup(param0).size(), 1u);
 	EXPECT_TRUE(env.lookup(param0).has(xLoc));
-	EXPECT_EQ(env.lookup(param1).getSize(), 1u);
+	EXPECT_EQ(env.lookup(param1).size(), 1u);
 	EXPECT_TRUE(env.lookup(param1).has(yLoc));
-	EXPECT_EQ(env.lookup(param2).getSize(), 1u);
+	EXPECT_EQ(env.lookup(param2).size(), 1u);
 	EXPECT_TRUE(env.lookup(param2).has(zLoc));
 }
 
@@ -138,15 +138,15 @@ TEST_F(InterProcTest, ReturnTest)
 	EXPECT_TRUE(status.hasEnvChanged());
 	EXPECT_FALSE(status.hasStoreChanged());
 
-	EXPECT_EQ(env.lookup(ptrW).getSize(), 2u);
+	EXPECT_EQ(env.lookup(ptrW).size(), 2u);
 	EXPECT_TRUE(env.lookup(ptrW).has(xLoc));
 	EXPECT_TRUE(env.lookup(ptrW).has(yLoc));
 }
 
 TEST_F(InterProcTest, ExternalNoEffectTest)
 {
-	EXPECT_EQ(env.getSize(), 0u);
-	EXPECT_EQ(store.getSize(), 0u);
+	EXPECT_EQ(env.size(), 0u);
+	EXPECT_EQ(store.size(), 0u);
 
 	auto callNode = fCfg->create<CallNode>(w, g, w);
 	auto status = transferFunction.evalExternalCall(callNode, testModule->getFunction("getchar"));
@@ -155,8 +155,8 @@ TEST_F(InterProcTest, ExternalNoEffectTest)
 	EXPECT_FALSE(status.hasEnvChanged());
 	EXPECT_FALSE(status.hasStoreChanged());
 
-	EXPECT_EQ(env.getSize(), 0u);
-	EXPECT_EQ(store.getSize(), 0u);	
+	EXPECT_EQ(env.size(), 0u);
+	EXPECT_EQ(store.size(), 0u);	
 }
 
 TEST_F(InterProcTest, ExternalMallocTest)
@@ -171,7 +171,7 @@ TEST_F(InterProcTest, ExternalMallocTest)
 	EXPECT_TRUE(status.hasEnvChanged());
 	EXPECT_FALSE(status.hasStoreChanged());
 
-	EXPECT_EQ(env.lookup(ptrW).getSize(), 1u);
+	EXPECT_EQ(env.lookup(ptrW).size(), 1u);
 	const MemoryLocation* loc = *env.begin()->second.begin();
 	EXPECT_EQ(loc->getOffset(), 0u);
 	EXPECT_TRUE(loc->isSummaryLocation());
@@ -212,7 +212,7 @@ TEST_F(InterProcTest, ExternalStoreTest)
 	EXPECT_FALSE(status.hasEnvChanged());
 	EXPECT_TRUE(status.hasStoreChanged());
 
-	EXPECT_EQ(store.lookup(yLoc).getSize(), 1u);
+	EXPECT_EQ(store.lookup(yLoc).size(), 1u);
 	EXPECT_TRUE(store.lookup(yLoc).has(xLoc));
 }
 
@@ -279,7 +279,7 @@ TEST_F(InterProcTest, ExternalMemcpyTest2)
 	EXPECT_TRUE(status.hasStoreChanged());
 
 	EXPECT_EQ(store.lookup(yLoc), store.lookup(g3Loc0));
-	EXPECT_TRUE(store.lookup(memManager.getUniversalLocation()).isEmpty());
+	EXPECT_TRUE(store.lookup(memManager.getUniversalLocation()).empty());
 	EXPECT_EQ(env.lookup(ptrW), env.lookup(ptrX));
 }
 
@@ -303,9 +303,9 @@ TEST_F(InterProcTest, ExternalMemsetTest)
 
 	EXPECT_EQ(env.lookup(retPtr), env.lookup(ptrG3));
 	auto g3Loc1 = memManager.offsetMemory(g3Obj, 8);
-	EXPECT_EQ(store.lookup(g3Loc0).getSize(), 1u);
+	EXPECT_EQ(store.lookup(g3Loc0).size(), 1u);
 	EXPECT_TRUE(store.lookup(g3Loc0).has(memManager.getNullLocation()));
-	EXPECT_EQ(store.lookup(g3Loc1).getSize(), 1u);
+	EXPECT_EQ(store.lookup(g3Loc1).size(), 1u);
 	EXPECT_TRUE(store.lookup(g3Loc1).has(memManager.getNullLocation()));
 }
 
