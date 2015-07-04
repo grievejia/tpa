@@ -31,6 +31,9 @@
 
 using namespace llvm;
 
+namespace transform
+{
+
 static bool convertFunction(Function* func)
 {
 	bool isChanged = false;
@@ -139,3 +142,5 @@ bool ExpandIndirectBr::runOnModule(Module &M)
 
 char ExpandIndirectBr::ID = 0;
 static RegisterPass<ExpandIndirectBr> X("expand-indirectbr", "Expand out indirectbr and blockaddress (computed gotos)", false, false);
+
+}

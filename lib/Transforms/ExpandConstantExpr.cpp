@@ -25,6 +25,9 @@
 
 using namespace llvm;
 
+namespace transform
+{
+
 static bool expandInstruction(Instruction* inst);
 
 static Value *expandConstantExpr(Instruction* insertPt, ConstantExpr* expr)
@@ -69,3 +72,5 @@ bool ExpandConstantExprPass::runOnFunction(Function& F)
 
 char ExpandConstantExprPass::ID = 0;
 static RegisterPass<ExpandConstantExprPass> X("expand-constant-expr", "Expand out ConstantExprs into Instructions", false, false);
+
+}

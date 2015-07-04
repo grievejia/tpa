@@ -7,9 +7,8 @@ set (TransformSourceCodes
 	ExpandIndirectBr.cpp
 	ExpandUtils.cpp
 	GlobalCleanup.cpp
+	RunPrepass.cpp
 )
 
-add_library (TransformObj OBJECT ${TransformSourceCodes})
-add_library (Transform SHARED $<TARGET_OBJECTS:TransformObj>)
-add_library (TransformStatic STATIC $<TARGET_OBJECTS:TransformObj>)
-
+add_library (Transforms STATIC ${TransformSourceCodes})
+target_link_libraries (Transforms LLVMTransformUtils LLVMipo LLVMSupport LLVMCore)

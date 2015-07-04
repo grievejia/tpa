@@ -1,283 +1,268 @@
-#include "MemoryModel/Memory/MemoryManager.h"
-#include "MemoryModel/Pointer/PointerManager.h"
+#include "Context/Context.h"
 #include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
+#include "PointerAnalysis/FrontEnd/TypeMap.h"
+#include "PointerAnalysis/MemoryModel/MemoryManager.h"
+#include "PointerAnalysis/MemoryModel/PointerManager.h"
 
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/raw_ostream.h>
 
-using namespace tpa;
 using namespace llvm;
 
-GlobalPointerAnalysis::GlobalPointerAnalysis(PointerManager& p, MemoryManager& m): ptrManager(p), memManager(m), dataLayout(memManager.getDataLayout()), globalCtx(Context::getGlobalContext()) {}
-
-void GlobalPointerAnalysis::registerGlobalValues(Env& env, const Module& module)
+namespace tpa
 {
-	// Scan the global variables first
-	for (auto const& gVal: module.globals())
+
+static bool isScalarNonPointerType(const Type* type)
+{
+	assert(type != nullptr);
+	return type->isSingleValueType() && !type->isPointerTy();
+}
+
+GlobalPointerAnalysis::GlobalPointerAnalysis(PointerManager& p, MemoryManager& m, const TypeMap& t): ptrManager(p), memManager(m), typeMap(t), globalCtx(context::Context::getGlobalContext()) {}
+
+void GlobalPointerAnalysis::createGlobalVariables(const Module& module, Env& env)
+{
+	for (auto const& gVar: module.globals())
 	{
 		// Create the pointer first
-		auto gPtr = ptrManager.getOrCreatePointer(globalCtx, &gVal);
+		auto gPtr = ptrManager.getOrCreatePointer(globalCtx, &gVar);
 
 		// Create the memory object
-		auto gType = gVal.getType()->getPointerElementType();
-		auto gObj = memManager.allocateMemory(ProgramLocation(globalCtx, &gVal), gType);
-		auto gLoc = memManager.offsetMemory(gObj, 0);
+		auto gType = gVar.getType()->getPointerElementType();
+		auto typeLayout = typeMap.lookup(gType);
+		assert(typeLayout != nullptr);
+		auto gObj = memManager.allocateGlobalMemory(&gVar, typeLayout);
 
 		// Now add the top-level mapping
-		env.insert(gPtr, gLoc);
+		env.insert(gPtr, gObj);
 	}
+}
 
-	// Next, scan the functions
+void GlobalPointerAnalysis::createFunctions(const llvm::Module& module, Env& env)
+{
 	for (auto const& f: module)
 	{
 		// For each function, regardless of whether it is internal or external, and regardless of whether it has its address taken or not, we are going to create a function pointer and a function object for it
 		auto fPtr = ptrManager.getOrCreatePointer(globalCtx, &f);
-		auto fObj = memManager.createMemoryObjectForFunction(&f);
-		auto fLoc = memManager.offsetMemory(fObj, 0);
+		auto fObj = memManager.allocateMemoryForFunction(&f);
 
 		// Add the top-level mapping
-		env.insert(fPtr, fLoc);
+		env.insert(fPtr, fObj);
 	}
 }
 
-void GlobalPointerAnalysis::initializeGlobalValues(Env& env, Store& store, const llvm::Module& module)
+const MemoryObject* GlobalPointerAnalysis::getGlobalObject(const GlobalVariable* gv, const Env& env)
 {
-	for (auto const& gVal: module.globals())
-	{
-		auto gPtr = ptrManager.getPointer(globalCtx, &gVal);
-		assert(gPtr != nullptr && "Cannot find global ptr!");
-		auto gSet = env.lookup(gPtr);
-		assert(gSet.size() == 1 && "Cannot find pSet of global ptr!");
-		auto gLoc = *gSet.begin();
-		assert(gLoc != nullptr);
+	auto iPtr = ptrManager.getPointer(globalCtx, gv);
+	assert(iPtr != nullptr && "gv ptr not found");
+	auto iSet = env.lookup(iPtr);
+	assert(iSet.size() == 1 && "Cannot find pSet of gv ptr!");
+	auto obj = *iSet.begin();
+	assert(obj != nullptr);
+	return obj;
+}
 
-		if (gVal.hasInitializer())
+void GlobalPointerAnalysis::initializeGlobalValues(const llvm::Module& module, EnvStore& envStore)
+{
+	DataLayout dataLayout(&module);
+	for (auto const& gVar: module.globals())
+	{
+		auto gObj = getGlobalObject(&gVar, envStore.first);
+
+		if (gVar.hasInitializer())
 		{
-			processGlobalInitializer(gLoc, gVal.getInitializer(), env, store);
+			processGlobalInitializer(gObj, gVar.getInitializer(), envStore, dataLayout);
 		}
 		else
 		{
-			// If gVal doesn't have an initializer, since we are assuming a whole-program analysis, the value must be external (e.g. struct FILE* stdin)
+			// If gVar doesn't have an initializer, since we are assuming a whole-program analysis, the value must be external (e.g. struct FILE* stdin)
 			// To be conservative, assume that those "external" globals can points to anything
-			store.insert(gLoc, memManager.getUniversalLocation());
+			envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(memManager.getUniversalObject()));
 		}
 	}
 }
 
-void GlobalPointerAnalysis::processGlobalInitializer(const MemoryLocation* gLoc, const Constant* initializer, const Env& env, Store& store)
+std::pair<const llvm::GlobalVariable*, size_t> GlobalPointerAnalysis::processConstantGEP(const llvm::ConstantExpr* cexpr, const DataLayout& dataLayout)
 {
+	assert(cexpr->getOpcode() == llvm::Instruction::GetElementPtr);
+	
+	auto baseVal = cexpr->getOperand(0);
+	auto indexes = llvm::SmallVector<llvm::Value*, 4>(cexpr->op_begin() + 1, cexpr->op_end());
+	unsigned offset = dataLayout.getIndexedOffset(baseVal->getType(), indexes);
+
+	// The loop is written for bitcast handling
+	while (true)
+	{
+		if (auto gVar = dyn_cast<GlobalVariable>(baseVal))
+		{
+			return std::make_pair(gVar, offset);
+		}
+		else if (auto ce = dyn_cast<ConstantExpr>(baseVal))
+		{
+			switch (ce->getOpcode())
+			{
+				case Instruction::GetElementPtr:
+				{
+					// Accumulate offset
+					auto baseOffsetPair = processConstantGEP(ce, dataLayout);
+					return std::make_pair(baseOffsetPair.first, baseOffsetPair.second + offset);
+				}
+				case Instruction::IntToPtr:
+					return std::make_pair(nullptr, 0);
+				case Instruction::BitCast:
+					baseVal = ce->getOperand(0);
+					// Don't return. Keep looping on baseVal
+					break;
+				default:
+					errs() << "Constant expr not yet handled in global intializer: " << *ce << "\n";
+					llvm_unreachable("Unknown constantexpr!");
+			}
+		}
+		else
+		{
+			llvm::errs() << *baseVal << "\n";
+			llvm_unreachable("Unknown constant gep base!");
+		}
+	}
+}
+
+void GlobalPointerAnalysis::processGlobalScalarInitializer(const MemoryObject* gObj, const llvm::Constant* initializer, EnvStore& envStore, const DataLayout& dataLayout)
+{
+	if (!initializer->getType()->isPointerTy())
+		return;
+
 	if (initializer->isNullValue())
+		envStore.second.insert(gObj, memManager.getNullObject());
+	else if (isa<UndefValue>(initializer))
+		envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(memManager.getUniversalObject()));
+	else if (auto gVar = dyn_cast<GlobalVariable>(initializer))
 	{
-		// Make gLoc points to null Loc
-		// This is how we differentiate undefined values and null pointers: null-pointers' pts-to sets are not empty, yet undefined values are
-		if (initializer->getType()->isPointerTy())
-			store.insert(gLoc, memManager.getNullLocation());
-		else if (auto caz = dyn_cast<ConstantAggregateZero>(initializer))
-		{
-			// Examine the type of initializer and expand it accordingly
-			auto aggType = initializer->getType();
-			if (auto stType = dyn_cast<StructType>(aggType))
-			{
-				auto stLayout = dataLayout.getStructLayout(stType);
-				for (unsigned i = 0, e = stType->getNumElements(); i != e; ++i)
-				{
-					unsigned offset = stLayout->getElementOffset(i);
-					auto elemLoc = memManager.offsetMemory(gLoc, offset);
-					processGlobalInitializer(elemLoc, caz->getStructElement(i), env, store);
-				}
-			}
-			else if (aggType->isArrayTy() || aggType->isVectorTy())
-			{
-				// Array elements are treated as one
-				auto seqElem = caz->getSequentialElement();
-				processGlobalInitializer(gLoc, seqElem, env, store);
-			}
-		}
+		auto tgtObj = getGlobalObject(gVar, envStore.first);
+		envStore.second.insert(gObj, tgtObj);
 	}
-	else if (initializer->getType()->isSingleValueType())
-	{
-		if (initializer->getType()->isPointerTy())
-		{
-			if (isa<GlobalValue>(initializer))
-			{
-				auto iPtr = ptrManager.getPointer(globalCtx, initializer);
-				assert(iPtr != nullptr && "rhs ptr not found");
-				auto iSet = env.lookup(iPtr);
-				assert(!iSet.empty() && "Cannot find pSet of global ptr!");
-
-				store.weakUpdate(gLoc, iSet);
-			}
-			else if (auto ce = dyn_cast<ConstantExpr>(initializer))
-			{
-				switch (ce->getOpcode())
-				{
-					case Instruction::GetElementPtr:
-					{
-						// Offset calculation
-						auto baseVal = ce->getOperand(0);
-						auto indexes = SmallVector<Value*, 4>(ce->op_begin() + 1, ce->op_end());
-						unsigned offset = dataLayout.getIndexedOffset(baseVal->getType(), indexes);
-
-						auto offsetLoc = processConstantGEP(cast<Constant>(baseVal), offset, env, store);
-						// offsetLoc could be an off-by-one pointer, so we can't have the assertion here
-						//assert(offsetLoc != memManager.getUniversalLocation());
-
-						store.insert(gLoc, offsetLoc);
-						break;
-					}
-					case Instruction::IntToPtr:
-					{
-						// By default, clang won't generate global pointer arithmetic as ptrtoint+inttoptr, so we will do the simplest thing here
-						store.insert(gLoc, memManager.getUniversalLocation());
-
-						break;
-					}
-					case Instruction::BitCast:
-					{
-						processGlobalInitializer(gLoc, ce->getOperand(0), env, store);
-						break;
-					}
-					default:
-						errs() << "Constant expr not yet handled in global intializer: " << *ce << "\n";
-						llvm_unreachable(0);
-				}
-			}
-			else
-			{
-				errs() << *initializer << "\n";
-				llvm_unreachable("Unknown constant pointer!");
-			}
-		}
-	}
-	else if (isa<ConstantStruct>(initializer))
-	{
-		// Structs are treated field-sensitively
-		auto stType = cast<StructType>(initializer->getType());
-		auto stLayout = dataLayout.getStructLayout(stType);
-		for (unsigned i = 0, e = initializer->getNumOperands(); i != e; ++i)
-		{
-			unsigned offset = stLayout->getElementOffset(i);
-			auto subInitializer = cast<Constant>(initializer->getOperand(i));
-			auto subInitType = subInitializer->getType();
-			if (subInitType->isSingleValueType() && !subInitType->isPointerTy())
-				// Not an interesting field. Skip it.
-				// Even with this skip here, its is still possible that we might create redundant memory objects of struct/array type.
-				continue;
-			auto elemLoc = memManager.offsetMemory(gLoc, offset);
-			processGlobalInitializer(elemLoc, subInitializer, env, store);
-		}
-	}
-	else if (isa<ConstantArray>(initializer) || isa<ConstantDataSequential>(initializer) || isa<ConstantVector>(initializer))
-	{
-		// Arrays/vectors are collapsed into a single element
-		for (unsigned i = 0, e = initializer->getNumOperands(); i != e; ++i)
-		{
-			auto elem = cast<Constant>(initializer->getOperand(i));
-			processGlobalInitializer(gLoc, elem, env, store);
-		}
-	}
-	else if (!isa<UndefValue>(initializer))
-	{
-		errs() << "Unknown initializer: " << *initializer << "\n";
-		assert(false && "Not supported yet");
-	}
-}
-
-const MemoryLocation* GlobalPointerAnalysis::processConstantGEP(const llvm::Constant* base, size_t offset, const Env& env, Store& store)
-{
-	assert(base->getType()->isPointerTy());
-
-	if (isa<GlobalValue>(base))
-	{
-		auto iPtr = ptrManager.getPointer(globalCtx, base);
-		assert(iPtr != nullptr && "rhs ptr not found");
-		auto iSet = env.lookup(iPtr);
-		assert(iSet.size() == 1 && "rhs obj not found");
-		auto iLoc = *iSet.begin();
-
-		return memManager.offsetMemory(iLoc, offset);
-	}
-	else if (auto ce = dyn_cast<ConstantExpr>(base))
+	else if (auto ce = dyn_cast<ConstantExpr>(initializer))
 	{
 		switch (ce->getOpcode())
 		{
 			case Instruction::GetElementPtr:
 			{
-				auto baseVal = ce->getOperand(0);
-				auto indexes = SmallVector<Value*, 4>(ce->op_begin() + 1, ce->op_end());
-				unsigned newOffset = dataLayout.getIndexedOffset(baseVal->getType(), indexes);
-
-				auto iLoc = processConstantGEP(cast<Constant>(baseVal), newOffset, env, store);
-				assert(iLoc != nullptr && "rhs obj not found");
-
-				return memManager.offsetMemory(iLoc, offset);
+				// Offset calculation
+				auto baseOffsetPair = processConstantGEP(ce, dataLayout);
+				if (baseOffsetPair.first == nullptr)
+					envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(memManager.getUniversalObject()));
+				else
+				{
+					auto tgtObj = getGlobalObject(baseOffsetPair.first, envStore.first);
+					auto offsetObj = memManager.offsetMemory(tgtObj, baseOffsetPair.second);
+					envStore.second.insert(gObj, offsetObj);
+				}
+				break;
 			}
 			case Instruction::IntToPtr:
-				return memManager.getUniversalLocation();
+			{
+				// By default, clang won't generate global pointer arithmetic as ptrtoint+inttoptr, so we will do the simplest thing here
+				envStore.second.insert(gObj, memManager.getUniversalObject());
+
+				break;
+			}
 			case Instruction::BitCast:
-				return processConstantGEP(ce->getOperand(0), offset, env, store);
+			{
+				processGlobalInitializer(gObj, ce->getOperand(0), envStore, dataLayout);
+				break;
+			}
 			default:
-				errs() << "Constant expr not yet handled in global intializer: " << *ce << "\n";
-				llvm_unreachable(0);
+				break;
 		}
 	}
 	else
 	{
-		errs() << *base << "\n";
-		llvm_unreachable("Unknown constant pointer!");
+		llvm::errs() << *initializer << "\n";
+		llvm_unreachable("Unsupported constant pointer!");
 	}
 }
 
-void GlobalPointerAnalysis::initializeMainArgs(const Module& module, Env& env, Store& store)
+void GlobalPointerAnalysis::processGlobalStructInitializer(const MemoryObject* gObj, const llvm::Constant* initializer, EnvStore& envStore, const DataLayout& dataLayout)
 {
-	auto entryFunc = module.getFunction("main");
-	if (entryFunc == nullptr)
-		llvm_unreachable("Cannot find main funciton in module");
-	// Check if the main function contains any parameters (argc, argv). If so, initialize them
-	if (entryFunc->arg_size() > 1)
+	auto stType = cast<StructType>(initializer->getType());
+
+	// Structs are treated field-sensitively
+	auto stLayout = dataLayout.getStructLayout(stType);
+	for (unsigned i = 0, e = initializer->getNumOperands(); i != e; ++i)
 	{
-		auto argv = std::next(entryFunc->arg_begin());
-		// We cannot initialize the type of argvObj and argvObjObj with the type of argvPtr. This is because if you write the type of argv as char** then argvObj and argvObjObj won't be initialized with an array type. We have to manually construct the array type char[] and char[][] at this point.
-		auto charTy = Type::getInt8Ty(argv->getType()->getContext());
-		auto charArrayTy = ArrayType::get(charTy, 1);
-		auto charArrayArrayTy = ArrayType::get(charTy, 1);
-
-		auto globalCtx = Context::getGlobalContext();
-		auto argvObj = memManager.allocateMemory(ProgramLocation(globalCtx, entryFunc), charArrayArrayTy);
-		auto argvObjObj = memManager.allocateMemory(ProgramLocation(globalCtx, entryFunc), charArrayTy);
-		auto argvLoc = memManager.offsetMemory(argvObj, 0);
-		auto argvObjLoc = memManager.offsetMemory(argvObjObj, 0);
-		memManager.setArgv(argvLoc, argvObjLoc);
-
-		auto argvPtr = ptrManager.getOrCreatePointer(globalCtx, argv);
-		env.insert(argvPtr, argvLoc);
-		store.insert(argvLoc, argvObjLoc);
+		unsigned offset = stLayout->getElementOffset(i);
+		auto subInitializer = cast<Constant>(initializer->getOperand(i));
+		auto subInitType = subInitializer->getType();
+		if (isScalarNonPointerType(subInitType))
+			// Not an interesting field. Skip it.
+			continue;
+		
+		auto offsetObj = memManager.offsetMemory(gObj, offset);
+		processGlobalInitializer(offsetObj, subInitializer, envStore, dataLayout);
 	}
+}
+
+void GlobalPointerAnalysis::processGlobalArrayInitializer(const MemoryObject* gObj, const llvm::Constant* initializer, EnvStore& envStore, const DataLayout& dataLayout)
+{
+	auto arrayType = cast<ArrayType>(initializer->getType());
+	auto elemType = arrayType->getElementType();
+
+	if (!isScalarNonPointerType(elemType))
+	{
+		// Arrays/vectors are collapsed into a single element
+		for (unsigned i = 0, e = initializer->getNumOperands(); i < e; ++i)
+		{
+			auto elem = cast<Constant>(initializer->getOperand(i));
+			processGlobalInitializer(gObj, elem, envStore, dataLayout);
+		}
+	}
+}
+
+void GlobalPointerAnalysis::processGlobalInitializer(const MemoryObject* gObj, const Constant* initializer, EnvStore& envStore, const DataLayout& dataLayout)
+{
+	if (initializer->getType()->isSingleValueType())
+		processGlobalScalarInitializer(gObj, initializer, envStore, dataLayout);
+	else if (llvm::isa<llvm::ConstantStruct>(initializer))
+		processGlobalStructInitializer(gObj, initializer, envStore, dataLayout);
+	else if (llvm::isa<llvm::ConstantDataSequential>(initializer) || llvm::isa<llvm::ConstantArray>(initializer))
+		processGlobalArrayInitializer(gObj, initializer, envStore, dataLayout);
+	else
+	{
+		llvm::errs() << "initializer = " << *initializer << "\n";
+		llvm_unreachable("Unknown initializer type");
+	}
+}
+
+void GlobalPointerAnalysis::initializeSpecialPointerObject(const Module& module, EnvStore& envStore)
+{
+	auto uPtr = ptrManager.setUniversalPointer(UndefValue::get(Type::getInt8PtrTy(module.getContext())));
+	auto uLoc = memManager.getUniversalObject();
+	envStore.first.insert(uPtr, uLoc);
+	envStore.second.insert(uLoc, uLoc);
+	auto nPtr = ptrManager.setNullPointer(ConstantPointerNull::get(Type::getInt8PtrTy(module.getContext())));
+	auto nLoc = memManager.getNullObject();
+	envStore.first.insert(nPtr, nLoc);
 }
 
 std::pair<Env, Store> GlobalPointerAnalysis::runOnModule(const Module& module)
 {
-	Env env;
-	auto store = Store();
+	EnvStore envStore;
 
 	// Set up the points-to relations of uPtr, uObj and nullPtr
-	auto uPtr = ptrManager.getUniversalPtr();
-	auto uLoc = memManager.getUniversalLocation();
-	env.insert(uPtr, uLoc);
-	store.insert(uLoc, uLoc);
-	auto nPtr = ptrManager.getNullPtr();
-	auto nLoc = memManager.getNullLocation();
-	env.insert(nPtr, nLoc);
+	initializeSpecialPointerObject(module, envStore);
+
+	// TODO: Fix this file after finishing typeMap
 
 	// First, scan through all the global values and register them in ptrManager. This scan should precede varaible initialization because the initialization may refer to another global value defined "below" it
-	registerGlobalValues(env, module);
+	createGlobalVariables(module, envStore.first);
+	createFunctions(module, envStore.first);
 
 	// After all the global values are defined, go ahead and process the initializers
-	initializeGlobalValues(env, store, module);
-
-	initializeMainArgs(module, env, store);
+	initializeGlobalValues(module, envStore);
 
 	// I'm not sure whether RVO will trigger in this case. So to be safe I'll just use move construction.
-	return std::make_pair(std::move(env), std::move(store));
+	return envStore;
+}
+
 }

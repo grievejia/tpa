@@ -1,7 +1,9 @@
-#ifndef TPA_EXPAND_CONSTANT_EXPR_H
-#define TPA_EXPAND_CONSTANT_EXPR_H
+#pragma once
 
 #include "llvm/Pass.h"
+
+namespace transform
+{
 
 // This is a FunctionPass because our handling of PHI nodes means that our modifications may cross BasicBlocks.
 class ExpandConstantExprPass: public llvm::FunctionPass
@@ -13,4 +15,4 @@ public:
 	bool runOnFunction(llvm::Function& F) override;
 };
 
-#endif
+}

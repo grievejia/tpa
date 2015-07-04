@@ -9,3 +9,5 @@ endfunction()
 
 add_script(compile-dot.py)
 add_script(extract-annotation.py)
+add_script(pts-test.py)
+add_script(clang-opt.py)

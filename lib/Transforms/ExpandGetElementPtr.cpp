@@ -29,6 +29,9 @@
 
 using namespace llvm;
 
+namespace transform
+{
+
 static bool expandGEP(GetElementPtrInst* gepInst, const DataLayout* dataLayout, Type* ptrType)
 {
 	int64_t offset = 0;
@@ -137,3 +140,5 @@ bool ExpandGetElementPtrPass::runOnBasicBlock(BasicBlock& BB)
 
 char ExpandGetElementPtrPass::ID = 0;
 static RegisterPass<ExpandGetElementPtrPass> X("expand-gep", "Expand out GetElementPtr instructions into arithmetic", false, false);
+
+}

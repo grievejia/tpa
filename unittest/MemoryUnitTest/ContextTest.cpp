@@ -1,5 +1,5 @@
-#include "MemoryModel/Precision/KLimitContext.h"
-#include "MemoryModel/Precision/AdaptiveContext.h"
+#include "PointerAnalysis/MemoryModel/Precision/KLimitContext.h"
+#include "PointerAnalysis/MemoryModel/Precision/AdaptiveContext.h"
 #include "Utils/ParseLLVMAssembly.h"
 
 #include "gtest/gtest.h"

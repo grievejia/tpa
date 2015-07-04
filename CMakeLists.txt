@@ -22,15 +22,15 @@ else()
 	message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
 endif()
 
-configure_file(config/taint.conf taint.conf COPYONLY)
-configure_file(config/ptr_effect.conf ptr_effect.conf COPYONLY)
-configure_file(config/mod_ref.conf mod_ref.conf COPYONLY)
+configure_file(config/ptr.config ptr.config COPYONLY)
+configure_file(config/modref.config modref.config COPYONLY)
+configure_file(config/taint.config taint.config COPYONLY)
 
 # Specify library and binary output dir
 set (EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 add_subdirectory (lib)
-add_subdirectory (unittest)
+#add_subdirectory (unittest)
 add_subdirectory (tool)
 
 enable_testing ()

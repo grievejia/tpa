@@ -21,6 +21,9 @@
 
 using namespace llvm;
 
+namespace transform
+{
+
 char GlobalCleanup::ID = 0;
 static RegisterPass<GlobalCleanup> X("global-cleanup", "GlobalValue cleanup for TPA (assumes all of the binary is linked statically)", false, false);
 
@@ -83,4 +86,6 @@ bool ResolveAliases::runOnModule(Module &M)
 		modified = true;
 	}
 	return modified;
+}
+
 }

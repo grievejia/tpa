@@ -1,8 +1,8 @@
-#include "MemoryModel/Memory/MemoryManager.h"
-#include "MemoryModel/Pointer/PointerManager.h"
-#include "MemoryModel/PtsSet/Env.h"
-#include "MemoryModel/PtsSet/PtsSet.h"
-#include "MemoryModel/PtsSet/Store.h"
+#include "PointerAnalysis/MemoryModel/Memory/MemoryManager.h"
+#include "PointerAnalysis/MemoryModel/Pointer/PointerManager.h"
+#include "PointerAnalysis/MemoryModel/PtsSet/Env.h"
+#include "PointerAnalysis/MemoryModel/PtsSet/PtsSet.h"
+#include "PointerAnalysis/MemoryModel/PtsSet/Store.h"
 #include "Utils/ParseLLVMAssembly.h"
 
 #include "gtest/gtest.h"

@@ -1,7 +1,9 @@
-#ifndef TPA_GLOBAL_CLEANUP_H
-#define TPA_GLOBAL_CLEANUP_H
+#pragma once
 
 #include "llvm/Pass.h"
+
+namespace transform
+{
 
 class GlobalCleanup: public llvm::ModulePass
 {
@@ -21,4 +23,4 @@ public:
 	bool runOnModule(llvm::Module &M) override;
 };
 
-#endif
+}

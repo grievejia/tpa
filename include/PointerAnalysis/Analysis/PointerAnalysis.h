@@ -1,52 +1,111 @@
-#ifndef TPA_POINTER_ANALYSIS_H
-#define TPA_POINTER_ANALYSIS_H
+#pragma once
 
-#include "MemoryModel/PtsSet/Env.h"
-#include "MemoryModel/PtsSet/PtsSet.h"
-#include "PointerAnalysis/ControlFlow/StaticCallGraph.h"
+#include "Annotation/Pointer/ExternalPointerTable.h"
+#include "PointerAnalysis/MemoryModel/MemoryManager.h"
+#include "PointerAnalysis/MemoryModel/PointerManager.h"
+#include "PointerAnalysis/Support/PtsSet.h"
 
-namespace llvm
+#include <llvm/IR/CallSite.h>
+#include <llvm/IR/Module.h>
+
+namespace context
 {
-	class Function;
-	class Instruction;
-	class Value;
+	class Context;
 }
 
 namespace tpa
 {
 
-class ExternalPointerTable;
-class MemoryManager;
-class PointerManager;
-
+// CRTP pointer analysis base class
+template <typename SubClass>
 class PointerAnalysis
 {
 protected:
-	PointerManager& ptrManager;
-	MemoryManager& memManager;
-
-	const ExternalPointerTable& extTable;
-
-	Env env;
-	StaticCallGraph callGraph;
+	PointerManager ptrManager;
+	MemoryManager memManager;
+	annotation::ExternalPointerTable extTable;
 public:
-	// Constructor with default env
-	PointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerTable& e): ptrManager(p), memManager(m), extTable(e), env() {}
-	// Constructors with user-initialized env
-	PointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerTable& ext, const Env& e): ptrManager(p), memManager(m), extTable(ext), env(e) {}
-	PointerAnalysis(PointerManager& p, MemoryManager& m, const ExternalPointerTable& ext, Env&& e): ptrManager(p), memManager(m), extTable(ext), env(std::move(e)) {}
-	virtual ~PointerAnalysis() = default;
+	PointerAnalysis() = default;
 
-	PtsSet getPtsSet(const llvm::Value* val) const;
-	PtsSet getPtsSet(const Context*, const llvm::Value*) const;
-	PtsSet getPtsSet(const Pointer* ptr) const;
+	PointerAnalysis(const PointerAnalysis&) = delete;
+	PointerAnalysis(PointerAnalysis&&) noexcept = default;
+	PointerAnalysis& operator=(const PointerAnalysis&) = delete;
+	PointerAnalysis& operator=(PointerAnalysis&&) = delete;
 
-	const MemoryManager& getMemoryManager() const { return memManager; }
 	const PointerManager& getPointerManager() const { return ptrManager; }
-	const StaticCallGraph& getCallGraph() const { return callGraph; }
-	std::vector<const llvm::Function*> getCallTargets(const Context*, const llvm::Instruction*) const;
+	const MemoryManager& getMemoryManager() const { return memManager; }
+
+	void loadExternalPointerTable(const char* extFileName)
+	{
+		extTable = annotation::ExternalPointerTable::loadFromFile(extFileName);
+	}
+
+	PtsSet getPtsSet(const Pointer* ptr) const
+	{
+		return static_cast<const SubClass*>(this)->getPtsSetImpl(ptr);
+	}
+
+	PtsSet getPtsSet(const context::Context* ctx, const llvm::Value* val) const
+	{
+		assert(ctx != nullptr && val != nullptr);
+
+		auto ptr = ptrManager.getPointer(ctx, val->stripPointerCasts());
+		if (ptr == nullptr)
+			return PtsSet::getEmptySet();
+
+		return getPtsSet(ptr);
+	}
+
+	PtsSet getPtsSet(const llvm::Value* val) const
+	{
+		assert(val != nullptr);
+
+		auto ptrs = ptrManager.getPointersWithValue(val->stripPointerCasts());
+		assert(!ptrs.empty());
+
+		std::vector<PtsSet> pSets;
+		pSets.reserve(ptrs.size());
+
+		for (auto ptr: ptrs)
+			pSets.emplace_back(getPtsSet(ptr));
+
+		return PtsSet::mergeAll(pSets);
+	}
+
+	std::vector<const llvm::Function*> getCallees(const llvm::ImmutableCallSite& cs)
+	{
+		std::vector<const llvm::Function*> ret;
+
+		if (auto f = cs.getCalledFunction())
+		{
+			ret.push_back(f);
+		}
+		else
+		{
+			auto funPtrVal = cs.getCalledValue();
+			assert(funPtrVal != nullptr);
+			
+			auto pSet = getPtsSet(funPtrVal);
+			if (pSet.has(memManager.getUniversalObject()))
+			{
+				auto module = cs.getInstruction()->getParent()->getParent()->getParent();
+				for (auto const& f: *module)
+					if (f.hasAddressTaken())
+						ret.push_back(&f);
+			}
+			else
+			{
+				for (auto obj: pSet)
+				{
+					auto& allocSite = obj->getAllocSite();
+					if (allocSite.getAllocType() == AllocSiteTag::Function)
+						ret.push_back(allocSite.getFunction());
+				}
+			}
+		}
+
+		return ret;
+	}
 };
 
 }
-
-#endif

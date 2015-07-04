@@ -1,31 +1,38 @@
 
 set (PointerAnalysisSourceCodes
-	Analysis/AliasAnalysis.cpp
 	Analysis/GlobalPointerAnalysis.cpp
-	Analysis/ModRefAnalysis.cpp
-	Analysis/ModRefModuleAnalysis.cpp
-	Analysis/PointerAnalysis.cpp
-	Analysis/ReachingDefAnalysis.cpp
-	Analysis/ReachingDefModuleAnalysis.cpp
-	ControlFlow/PointerCFG.cpp
-	ControlFlow/PointerProgramBuilder.cpp
-	ControlFlow/SemiSparseProgramBuilder.cpp
-	ControlFlow/StaticCallGraph.cpp
-	ControlFlow/WriteDotFile.cpp
-	DataFlow/DefUseGraph.cpp
-	DataFlow/DefUseModule.cpp
-	DataFlow/DefUseModuleBuilder.cpp
-	DataFlow/DefUseProgramBuilder.cpp
-	DataFlow/ModRefSummary.cpp
-	DataFlow/WriteDotFile.cpp
-	External/ExternalPointerTable.cpp
-	External/ExternalPointerTablePrinter.cpp
-	External/ExternalModRefTable.cpp
-	External/ExternalModRefTablePrinter.cpp
+	Analysis/SemiSparsePointerAnalysis.cpp
+	Program/CFG.cpp
+	Program/SemiSparseProgram.cpp
+	Context/AdaptiveContext.cpp
+	Context/Context.cpp
+	Context/KLimitContext.cpp
+	Engine/ExternalCallAnalysis.cpp
+	Engine/Initializer.cpp
+	Engine/SemiSparsePropagator.cpp
+	Engine/StorePruner.cpp
+	Engine/TransferFunction.cpp
+	FrontEnd/CFGBuilder.cpp
+	FrontEnd/CFGSimplifier.cpp
+	FrontEnd/FunctionTranslator.cpp
+	FrontEnd/InstructionTranslator.cpp
+	FrontEnd/PriorityAssigner.cpp
+	FrontEnd/SemiSparseProgramBuilder.cpp
+	FrontEnd/TypeAnalysis.cpp
+	FrontEnd/TypeMap.cpp
+	MemoryModel/ArrayLayout.cpp
+	MemoryModel/MemoryManager.cpp
+	MemoryModel/PointerLayout.cpp
+	MemoryModel/PointerManager.cpp
+	MemoryModel/TypeLayout.cpp
+	Output/CFGNodePrinter.cpp
+	Output/ContextPrinter.cpp
+	Output/MemoryPrinter.cpp
+	Output/NodePrinter.cpp
+	Output/WriteDotFile.cpp
+	Support/CallGraph.cpp
+	Support/PtsSet.cpp
 )
-add_library (PointerAnalysisObj OBJECT ${PointerAnalysisSourceCodes})
-add_library (PointerAnalysis SHARED $<TARGET_OBJECTS:PointerAnalysisObj>)
-add_library (PointerAnalysisStatic STATIC $<TARGET_OBJECTS:PointerAnalysisObj>)
+add_library (PointerAnalysis STATIC ${PointerAnalysisSourceCodes})
 
-target_link_libraries (PointerAnalysis MemoryModel)
-target_link_libraries (PointerAnalysisStatic MemoryModelStatic LLVMAnalysis)
+target_link_libraries (PointerAnalysis Annotation LLVMSupport LLVMCore)

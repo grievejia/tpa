@@ -1,7 +1,9 @@
-#ifndef TPA_EXPAND_GETELEMENTPTR_H
-#define TPA_EXPAND_GETELEMENTPTR_H
+#pragma once
 
 #include "llvm/Pass.h"
+
+namespace transform
+{
 
 class ExpandGetElementPtrPass: public llvm::BasicBlockPass
 {
@@ -12,4 +14,4 @@ public:
 	bool runOnBasicBlock(llvm::BasicBlock& BB) override;
 };
 
-#endif
+}

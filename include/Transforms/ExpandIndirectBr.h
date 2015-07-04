@@ -1,7 +1,9 @@
-#ifndef TPA_EXPAND_INDIRECTBR_H
-#define TPA_EXPAND_INDIRECTBR_H
+#pragma once
 
 #include "llvm/Pass.h"
+
+namespace transform
+{
 
 // This is a ModulePass so that it can expand out blockaddress
 // ConstantExprs inside global variable initializers.
@@ -13,4 +15,4 @@ public:
 	bool runOnModule(llvm::Module &M) override;
 };
 
-#endif
+}

@@ -1,0 +1,55 @@
+#pragma once
+
+#include "PointerAnalysis/MemoryModel/AllocSite.h"
+#include "PointerAnalysis/MemoryModel/MemoryBlock.h"
+#include "PointerAnalysis/MemoryModel/MemoryObject.h"
+
+#include <unordered_set>
+#include <unordered_map>
+
+namespace tpa
+{
+
+class MemoryManager
+{
+private:
+	using AllocMap = std::unordered_map<AllocSite, MemoryBlock>;
+	AllocMap allocMap;
+
+	// Size of a pointer value
+	size_t ptrSize;
+
+	// Use the slow std::set here because we want the ordering
+	mutable std::unordered_set<MemoryObject> objSet;
+
+	// uBlock is the memory block representing the location that may points to anywhere. It is of the type byte array
+	MemoryBlock uBlock;
+	// nBlock is the memory block representing the location that must be null pointer. Its size is set to zero
+	MemoryBlock nBlock;
+	const MemoryObject* uObj;
+	const MemoryObject* nObj;
+
+	const MemoryBlock* allocateMemoryBlock(AllocSite, const TypeLayout*);
+	const MemoryObject* getMemoryObject(const MemoryBlock*, size_t, bool) const;
+
+	const MemoryObject* offsetMemory(const MemoryBlock*, size_t) const;
+public:
+	MemoryManager(size_t pSize = 8u);
+
+	const MemoryObject* getUniversalObject() const { return uObj; }
+	const MemoryObject* getNullObject() const { return nObj; }
+	size_t getPointerSize() const { return ptrSize; }
+
+	const MemoryObject* allocateGlobalMemory(const llvm::GlobalVariable*, const TypeLayout*);
+	const MemoryObject* allocateMemoryForFunction(const llvm::Function* f);
+	const MemoryObject* allocateStackMemory(const context::Context*, const llvm::Value*, const TypeLayout*);
+	const MemoryObject* allocateHeapMemory(const context::Context*, const llvm::Value*, const TypeLayout*);
+
+	const MemoryObject* allocateArgv(const llvm::Value*);
+
+	const MemoryObject* offsetMemory(const MemoryObject*, size_t) const;
+	// Return all the MemoryObjects that share the same MemoryBlock as obj
+	std::vector<const MemoryObject*> getReachablePointerObjects(const MemoryObject*, bool includeSelf = true) const;
+};
+
+}

@@ -2,9 +2,9 @@
 #include "Client/Taintness/SourceSink/Checker/SinkSignature.h"
 #include "Client/Taintness/SourceSink/Checker/SinkViolationChecker.h"
 #include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
-#include "MemoryModel/Memory/MemoryManager.h"
-#include "MemoryModel/Pointer/PointerManager.h"
-#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
+#include "PointerAnalysis/MemoryModel/Memory/MemoryManager.h"
+#include "PointerAnalysis/MemoryModel/Pointer/PointerManager.h"
+#include "Annotation/Pointer/ExternalPointerTable.h"
 #include "Utils/DummyPointerAnalysis.h"
 #include "Utils/ParseLLVMAssembly.h"
 

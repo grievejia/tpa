@@ -6,4 +6,4 @@ set (tableCheckSourceCode
 )
 
 add_executable (table-check ${tableCheckSourceCode})
-target_link_libraries (table-check ClientsStatic LLVMIRReader LLVMAsmParser)
+target_link_libraries (table-check Util Annotation)
