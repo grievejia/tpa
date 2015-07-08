@@ -351,13 +351,13 @@ bool TransferFunction::evalCallArguments(const context::Context* ctx, const Call
 	return true;
 }
 
-void TransferFunction::evalInternalCall(const context::Context* ctx, const CallCFGNode& callNode, const FunctionContext& fc, EvalResult& evalResult)
+void TransferFunction::evalInternalCall(const context::Context* ctx, const CallCFGNode& callNode, const FunctionContext& fc, EvalResult& evalResult, bool callGraphUpdated)
 {
 	auto tgtCFG = globalState.getSemiSparseProgram().getCFGForFunction(*fc.getFunction());
 	assert(tgtCFG != nullptr);
 	auto tgtEntryNode = tgtCFG->getEntryNode();
 
-	if (!evalCallArguments(ctx, callNode, fc))
+	if (!callGraphUpdated && !evalCallArguments(ctx, callNode, fc))
 		return;
 
 	evalResult.addMemLevelSuccessor(ProgramPoint(fc.getContext(), tgtEntryNode));
@@ -372,13 +372,13 @@ void TransferFunction::evalCallNode(const context::Context* ctx, const CallCFGNo
 		auto callsite = callNode.getCallSite();
 		auto newCtx = KLimitContext::pushContext(ctx, callsite);
 		auto callTgt = FunctionContext(newCtx, f);
-		globalState.getCallGraph().insertEdge(ProgramPoint(ctx, &callNode), callTgt);
+		bool callGraphUpdated = globalState.getCallGraph().insertEdge(ProgramPoint(ctx, &callNode), callTgt);
 
 		// Check whether f is an external library call
 		if (f->isDeclaration())
 			evalExternalCall(ctx, callNode, callTgt, evalResult);
 		else
-			evalInternalCall(ctx, callNode, callTgt, evalResult);
+			evalInternalCall(ctx, callNode, callTgt, evalResult, callGraphUpdated);
 	}
 }
 

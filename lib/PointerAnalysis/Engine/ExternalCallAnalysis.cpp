@@ -227,8 +227,7 @@ void TransferFunction::evalExternalCall(const context::Context* ctx, const CallC
 	if (summary == nullptr)
 	{
 		errs() << "\nPointer Analysis error: cannot find annotation for the following function:\n" << fc.getFunction()->getName() << "\n\n";
-		errs() << "Please add annotation to the aforementioned function and in the config file and try again.\n";
-		std::exit(-1);
+		llvm_unreachable("Please add annotation to the aforementioned function and in the config file and try again.\n");
 	}
 
 	for (auto const& effect: *summary)

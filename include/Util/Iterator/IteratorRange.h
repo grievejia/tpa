@@ -12,6 +12,8 @@ class IteratorRange
 private:
 	Iterator first, last;
 public:
+	using value_type = typename std::iterator_traits<Iterator>::value_type;
+
 	IteratorRange(Iterator s, Iterator e): first(std::move(s)), last(std::move(e)) {}
 
 	Iterator begin() const { return first; }

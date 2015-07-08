@@ -30,7 +30,6 @@ set (PointerAnalysisSourceCodes
 	Output/MemoryPrinter.cpp
 	Output/NodePrinter.cpp
 	Output/WriteDotFile.cpp
-	Support/CallGraph.cpp
 	Support/PtsSet.cpp
 )
 add_library (PointerAnalysis STATIC ${PointerAnalysisSourceCodes})

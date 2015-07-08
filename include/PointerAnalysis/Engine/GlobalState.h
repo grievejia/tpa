@@ -3,6 +3,8 @@
 #include "PointerAnalysis/Engine/StorePruner.h"
 #include "PointerAnalysis/Support/CallGraph.h"
 #include "PointerAnalysis/Support/Env.h"
+#include "PointerAnalysis/Support/FunctionContext.h"
+#include "PointerAnalysis/Support/ProgramPoint.h"
 
 namespace annotation
 {
@@ -26,7 +28,7 @@ private:
 	const annotation::ExternalPointerTable& extTable;
 
 	Env& env;
-	CallGraph callGraph;
+	CallGraph<ProgramPoint, FunctionContext> callGraph;
 
 	StorePruner pruner;
 public:
@@ -42,7 +44,7 @@ public:
 	Env& getEnv() { return env; }
 	const Env& getEnv() const { return env; }
 
-	CallGraph& getCallGraph() { return callGraph; }
+	decltype(callGraph)& getCallGraph() { return callGraph; }
 	StorePruner& getStorePruner() { return pruner; }
 };
 

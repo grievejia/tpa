@@ -13,7 +13,7 @@ static bool startWithSummary(const TypeLayout* type)
 	return ret;
 }
 
-MemoryManager::MemoryManager(size_t pSize): ptrSize(pSize), uBlock(AllocSite::getUniversalAllocSite(), TypeLayout::getByteArrayTypeLayout()), nBlock(AllocSite::getNullAllocSite(), TypeLayout::getPointerTypeLayoutWithSize(0)), uObj(nullptr), nObj(nullptr)
+MemoryManager::MemoryManager(size_t pSize): ptrSize(pSize), uBlock(AllocSite::getUniversalAllocSite(), TypeLayout::getByteArrayTypeLayout()), nBlock(AllocSite::getNullAllocSite(), TypeLayout::getPointerTypeLayoutWithSize(0)), uObj(nullptr), nObj(nullptr), argvObj(nullptr)
 {
 	uObj = getMemoryObject(&uBlock, 0, true);
 	nObj = getMemoryObject(&nBlock, 0, false);
@@ -67,7 +67,8 @@ const MemoryObject* MemoryManager::allocateHeapMemory(const Context* ctx, const 
 const MemoryObject* MemoryManager::allocateArgv(const llvm::Value* ptr)
 {
 	auto memBlock = allocateMemoryBlock(AllocSite::getStackAllocSite(Context::getGlobalContext(), ptr), TypeLayout::getByteArrayTypeLayout());
-	return getMemoryObject(memBlock, 0, true);
+	argvObj = getMemoryObject(memBlock, 0, true);
+	return argvObj;
 }
 
 const MemoryObject* MemoryManager::offsetMemory(const MemoryObject* obj, size_t offset) const
@@ -121,6 +122,23 @@ std::vector<const MemoryObject*> MemoryManager::getReachablePointerObjects(const
 			return offsetMemory(memBlock, offset);
 		}
 	);
+
+	return ret;
+}
+
+std::vector<const MemoryObject*> MemoryManager::getReachableMemoryObjects(const MemoryObject* obj) const
+{
+	auto ret = std::vector<const MemoryObject*>();
+
+	auto itr = objSet.find(*obj);
+	assert(itr != objSet.end());
+
+	auto block = obj->getMemoryBlock();
+	while (itr != objSet.end() && itr->getMemoryBlock() == block)
+	{
+		ret.push_back(&*itr);
+		++itr;
+	}
 
 	return ret;
 }

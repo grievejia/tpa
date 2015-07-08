@@ -24,6 +24,26 @@ protected:
 	PointerManager ptrManager;
 	MemoryManager memManager;
 	annotation::ExternalPointerTable extTable;
+
+	void getCallees(const llvm::ImmutableCallSite& cs, PtsSet pSet, std::vector<const llvm::Function*>& funcs) const
+	{
+		if (pSet.has(memManager.getUniversalObject()))
+		{
+			auto module = cs.getInstruction()->getParent()->getParent()->getParent();
+			for (auto const& f: *module)
+				if (f.hasAddressTaken())
+					funcs.push_back(&f);
+		}
+		else
+		{
+			for (auto obj: pSet)
+			{
+				auto& allocSite = obj->getAllocSite();
+				if (allocSite.getAllocType() == AllocSiteTag::Function)
+					funcs.push_back(allocSite.getFunction());
+			}
+		}
+	}
 public:
 	PointerAnalysis() = default;
 
@@ -72,7 +92,7 @@ public:
 		return PtsSet::mergeAll(pSets);
 	}
 
-	std::vector<const llvm::Function*> getCallees(const llvm::ImmutableCallSite& cs)
+	std::vector<const llvm::Function*> getCallees(const llvm::ImmutableCallSite& cs, const context::Context* ctx = nullptr) const
 	{
 		std::vector<const llvm::Function*> ret;
 
@@ -85,23 +105,8 @@ public:
 			auto funPtrVal = cs.getCalledValue();
 			assert(funPtrVal != nullptr);
 			
-			auto pSet = getPtsSet(funPtrVal);
-			if (pSet.has(memManager.getUniversalObject()))
-			{
-				auto module = cs.getInstruction()->getParent()->getParent()->getParent();
-				for (auto const& f: *module)
-					if (f.hasAddressTaken())
-						ret.push_back(&f);
-			}
-			else
-			{
-				for (auto obj: pSet)
-				{
-					auto& allocSite = obj->getAllocSite();
-					if (allocSite.getAllocType() == AllocSiteTag::Function)
-						ret.push_back(allocSite.getFunction());
-				}
-			}
+			auto pSet = ctx == nullptr ? getPtsSet(funPtrVal) : getPtsSet(ctx, funPtrVal);
+			getCallees(cs, pSet, ret);
 		}
 
 		return ret;

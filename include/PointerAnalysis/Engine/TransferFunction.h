@@ -63,7 +63,7 @@ private:
 	bool updateParameterPtsSets(const FunctionContext&, const std::vector<PtsSet>&);
 	bool evalCallArguments(const context::Context*, const CallCFGNode&, const FunctionContext&);
 	void evalExternalCall(const context::Context*, const CallCFGNode&, const FunctionContext&, EvalResult&);
-	void evalInternalCall(const context::Context*, const CallCFGNode&, const FunctionContext&, EvalResult&);
+	void evalInternalCall(const context::Context*, const CallCFGNode&, const FunctionContext&, EvalResult&, bool);
 	// evalReturn helper
 	std::pair<bool, bool> evalReturnValue(const context::Context*, const ReturnCFGNode&, const ProgramPoint&);
 	void evalReturn(const context::Context*, const ReturnCFGNode&, const ProgramPoint&, EvalResult&);

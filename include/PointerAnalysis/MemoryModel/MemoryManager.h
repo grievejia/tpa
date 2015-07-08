@@ -4,7 +4,7 @@
 #include "PointerAnalysis/MemoryModel/MemoryBlock.h"
 #include "PointerAnalysis/MemoryModel/MemoryObject.h"
 
-#include <unordered_set>
+#include <set>
 #include <unordered_map>
 
 namespace tpa
@@ -20,7 +20,7 @@ private:
 	size_t ptrSize;
 
 	// Use the slow std::set here because we want the ordering
-	mutable std::unordered_set<MemoryObject> objSet;
+	mutable std::set<MemoryObject> objSet;
 
 	// uBlock is the memory block representing the location that may points to anywhere. It is of the type byte array
 	MemoryBlock uBlock;
@@ -28,6 +28,8 @@ private:
 	MemoryBlock nBlock;
 	const MemoryObject* uObj;
 	const MemoryObject* nObj;
+
+	const MemoryObject* argvObj;
 
 	const MemoryBlock* allocateMemoryBlock(AllocSite, const TypeLayout*);
 	const MemoryObject* getMemoryObject(const MemoryBlock*, size_t, bool) const;
@@ -46,9 +48,16 @@ public:
 	const MemoryObject* allocateHeapMemory(const context::Context*, const llvm::Value*, const TypeLayout*);
 
 	const MemoryObject* allocateArgv(const llvm::Value*);
+	const MemoryObject* getArgvObject() const
+	{
+		assert(argvObj != nullptr);
+		return argvObj;
+	}
 
 	const MemoryObject* offsetMemory(const MemoryObject*, size_t) const;
-	// Return all the MemoryObjects that share the same MemoryBlock as obj
+	// Return all MemoryObjects that share the same MemoryBlock as obj
+	std::vector<const MemoryObject*> getReachableMemoryObjects(const MemoryObject*) const;
+	// Return all MemoryObjects that might be pointer and share the same MemoryBlock as obj
 	std::vector<const MemoryObject*> getReachablePointerObjects(const MemoryObject*, bool includeSelf = true) const;
 };
 
