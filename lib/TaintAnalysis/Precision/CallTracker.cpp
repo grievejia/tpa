@@ -4,11 +4,14 @@
 #include "TaintAnalysis/Support/TaintEnv.h"
 #include "TaintAnalysis/Support/TaintMemo.h"
 #include "Util/DataStructure/VectorSet.h"
+#include "Util/IO/TaintAnalysis/Printer.h"
 
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Function.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
+using namespace util::io;
 
 namespace taint
 {
@@ -86,6 +89,7 @@ TaintVector CallTracker::getMemoryTaintValues(const CallerVector& callers, const
 void CallTracker::trackMemory(const ProgramPoint& pp, const CallerVector& callers)
 {
 	std::unordered_map<size_t, util::VectorSet<const tpa::MemoryObject*>> trackedObjects;
+	
 	for (auto const& mapping: pp.getDefUseInstruction()->mem_succs())
 	{
 		auto obj = mapping.first;
@@ -107,8 +111,11 @@ void CallTracker::trackMemory(const ProgramPoint& pp, const CallerVector& caller
 
 void CallTracker::trackCall(const ProgramPoint& pp, const std::vector<ProgramPoint>& callers)
 {
-	trackValue(pp, callers);
-	trackMemory(pp, callers);
+	if (!callers.empty())
+	{
+		trackValue(pp, callers);
+		trackMemory(pp, callers);
+	}
 }
 
 }

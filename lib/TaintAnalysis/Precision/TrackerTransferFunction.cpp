@@ -8,12 +8,14 @@
 #include "TaintAnalysis/Support/ProgramPoint.h"
 #include "TaintAnalysis/Support/TaintEnv.h"
 #include "TaintAnalysis/Support/TaintMemo.h"
+#include "Util/IO/TaintAnalysis/Printer.h"
 
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace tpa;
+using namespace util::io;
 
 namespace taint
 {
@@ -285,6 +287,8 @@ void TrackerTransferFunction::eval(const ProgramPoint& pp)
 {
 	if (!trackerState.insertVisitedLocation(pp))
 		return;
+
+	errs() << "tracking " << pp << "\n";
 
 	auto duInst = pp.getDefUseInstruction();
 	if (duInst->isEntryInstruction())

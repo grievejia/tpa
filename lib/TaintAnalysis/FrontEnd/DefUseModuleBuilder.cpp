@@ -64,7 +64,7 @@ void addExternalDefs(DefUseFunction& duFunc)
 			for (auto& use: inst.operands())
 			{
 				auto value = use.get();
-				if (isa<GlobalValue>(value) || isa<Argument>(value))
+				if (isa<Constant>(value) || isa<Argument>(value))
 				{
 					entryInst->insertTopLevelEdge(duFunc.getDefUseInstruction(&inst));
 					break;
@@ -105,7 +105,8 @@ void computeNodePriority(DefUseFunction& duFunc)
 		for (auto bItr = bb->rbegin(), bIte = bb->rend(); bItr != bIte; ++bItr)
 		{
 			auto duInst = duFunc.getDefUseInstruction(&*bItr);
-			duInst->setPriority(currPrio++);
+			if (duInst != nullptr)
+				duInst->setPriority(currPrio++);
 		}
 	}
 }

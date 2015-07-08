@@ -3,13 +3,13 @@
 
 using namespace util;
 
-CommandLineOptions::CommandLineOptions(int argc, char** argv): ptrConfigFileName("ptr.config"), k(0)
+CommandLineOptions::CommandLineOptions(int argc, char** argv): ptrConfigFileName("ptr.config"), modRefConfigFileName("modref.config"), taintConfigFileName("taint.config"), k(0)
 {
 	TypedCommandLineParser cmdParser("Points-to analysis verifier");
 	cmdParser.addStringPositionalFlag("irFile", "Input LLVM bitcode file name", inputFileName);
 	cmdParser.addStringOptionalFlag("ptr-config", "Annotation file for external library points-to analysis (default = <current dir>/ptr.config)", ptrConfigFileName);
-	cmdParser.addStringOptionalFlag("modref-config", "Annotation file for external library mod/ref analysis (default = <current dir>/modref.config)", ptrConfigFileName);
-	cmdParser.addStringOptionalFlag("taint-config", "Annotation file for external library taint analysis (default = <current dir>/taint.config)", ptrConfigFileName);
+	cmdParser.addStringOptionalFlag("modref-config", "Annotation file for external library mod/ref analysis (default = <current dir>/modref.config)", modRefConfigFileName);
+	cmdParser.addStringOptionalFlag("taint-config", "Annotation file for external library taint analysis (default = <current dir>/taint.config)", taintConfigFileName);
 	cmdParser.addUIntOptionalFlag("k", "The size limit of the stack for k-CFA", k);
 	cmdParser.addBooleanOptionalFlag("no-prepass", "Do no run IR cannonicalization before the analysis", noPrepassFlag);
 

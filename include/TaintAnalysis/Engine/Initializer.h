@@ -25,7 +25,7 @@ private:
 	TaintMemo& memo;
 
 	void initializeMainArgs(TaintStore&);
-	void initializeExternalGlobalVariables(TaintStore&);
+	void initializeGlobalVariables(TaintStore&);
 public:
 	Initializer(TaintGlobalState& g, TaintMemo& m);
 

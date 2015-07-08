@@ -232,6 +232,7 @@ bool updateSummaryForExternalCall(const Instruction* inst, const Function* f, Mo
 	auto modRefSummary = modRefTable.lookup(f->getName());
 	if (modRefSummary == nullptr)
 	{
+		errs() << modRefTable.size() << "\n";
 		errs() << "Missing entry in ModRefTable: " << f->getName() << "\n";
 		llvm_unreachable("Consider adding the function to modref annotations");
 	}

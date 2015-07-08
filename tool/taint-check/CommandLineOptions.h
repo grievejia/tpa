@@ -18,8 +18,8 @@ public:
 	const llvm::StringRef& getInputFileName() const { return inputFileName; }
 
 	const llvm::StringRef& getPtrConfigFileName() const { return ptrConfigFileName; }
-	const llvm::StringRef& getModRefConfigFileName() const { return ptrConfigFileName; }
-	const llvm::StringRef& getTaintConfigFileName() const { return ptrConfigFileName; }
+	const llvm::StringRef& getModRefConfigFileName() const { return modRefConfigFileName; }
+	const llvm::StringRef& getTaintConfigFileName() const { return taintConfigFileName; }
 	bool isPrepassDisabled() const { return noPrepassFlag; }
 	unsigned getContextSensitivity() const { return k; }
 };

@@ -31,7 +31,7 @@ public:
 		extTable = annotation::ExternalTaintTable::loadFromFile(extFileName);
 	}
 
-	ProgramPointSet runOnDefUseModule(const DefUseModule&);
+	std::pair<bool, ProgramPointSet> runOnDefUseModule(const DefUseModule&);
 };
 
 }

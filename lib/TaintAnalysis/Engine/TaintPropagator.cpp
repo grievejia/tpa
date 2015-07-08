@@ -3,6 +3,10 @@
 #include "TaintAnalysis/Engine/WorkList.h"
 #include "TaintAnalysis/Support/TaintMemo.h"
 
+#include "Util/IO/TaintAnalysis/Printer.h"
+#include <llvm/Support/raw_ostream.h>
+using namespace util::io;
+
 namespace taint
 {
 
@@ -12,7 +16,10 @@ void TaintPropagator::enqueueIfMemoChange(const ProgramPoint& pp, const tpa::Mem
 	if (objVal == TaintLattice::Unknown)
 		return;
 	if (memo.insert(pp, obj, objVal))
+	{
+		//llvm::errs() << "\tenqueue mem " << pp << "\n";
 		workList.enqueue(pp);
+	}
 }
 
 void TaintPropagator::propagate(const EvalResult& evalResult)

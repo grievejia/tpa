@@ -7,14 +7,32 @@
 #include "PointerAnalysis/Program/SemiSparseProgram.h"
 #include "PointerAnalysis/Support/FunctionContext.h"
 #include "PointerAnalysis/Support/ProgramPoint.h"
+#include "Util/IO/PointerAnalysis/Printer.h"
 
 #include <llvm/Support/raw_ostream.h>
 
 using namespace context;
 using namespace llvm;
+using namespace util::io;
 
 namespace tpa
 {
+
+static bool checkCallees(const std::vector<const Function*>& callees)
+{
+	if (callees.size() == 1)
+		return true;
+
+	auto numExternal = std::count_if(callees.begin(), callees.end(), [](const Function* f) { return f->isDeclaration(); });
+	bool hasInternal = std::any_of(callees.begin(), callees.end(), [](const Function* f) { return !f->isDeclaration(); });
+
+	if (hasInternal && numExternal == 0)
+		return true;
+	else if (!hasInternal && numExternal == 1)
+		return true;
+	else
+		return false;
+}
 
 static inline size_t countPointerArguments(const llvm::Function* f)
 {
@@ -232,6 +250,7 @@ bool TransferFunction::evalStoreNode(const context::Context* ctx, const StoreCFG
 	auto& ptrManager = globalState.getPointerManager();
 	auto srcPtr = ptrManager.getPointer(ctx, storeNode.getSrc());
 	auto dstPtr = ptrManager.getPointer(ctx, storeNode.getDest());
+
 	if (srcPtr == nullptr || dstPtr == nullptr)
 		return false;
 
@@ -357,7 +376,7 @@ void TransferFunction::evalInternalCall(const context::Context* ctx, const CallC
 	assert(tgtCFG != nullptr);
 	auto tgtEntryNode = tgtCFG->getEntryNode();
 
-	if (!callGraphUpdated && !evalCallArguments(ctx, callNode, fc))
+	if (!evalCallArguments(ctx, callNode, fc) && !callGraphUpdated)
 		return;
 
 	evalResult.addMemLevelSuccessor(ProgramPoint(fc.getContext(), tgtEntryNode));
@@ -366,6 +385,9 @@ void TransferFunction::evalInternalCall(const context::Context* ctx, const CallC
 void TransferFunction::evalCallNode(const context::Context* ctx, const CallCFGNode& callNode, EvalResult& evalResult)
 {
 	auto callees = resolveCallTarget(ctx, callNode);
+
+	assert(checkCallees(callees) && "Indirect call into multiple external function is not supported yet");
+
 	for (auto f: callees)
 	{
 		// Update call graph first
@@ -448,7 +470,7 @@ void TransferFunction::evalReturnNode(const context::Context* ctx, const ReturnC
 
 EvalResult TransferFunction::eval(const ProgramPoint& pp)
 {
-	//std::cout << "Evaluating " << pp << std::endl;
+	//errs() << "Evaluating " << pp << "\n";
 	EvalResult evalResult;
 
 	switch (pp.getCFGNode()->getNodeTag())

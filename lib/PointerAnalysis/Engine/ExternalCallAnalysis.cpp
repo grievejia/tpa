@@ -204,6 +204,7 @@ void TransferFunction::evalExternalCallByEffect(const context::Context* ctx, con
 		{
 			if (evalExternalAlloc(ctx, callNode, effect.getAsAllocEffect()))
 				addTopLevelSuccessors(ProgramPoint(ctx, &callNode), evalResult);
+			addMemLevelSuccessors(ProgramPoint(ctx, &callNode), evalResult);
 			break;
 		}
 		case PointerEffectType::Copy:
@@ -228,6 +229,13 @@ void TransferFunction::evalExternalCall(const context::Context* ctx, const CallC
 	{
 		errs() << "\nPointer Analysis error: cannot find annotation for the following function:\n" << fc.getFunction()->getName() << "\n\n";
 		llvm_unreachable("Please add annotation to the aforementioned function and in the config file and try again.\n");
+	}
+
+	// If the external func is a noop, we still need to propagate
+	if (summary->empty())
+	{
+		addMemLevelSuccessors(ProgramPoint(ctx, &callNode), evalResult);
+		return;
 	}
 
 	for (auto const& effect: *summary)

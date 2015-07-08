@@ -11,6 +11,7 @@ set (TaintAnalysisSourceCodes
 	FrontEnd/ModRefModuleAnalysis.cpp
 	FrontEnd/ReachingDefModuleAnalysis.cpp
 	Output/TaintPrinter.cpp
+	Output/WriteDotFile.cpp
 	Precision/CallTracker.cpp
 	Precision/PrecisionLossTracker.cpp
 	Precision/ReturnTracker.cpp

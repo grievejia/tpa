@@ -21,7 +21,8 @@ static void dumpPtsSetForValue(const Value* value, const SemiSparsePointerAnalys
 		return;
 
 	auto ptrs = ptrAnalysis.getPointerManager().getPointersWithValue(value->stripPointerCasts());
-	assert(!ptrs.empty() && "value-to-ptr-map is empty?");
+	//errs() << "val = " << *value << "\n";
+	assert(!ptrs.empty() && "cannot find corresponding ptr for value?");
 
 	for (auto const& ptr: ptrs)
 	{

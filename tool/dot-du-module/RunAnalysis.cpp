@@ -4,27 +4,22 @@
 #include "Context/KLimitContext.h"
 #include "PointerAnalysis/Analysis/SemiSparsePointerAnalysis.h"
 #include "PointerAnalysis/FrontEnd/SemiSparseProgramBuilder.h"
-#include "TaintAnalysis/Analysis/TrackingTaintAnalysis.h"
 #include "TaintAnalysis/FrontEnd/DefUseModuleBuilder.h"
-#include "Util/IO/TaintAnalysis/Printer.h"
+#include "Util/IO/TaintAnalysis/WriteDotFile.h"
 
 #include <llvm/IR/Function.h>
-#include <llvm/IR/Module.h>
 #include <llvm/Support/raw_ostream.h>
 
-using namespace context;
 using namespace llvm;
-using namespace tpa;
 using namespace taint;
-using namespace util::io;
+using namespace tpa;
 
-bool runAnalysisOnModule(const Module& module, const CommandLineOptions& opts)
+void runAnalysisOnModule(const Module& module, const CommandLineOptions& opts)
 {
-	KLimitContext::setLimit(0);
+	SemiSparseProgramBuilder ssBuilder;
+	auto ssProg = ssBuilder.runOnModule(module);
 
-	SemiSparseProgramBuilder ssProgBuilder;
-	auto ssProg = ssProgBuilder.runOnModule(module);
-
+	context::KLimitContext::setLimit(0);
 	SemiSparsePointerAnalysis ptrAnalysis;
 	ptrAnalysis.loadExternalPointerTable(opts.getPtrConfigFileName().data());
 	ptrAnalysis.runOnProgram(ssProg);
@@ -33,12 +28,16 @@ bool runAnalysisOnModule(const Module& module, const CommandLineOptions& opts)
 	builder.loadExternalModRefTable(opts.getModRefConfigFileName().data());
 	auto duModule = builder.buildDefUseModule(module);
 
-	TrackingTaintAnalysis taintAnalysis(ptrAnalysis);
-	taintAnalysis.loadExternalTaintTable(opts.getTaintConfigFileName().data());
-	auto ret = taintAnalysis.runOnDefUseModule(duModule);
+	for (auto const& duFunc: duModule)
+	{
+		auto funName = duFunc.getFunction().getName();
+		llvm::outs() << "Processing DefUseModule for function " << funName << "...\n";
 
-	for (auto const& pp: ret.second)
-		errs() << "Find loss site " << pp << "\n";
-
-	return ret.first;
+		if (!opts.isDryRun())
+		{
+			auto fileName = opts.getOutputDirName() + funName + ".du_mod.dot";
+			llvm::outs() << "\tWriting output file " << fileName << "\n";
+			util::io::writeDotFile(fileName.str().data(), duFunc);
+		}
+	}
 }

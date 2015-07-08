@@ -21,6 +21,14 @@ void Initializer::initializeMainArgs(TaintStore& store)
 {
 	auto const& entryFunc = duModule.getEntryFunction().getFunction();
 	auto globalCtx = Context::getGlobalContext();
+	
+	if (entryFunc.arg_size() > 0)
+	{
+		// argc is tainted
+		auto argcValue = entryFunc.arg_begin();
+		env.strongUpdate(TaintValue(globalCtx, argcValue), TaintLattice::Tainted);
+	}
+
 	if (entryFunc.arg_size() > 1)
 	{
 		// argv is not tainted
@@ -33,15 +41,17 @@ void Initializer::initializeMainArgs(TaintStore& store)
 	}
 }
 
-void Initializer::initializeExternalGlobalVariables(TaintStore& store)
+void Initializer::initializeGlobalVariables(TaintStore& store)
 {
 	auto globalCtx = Context::getGlobalContext();
 	for (auto const& global: duModule.getModule().globals())
 	{
-		if (global.isDeclaration())
+		// We don't need to worry about global variables in env because all of them are constants and are already handled properly
+
+		auto pSet = ptrAnalysis.getPtsSet(globalCtx, &global);
+		for (auto obj: pSet)
 		{
-			auto pSet = ptrAnalysis.getPtsSet(globalCtx, &global);
-			for (auto obj: pSet)
+			if (!obj->isSpecialObject())
 				store.strongUpdate(obj, TaintLattice::Untainted);
 		}
 	}
@@ -53,7 +63,7 @@ WorkList Initializer::runOnInitState(TaintStore&& initStore)
 	WorkList workList;
 
 	initializeMainArgs(initStore);
-	initializeExternalGlobalVariables(initStore);
+	initializeGlobalVariables(initStore);
 
 	auto entryCtx = context::Context::getGlobalContext();
 	auto entryInst = duModule.getEntryFunction().getEntryInst();

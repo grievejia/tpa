@@ -20,6 +20,7 @@ namespace tpa
 	class TypeLayout;
 
 	class CFGNode;
+	class ProgramPoint;
 }
 
 namespace util
@@ -40,6 +41,7 @@ llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const tpa::PointerLayout&);
 llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const tpa::TypeLayout&);
 
 llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const tpa::CFGNode&);
+llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const tpa::ProgramPoint&);
 
 }
 }

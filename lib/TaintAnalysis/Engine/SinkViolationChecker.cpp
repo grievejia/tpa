@@ -8,6 +8,7 @@
 #include "TaintAnalysis/Support/TaintValue.h"
 
 #include <llvm/IR/CallSite.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace annotation;
 using namespace llvm;
@@ -15,7 +16,7 @@ using namespace llvm;
 namespace taint
 {
 
-TaintLattice SinkViolationChecker::lookupTaint(const TaintValue& tv, TClass what, const TaintStore& store)
+TaintLattice SinkViolationChecker::lookupTaint(const TaintValue& tv, TClass what, const TaintStore* store)
 {
 	switch (what)
 	{
@@ -23,12 +24,13 @@ TaintLattice SinkViolationChecker::lookupTaint(const TaintValue& tv, TClass what
 			return env.lookup(tv);
 		case TClass::DirectMemory:
 		{
+			assert(store != nullptr);
 			auto pSet = ptrAnalysis.getPtsSet(tv.getContext(), tv.getValue());
 			assert(!pSet.empty());
 			auto res = TaintLattice::Unknown;
 			for (auto loc: pSet)
 			{
-				auto val = store.lookup(loc);
+				auto val = store->lookup(loc);
 				res = Lattice<TaintLattice>::merge(res, val);
 			}
 			return res;
@@ -38,7 +40,7 @@ TaintLattice SinkViolationChecker::lookupTaint(const TaintValue& tv, TClass what
 	}
 }
 
-void SinkViolationChecker::checkValueWithTClass(const TaintValue& tv, TClass tClass, uint8_t argPos, const TaintStore& store, SinkViolationList& violations)
+void SinkViolationChecker::checkValueWithTClass(const TaintValue& tv, TClass tClass, uint8_t argPos, const TaintStore* store, SinkViolationList& violations)
 {
 	auto currVal = lookupTaint(tv, tClass, store);
 	auto cmpRes = Lattice<TaintLattice>::compare(TaintLattice::Untainted, currVal);
@@ -55,10 +57,9 @@ void SinkViolationChecker::checkCallSiteWithEntry(const ProgramPoint& pp, const 
 	auto checkArgument = [this, &pp, &entry, &violations, &cs] (size_t idx)
 	{
 		auto store = memo.lookup(pp);
-		assert(store != nullptr);
 
 		auto argVal = TaintValue(pp.getContext(), cs.getArgument(idx));
-		checkValueWithTClass(argVal, entry.getTaintClass(), idx, *store, violations);
+		checkValueWithTClass(argVal, entry.getTaintClass(), idx, store, violations);
 	};
 	if (taintPos.isAfterArgPosition())
 	{
@@ -94,7 +95,9 @@ void SinkViolationChecker::checkSinkViolation(const SinkSignature& sig, SinkViol
 	if (auto taintSummary = table.lookup(sig.getCallee()->getName()))
 	{
 		auto callsite = sig.getCallSite();
-		records[callsite] = checkCallSiteWithSummary(sig.getCallSite(), *taintSummary);
+		auto violations = checkCallSiteWithSummary(sig.getCallSite(), *taintSummary);
+		if (!violations.empty())
+			records[callsite] = std::move(violations);
 	}
 	else
 		llvm_unreachable("Unrecognized external function call");

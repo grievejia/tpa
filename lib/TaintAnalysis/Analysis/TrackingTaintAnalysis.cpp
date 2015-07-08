@@ -10,7 +10,7 @@
 namespace taint
 {
 
-ProgramPointSet TrackingTaintAnalysis::runOnDefUseModule(const DefUseModule& duModule)
+std::pair<bool, ProgramPointSet> TrackingTaintAnalysis::runOnDefUseModule(const DefUseModule& duModule)
 {
 	auto globalState = TaintGlobalState(duModule, ptrAnalysis, extTable, env, memo);
 	auto dfa = util::DataFlowAnalysis<TaintGlobalState, TaintMemo, TransferFunction, TaintPropagator>(globalState, memo);
@@ -19,7 +19,7 @@ ProgramPointSet TrackingTaintAnalysis::runOnDefUseModule(const DefUseModule& duM
 	auto violationRecord = SinkViolationChecker(env, memo, extTable, ptrAnalysis).checkSinkViolation(globalState.getSinks());
 
 	PrecisionLossTracker tracker(globalState);
-	return tracker.trackImprecision(violationRecord);
+	return std::make_pair(violationRecord.empty(), tracker.trackImprecision(violationRecord));
 }
 
 }

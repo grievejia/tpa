@@ -50,7 +50,7 @@ private:
 
 	std::vector<TaintLattice> collectArgumentTaintValue(const context::Context*, const llvm::ImmutableCallSite&, size_t);
 	bool updateParamTaintValue(const context::Context*, const llvm::Function*, const std::vector<TaintLattice>&);
-	void evalInternalCall(const ProgramPoint&, const tpa::FunctionContext&, EvalResult&);
+	void evalInternalCall(const ProgramPoint&, const tpa::FunctionContext&, EvalResult&, bool);
 	void applyReturn(const ProgramPoint&, TaintLattice, EvalResult&);
 
 	void updateDirectMemoryTaint(const TaintValue&, TaintLattice, const ProgramPoint&, EvalResult&);

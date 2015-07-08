@@ -69,7 +69,7 @@ void ReturnTracker::propagateReturns(const ReturnVector& retVec, const TaintVect
 
 void ReturnTracker::processReturns(const ProgramPoint& pp, const ReturnVector& retVec, const TaintVector& returnTaints)
 {
-	if (getDemandingIndices(returnTaints).empty())
+	if (!getDemandingIndices(returnTaints).empty())
 		trackerState.addImprecisionSource(pp);
 
 	propagateReturns(retVec, returnTaints);

@@ -23,7 +23,7 @@ public:
 		while (!workList.empty())
 		{
 			auto item = workList.dequeue();
-			auto const& localState = memo.lookup(item);
+			auto localState = memo.lookup(item);
 			auto evalResult = TransferFunction(globalState, localState).eval(item);
 			Propagator(memo, workList).propagate(evalResult);
 		}

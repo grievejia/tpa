@@ -3,14 +3,15 @@
 
 using namespace util;
 
-CommandLineOptions::CommandLineOptions(int argc, char** argv): ptrConfigFileName("ptr.config"), modRefConfigFileName("modref.config"), taintConfigFileName("taint.config")
+CommandLineOptions::CommandLineOptions(int argc, char** argv): outputDirName("dot/"), ptrConfigFileName("ptr.config"), modRefConfigFileName("modref.config"), dryRunFlag(false), noPrepassFlag(false)
 {
-	TypedCommandLineParser cmdParser("Points-to analysis verifier");
-	cmdParser.addStringPositionalFlag("irFile", "Input LLVM bitcode file name", inputFileName);
+	TypedCommandLineParser cmdParser("Pointer CFG to .dot drawer");
+	cmdParser.addStringPositionalFlag("inputFile", "Input LLVM bitcode file name", inputFileName);
+	cmdParser.addStringOptionalFlag("o", "Output directory name (default: dot/)", outputDirName);
 	cmdParser.addStringOptionalFlag("ptr-config", "Annotation file for external library points-to analysis (default = <current dir>/ptr.config)", ptrConfigFileName);
 	cmdParser.addStringOptionalFlag("modref-config", "Annotation file for external library mod/ref analysis (default = <current dir>/modref.config)", modRefConfigFileName);
-	cmdParser.addStringOptionalFlag("taint-config", "Annotation file for external library taint analysis (default = <current dir>/taint.config)", taintConfigFileName);
 	cmdParser.addBooleanOptionalFlag("no-prepass", "Do no run IR cannonicalization before the analysis", noPrepassFlag);
+	cmdParser.addBooleanOptionalFlag("dry-run", "Do no dump .dot file. Just run the front end", dryRunFlag);
 
 	cmdParser.parseCommandLineOptions(argc, argv);
 }

@@ -32,8 +32,8 @@ private:
 	const annotation::ExternalTaintTable& table;
 	const tpa::SemiSparsePointerAnalysis& ptrAnalysis;
 
-	TaintLattice lookupTaint(const TaintValue&, annotation::TClass, const TaintStore&);
-	void checkValueWithTClass(const TaintValue&, annotation::TClass, uint8_t, const TaintStore&, SinkViolationList&);
+	TaintLattice lookupTaint(const TaintValue&, annotation::TClass, const TaintStore*);
+	void checkValueWithTClass(const TaintValue&, annotation::TClass, uint8_t, const TaintStore*, SinkViolationList&);
 	void checkCallSiteWithEntry(const ProgramPoint&, const annotation::SinkTaintEntry&, SinkViolationList&);
 	SinkViolationList checkCallSiteWithSummary(const ProgramPoint&, const annotation::TaintSummary&);
 

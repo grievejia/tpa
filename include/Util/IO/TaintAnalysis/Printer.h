@@ -1,7 +1,7 @@
 #pragma once
 
 #include "TaintAnalysis/Lattice/TaintLattice.h"
-#include "Util/IO/Context/Printer.h"
+#include "Util/IO/PointerAnalysis/Printer.h"
 
 namespace taint
 {

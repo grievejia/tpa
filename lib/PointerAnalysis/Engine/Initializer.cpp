@@ -22,7 +22,7 @@ WorkList Initializer::runOnInitState(Store&& initStore)
 	auto& entryFunc = entryCFG->getFunction();
 	if (entryFunc.arg_size() > 0)
 	{
-		auto argvValue = entryFunc.arg_begin();
+		auto argvValue = ++entryFunc.arg_begin();
 		auto argvPtr = globalState.getPointerManager().getOrCreatePointer(entryCtx, argvValue);
 		auto argvObj = globalState.getMemoryManager().allocateArgv(argvValue);
 		globalState.getEnv().insert(argvPtr, argvObj);

@@ -33,7 +33,7 @@ int main(int argc, char** argv)
 		transform::runPrepassOn(*module);
 
 	// Run the analysis
-	runAnalysisOnModule(*module, opts.getOutputDirName(), !opts.isDryRun());
+	runAnalysisOnModule(*module, opts);
 
 	return 0;
 }

@@ -6,12 +6,14 @@
 #include "TaintAnalysis/Program/DefUseModule.h"
 #include "TaintAnalysis/Support/ProgramPoint.h"
 #include "TaintAnalysis/Support/TaintEnv.h"
+#include "Util/IO/TaintAnalysis/Printer.h"
 
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace tpa;
+using namespace util::io;
 
 namespace taint
 {
@@ -105,7 +107,8 @@ TaintLattice TransferFunction::loadTaintFromPtsSet(tpa::PtsSet pSet, const Taint
 
 void TransferFunction::evalLoad(const ProgramPoint& pp, EvalResult& evalResult)
 {
-	assert(localState != nullptr);
+	if (localState == nullptr)
+		return;
 
 	auto ctx = pp.getContext();
 	auto loadInst = cast<LoadInst>(pp.getDefUseInstruction()->getInstruction());
@@ -140,6 +143,9 @@ void TransferFunction::weakUpdateStore(PtsSet pSet, TaintLattice v, TaintStore& 
 
 void TransferFunction::evalStore(const ProgramPoint& pp, EvalResult& evalResult)
 {
+	if (localState != nullptr)
+		evalResult.setStore(*localState);
+
 	auto ctx = pp.getContext();
 	auto storeInst = cast<StoreInst>(pp.getDefUseInstruction()->getInstruction());
 
@@ -192,7 +198,7 @@ bool TransferFunction::updateParamTaintValue(const context::Context* newCtx, con
 	return ret;
 }
 
-void TransferFunction::evalInternalCall(const ProgramPoint& pp, const tpa::FunctionContext& fc, EvalResult& evalResult)
+void TransferFunction::evalInternalCall(const ProgramPoint& pp, const tpa::FunctionContext& fc, EvalResult& evalResult, bool callGraphUpdated)
 {
 	ImmutableCallSite cs(pp.getDefUseInstruction()->getInstruction());
 	assert(cs);
@@ -205,8 +211,9 @@ void TransferFunction::evalInternalCall(const ProgramPoint& pp, const tpa::Funct
 	if (argSets.size() < numParam)
 		return;
 
-	auto envChanged = updateParamTaintValue(fc.getContext(), callee, argSets);
+	auto envChanged = updateParamTaintValue(fc.getContext(), callee, argSets) || callGraphUpdated;
 	auto entryInst = globalState.getDefUseModule().getDefUseFunction(fc.getFunction()).getEntryInst();
+
 	evalEntry(ProgramPoint(fc.getContext(), entryInst), evalResult, envChanged);
 }
 
@@ -215,6 +222,9 @@ void TransferFunction::evalCall(const ProgramPoint& pp, EvalResult& evalResult)
 	auto inst = pp.getDefUseInstruction()->getInstruction();
 	ImmutableCallSite cs(inst);
 	assert(cs);
+
+	if (localState != nullptr)
+		evalResult.setStore(*localState);
 
 	auto ctx = pp.getContext();
 	auto callees = globalState.getPointerAnalysis().getCallees(cs, ctx);
@@ -226,9 +236,9 @@ void TransferFunction::evalCall(const ProgramPoint& pp, EvalResult& evalResult)
 		{
 			auto newCtx = context::KLimitContext::pushContext(ctx, inst);
 			auto fc = FunctionContext(newCtx, callTgt);
-			globalState.getCallGraph().insertEdge(pp, fc);
+			auto callGraphUpdated = globalState.getCallGraph().insertEdge(pp, fc);
 
-			evalInternalCall(pp, fc, evalResult);
+			evalInternalCall(pp, fc, evalResult, callGraphUpdated);
 		}
 	}
 }
@@ -257,6 +267,9 @@ void TransferFunction::evalReturn(const ProgramPoint& pp, EvalResult& evalResult
 		return;
 	}
 
+	if (localState != nullptr)
+		evalResult.setStore(*localState);
+
 	auto tVal = TaintLattice::Unknown;
 	if (auto retVal = retInst->getReturnValue())
 		tVal = globalState.getEnv().lookup(TaintValue(ctx, retVal));
@@ -271,9 +284,12 @@ EvalResult TransferFunction::eval(const ProgramPoint& pp)
 {
 	EvalResult evalResult;
 
+	//errs() << "eval " << pp << "\n";
+
 	auto duInst = pp.getDefUseInstruction();
 	if (duInst->isEntryInstruction())
 	{
+		evalResult.setStore(*localState);
 		evalEntry(pp, evalResult, true);
 	}
 	else

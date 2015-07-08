@@ -4,13 +4,13 @@
 #include "Util/Iterator/IteratorRange.h"
 
 #include <cassert>
-#include <limits>
 #include <unordered_map>
 
 namespace llvm
 {
 	class Function;
 	class Instruction;
+	class Value;
 }
 
 namespace tpa
@@ -24,7 +24,9 @@ namespace taint
 class DefUseInstruction
 {
 private:
-	const llvm::Instruction* inst;
+	// If entry inst, this field stores the function it belongs to
+	// Otherwise, this field stores the corresponding llvm instruction
+	const llvm::Value* inst;
 	// The reverse postorder number of this node
 	size_t rpo;
 
@@ -34,15 +36,15 @@ private:
 	using NodeMap = std::unordered_map<const tpa::MemoryObject*, NodeSet>;
 	NodeMap memSucc, memPred;
 
-	DefUseInstruction(): inst(nullptr), rpo(std::numeric_limits<size_t>::max()) {}
+	DefUseInstruction(const llvm::Function* f);
 public:
 	using iterator = NodeSet::iterator;
 	using const_iterator = NodeSet::const_iterator;
 	using mem_succ_iterator = NodeMap::iterator;
 	using const_mem_succ_iterator = NodeMap::const_iterator;
 
-	DefUseInstruction(const llvm::Instruction& i): inst(&i), rpo(0) {}
-	const llvm::Instruction* getInstruction() const { return inst; }
+	DefUseInstruction(const llvm::Instruction& i);
+	const llvm::Instruction* getInstruction() const;
 
 	const llvm::Function* getFunction() const;
 	bool isEntryInstruction() const;

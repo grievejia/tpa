@@ -37,7 +37,7 @@ llvm::raw_ostream& operator<< (llvm::raw_ostream& os, const taint::DefUseInstruc
 	if (duInst.isEntryInstruction())
 		os << "[entry duInst for " << duInst.getFunction()->getName() << "]";
 	else
-		os << "[duInst" << *duInst.getInstruction() << "]";
+		os << "[" << duInst.getFunction()->getName() << *duInst.getInstruction() << "]";
 	return os;
 }
 

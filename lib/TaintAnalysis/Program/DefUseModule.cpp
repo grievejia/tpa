@@ -3,51 +3,75 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 
+#include <limits>
+
 using namespace llvm;
 
 namespace taint
 {
 
+DefUseInstruction::DefUseInstruction(const Instruction& i): inst(&i), rpo(0) {}
+
+DefUseInstruction::DefUseInstruction(const Function* f): inst(f), rpo(std::numeric_limits<size_t>::max()) {}
+
+const Instruction* DefUseInstruction::getInstruction() const
+{
+	return cast<Instruction>(inst);
+}
+
 const Function* DefUseInstruction::getFunction() const
 {
-	assert(inst != nullptr);
-	return inst->getParent()->getParent();
+	if (auto f = dyn_cast<Function>(inst))
+		return f;
+	else
+	{
+		auto i = cast<Instruction>(inst);
+		return i->getParent()->getParent();
+	}
 }
 
 bool DefUseInstruction::isEntryInstruction() const
 {
-	return (inst == nullptr);
+	return isa<Function>(inst);
 }
 
 bool DefUseInstruction::isCallInstruction() const
 {
-	return (inst != nullptr) && (llvm::isa<CallInst>(inst) || llvm::isa<InvokeInst>(inst));
+	return isa<CallInst>(inst) || isa<InvokeInst>(inst);
 }
 
 bool DefUseInstruction::isReturnInstruction() const
 {
-	return (inst != nullptr) && (llvm::isa<ReturnInst>(inst));
+	return isa<ReturnInst>(inst);
 }
 
 DefUseInstruction* DefUseFunction::getDefUseInstruction(const Instruction* inst)
 {
 	auto itr = instMap.find(inst);
-	assert(itr != instMap.end());
-	return &itr->second;
+	if (itr != instMap.end())
+		return &itr->second;
+	else
+		return nullptr;
 }
 const DefUseInstruction* DefUseFunction::getDefUseInstruction(const Instruction* inst) const
 {
 	auto itr = instMap.find(inst);
-	assert(itr != instMap.end());
-	return &itr->second;
+	if (itr != instMap.end())
+		return &itr->second;
+	else
+		return nullptr;
 }
 
-DefUseFunction::DefUseFunction(const Function& f): function(f), exitInst(nullptr)
+DefUseFunction::DefUseFunction(const Function& f): function(f), entryInst(&f), exitInst(nullptr)
 {
 	for (auto const& bb: f)
 	{
 		for (auto const& inst: bb)
 		{
+			if (auto brInst = dyn_cast<BranchInst>(&inst))
+				if (brInst->isUnconditional())
+					continue;
+
 			auto itr = instMap.emplace(
 				std::piecewise_construct,
 				std::forward_as_tuple(&inst),

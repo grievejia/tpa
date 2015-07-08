@@ -6,18 +6,22 @@ class CommandLineOptions
 {
 private:
 	llvm::StringRef inputFileName;
+	llvm::StringRef outputDirName;
 
 	llvm::StringRef ptrConfigFileName;
 	llvm::StringRef modRefConfigFileName;
-	llvm::StringRef taintConfigFileName;
+
+	bool dryRunFlag;
 	bool noPrepassFlag;
 public:
 	CommandLineOptions(int argc, char** argv);
 
-	const llvm::StringRef& getInputFileName() const { return inputFileName; }
+	const llvm::StringRef& getInputFileName() { return inputFileName; }
+	const llvm::StringRef& getOutputDirName() const { return outputDirName; }
 
 	const llvm::StringRef& getPtrConfigFileName() const { return ptrConfigFileName; }
 	const llvm::StringRef& getModRefConfigFileName() const { return modRefConfigFileName; }
-	const llvm::StringRef& getTaintConfigFileName() const { return taintConfigFileName; }
+
+	bool isDryRun() const { return dryRunFlag; }
 	bool isPrepassDisabled() const { return noPrepassFlag; }
 };

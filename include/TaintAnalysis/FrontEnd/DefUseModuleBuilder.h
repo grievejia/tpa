@@ -34,7 +34,7 @@ public:
 
 	void loadExternalModRefTable(const char* fileName)
 	{
-		modRefTable.loadFromFile(fileName);
+		modRefTable = annotation::ExternalModRefTable::loadFromFile(fileName);
 	}
 };
 
