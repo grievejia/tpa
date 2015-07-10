@@ -40,14 +40,22 @@ static void runAllPrepasses(Module& module)
 	passes.add(new ResolveAliases());
 	passes.add(new ExpandIndirectBr());
 	passes.add(new ExpandByValPass());
-	passes.add(createInstructionCombiningPass());
-	passes.add(createIPConstantPropagationPass());
+	// Instcombine has some really interesting behaviors that are not desirable for out purpose. Disable it.
+	//passes.add(createInstructionCombiningPass());
+	passes.add(createInternalizePass({"main"}));
+	passes.add(createScalarReplAggregatesPass(-1, true, -1, -1, -1));
 	passes.add(createDeadArgEliminationPass());
-	passes.add(createConstantPropagationPass());
+	passes.add(createArgumentPromotionPass(5));
+	passes.add(createIPSCCPPass());
+	// Comment out the inline and tailcallelim pass if keeping callgraph structure is important
+	//passes.add(createFunctionInliningPass(3, 0));
+	//passes.add(createTailCallEliminationPass());
 	passes.add(createCFGSimplificationPass());
-	passes.add(createGlobalDCEPass());
+	passes.add(createGVNPass(false));
+	passes.add(createLICMPass());
 	passes.add(createAggressiveDCEPass());
 	passes.add(createLoopDeletionPass());
+	passes.add(createGlobalDCEPass());
 	passes.add(createGlobalOptimizerPass());
 	passes.add(createCFGSimplificationPass());
 	passes.add(createUnifyFunctionExitNodesPass());

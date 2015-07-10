@@ -12,14 +12,17 @@ set (PointerAnalysisSourceCodes
 	Engine/SemiSparsePropagator.cpp
 	Engine/StorePruner.cpp
 	Engine/TransferFunction.cpp
+	FrontEnd/ArrayLayoutAnalysis.cpp
 	FrontEnd/CFGBuilder.cpp
 	FrontEnd/CFGSimplifier.cpp
 	FrontEnd/FunctionTranslator.cpp
 	FrontEnd/InstructionTranslator.cpp
+	FrontEnd/PointerLayoutAnalysis.cpp
 	FrontEnd/PriorityAssigner.cpp
 	FrontEnd/SemiSparseProgramBuilder.cpp
+	FrontEnd/StructCastAnalysis.cpp
 	FrontEnd/TypeAnalysis.cpp
-	FrontEnd/TypeMap.cpp
+	FrontEnd/TypeCollector.cpp
 	MemoryModel/ArrayLayout.cpp
 	MemoryModel/MemoryManager.cpp
 	MemoryModel/PointerLayout.cpp

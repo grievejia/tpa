@@ -1,5 +1,7 @@
 #pragma once
 
+#include "PointerAnalysis/FrontEnd/Type/TypeMap.h"
+
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/IR/InstVisitor.h>
 
@@ -13,7 +15,6 @@ namespace tpa
 
 class CFG;
 class CFGNode;
-class TypeMap;
 
 class InstructionTranslator: public llvm::InstVisitor<InstructionTranslator, CFGNode*>
 {

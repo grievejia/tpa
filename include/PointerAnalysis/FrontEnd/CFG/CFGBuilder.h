@@ -1,5 +1,7 @@
 #pragma once
 
+#include "PointerAnalysis/FrontEnd/Type/TypeMap.h"
+
 namespace llvm
 {
 	class Function;
@@ -11,7 +13,6 @@ namespace tpa
 
 class CFG;
 class CFGNode;
-class TypeMap;
 
 class CFGBuilder
 {

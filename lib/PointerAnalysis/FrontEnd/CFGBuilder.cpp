@@ -1,7 +1,7 @@
-#include "PointerAnalysis/FrontEnd/CFGBuilder.h"
-#include "PointerAnalysis/FrontEnd/CFGSimplifier.h"
-#include "PointerAnalysis/FrontEnd/FunctionTranslator.h"
-#include "PointerAnalysis/FrontEnd/InstructionTranslator.h"
+#include "PointerAnalysis/FrontEnd/CFG/CFGBuilder.h"
+#include "PointerAnalysis/FrontEnd/CFG/CFGSimplifier.h"
+#include "PointerAnalysis/FrontEnd/CFG/FunctionTranslator.h"
+#include "PointerAnalysis/FrontEnd/CFG/InstructionTranslator.h"
 
 #include <llvm/IR/DataLayout.h>
 

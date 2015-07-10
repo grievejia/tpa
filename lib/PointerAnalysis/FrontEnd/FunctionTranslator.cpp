@@ -1,6 +1,6 @@
-#include "PointerAnalysis/FrontEnd/FunctionTranslator.h"
-#include "PointerAnalysis/FrontEnd/InstructionTranslator.h"
-#include "PointerAnalysis/FrontEnd/PriorityAssigner.h"
+#include "PointerAnalysis/FrontEnd/CFG/FunctionTranslator.h"
+#include "PointerAnalysis/FrontEnd/CFG/InstructionTranslator.h"
+#include "PointerAnalysis/FrontEnd/CFG/PriorityAssigner.h"
 #include "PointerAnalysis/Program/CFG/CFG.h"
 
 #include <llvm/IR/CFG.h>

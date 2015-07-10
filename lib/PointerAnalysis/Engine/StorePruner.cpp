@@ -4,6 +4,11 @@
 #include "PointerAnalysis/MemoryModel/MemoryObject.h"
 #include "PointerAnalysis/MemoryModel/PointerManager.h"
 #include "PointerAnalysis/Program/CFG/CFGNode.h"
+#include "Util/IO/PointerAnalysis/Printer.h"
+
+#include <llvm/Support/raw_ostream.h>
+
+using namespace util::io;
 
 namespace tpa
 {

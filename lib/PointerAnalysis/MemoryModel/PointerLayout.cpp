@@ -29,4 +29,20 @@ const PointerLayout* PointerLayout::getLayout(std::initializer_list<size_t> ilis
 	return getLayout(std::move(set));
 }
 
+const PointerLayout* PointerLayout::merge(const PointerLayout* lhs, const PointerLayout* rhs)
+{
+	assert(lhs != nullptr && rhs != nullptr);
+
+	if (lhs == rhs)
+		return lhs;
+	if (lhs->empty())
+		return rhs;
+	if (rhs->empty())
+		return lhs;
+
+	SetType newSet(lhs->validOffsets);
+	newSet.merge(rhs->validOffsets);
+	return getLayout(std::move(newSet));
+}
+
 }

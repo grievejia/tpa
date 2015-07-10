@@ -1,6 +1,6 @@
 #include "Context/Context.h"
 #include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
-#include "PointerAnalysis/FrontEnd/TypeMap.h"
+#include "PointerAnalysis/FrontEnd/Type/TypeMap.h"
 #include "PointerAnalysis/MemoryModel/MemoryManager.h"
 #include "PointerAnalysis/MemoryModel/PointerManager.h"
 
@@ -53,7 +53,7 @@ void GlobalPointerAnalysis::createFunctions(const llvm::Module& module, Env& env
 	}
 }
 
-const MemoryObject* GlobalPointerAnalysis::getGlobalObject(const GlobalVariable* gv, const Env& env)
+const MemoryObject* GlobalPointerAnalysis::getGlobalObject(const GlobalValue* gv, const Env& env)
 {
 	auto iPtr = ptrManager.getPointer(globalCtx, gv);
 	assert(iPtr != nullptr && "gv ptr not found");
@@ -137,9 +137,10 @@ void GlobalPointerAnalysis::processGlobalScalarInitializer(const MemoryObject* g
 		envStore.second.insert(gObj, memManager.getNullObject());
 	else if (isa<UndefValue>(initializer))
 		envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(memManager.getUniversalObject()));
-	else if (auto gVar = dyn_cast<GlobalVariable>(initializer))
+	else if (isa<GlobalVariable>(initializer) || isa<Function>(initializer))
 	{
-		auto tgtObj = getGlobalObject(gVar, envStore.first);
+		auto gv = cast<GlobalValue>(initializer);
+		auto tgtObj = getGlobalObject(gv, envStore.first);
 		envStore.second.insert(gObj, tgtObj);
 	}
 	else if (auto ce = dyn_cast<ConstantExpr>(initializer))
@@ -192,7 +193,15 @@ void GlobalPointerAnalysis::processGlobalStructInitializer(const MemoryObject* g
 	for (unsigned i = 0, e = initializer->getNumOperands(); i != e; ++i)
 	{
 		unsigned offset = stLayout->getElementOffset(i);
-		auto subInitializer = cast<Constant>(initializer->getOperand(i));
+
+		const Constant* subInitializer = nullptr;
+		if (auto caz = dyn_cast<ConstantAggregateZero>(initializer))
+			subInitializer = caz->getStructElement(i);
+		else if (auto undef = dyn_cast<UndefValue>(initializer))
+			subInitializer = undef->getStructElement(i);
+		else
+			subInitializer = cast<Constant>(initializer->getOperand(i));
+		
 		auto subInitType = subInitializer->getType();
 		if (isScalarNonPointerType(subInitType))
 			// Not an interesting field. Skip it.
@@ -213,7 +222,14 @@ void GlobalPointerAnalysis::processGlobalArrayInitializer(const MemoryObject* gO
 		// Arrays/vectors are collapsed into a single element
 		for (unsigned i = 0, e = initializer->getNumOperands(); i < e; ++i)
 		{
-			auto elem = cast<Constant>(initializer->getOperand(i));
+			const Constant* elem = nullptr;
+			if (auto caz = dyn_cast<ConstantAggregateZero>(initializer))
+				elem = caz->getSequentialElement();
+			else if (auto undef = dyn_cast<UndefValue>(initializer))
+				elem = undef->getSequentialElement();
+			else
+				elem = cast<Constant>(initializer->getOperand(i));
+
 			processGlobalInitializer(gObj, elem, envStore, dataLayout);
 		}
 	}
@@ -223,13 +239,13 @@ void GlobalPointerAnalysis::processGlobalInitializer(const MemoryObject* gObj, c
 {
 	if (initializer->getType()->isSingleValueType())
 		processGlobalScalarInitializer(gObj, initializer, envStore, dataLayout);
-	else if (llvm::isa<llvm::ConstantStruct>(initializer))
+	else if (initializer->getType()->isStructTy())
 		processGlobalStructInitializer(gObj, initializer, envStore, dataLayout);
-	else if (llvm::isa<llvm::ConstantDataSequential>(initializer) || llvm::isa<llvm::ConstantArray>(initializer))
+	else if (initializer->getType()->isArrayTy())
 		processGlobalArrayInitializer(gObj, initializer, envStore, dataLayout);
 	else
 	{
-		llvm::errs() << "initializer = " << *initializer << "\n";
+		errs() << "initializer = " << *initializer << "\n";
 		llvm_unreachable("Unknown initializer type");
 	}
 }

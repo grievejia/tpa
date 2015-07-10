@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PointerAnalysis/FrontEnd/TypeMap.h"
+#include "PointerAnalysis/FrontEnd/Type/TypeMap.h"
 #include "PointerAnalysis/Program/CFG/CFG.h"
 #include "Util/Iterator/IteratorRange.h"
 #include "Util/Iterator/MapValueIterator.h"

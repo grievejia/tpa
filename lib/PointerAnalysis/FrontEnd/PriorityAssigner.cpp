@@ -1,4 +1,4 @@
-#include "PointerAnalysis/FrontEnd/PriorityAssigner.h"
+#include "PointerAnalysis/FrontEnd/CFG/PriorityAssigner.h"
 #include "PointerAnalysis/Program/CFG/CFG.h"
 
 namespace tpa

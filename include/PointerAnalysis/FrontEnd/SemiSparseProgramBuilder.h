@@ -1,5 +1,6 @@
 #pragma once
 
+#include "PointerAnalysis/FrontEnd/Type/TypeMap.h"
 #include "PointerAnalysis/Program/SemiSparseProgram.h"
 
 namespace llvm
@@ -10,8 +11,6 @@ namespace llvm
 
 namespace tpa
 {
-
-class TypeMap;
 
 class SemiSparseProgramBuilder
 {

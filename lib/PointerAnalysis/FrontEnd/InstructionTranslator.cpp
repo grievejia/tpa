@@ -1,6 +1,6 @@
 #include "Context/Context.h"
-#include "PointerAnalysis/FrontEnd/InstructionTranslator.h"
-#include "PointerAnalysis/FrontEnd/TypeMap.h"
+#include "PointerAnalysis/FrontEnd/CFG/InstructionTranslator.h"
+#include "PointerAnalysis/FrontEnd/Type/TypeMap.h"
 #include "PointerAnalysis/Program/CFG/CFG.h"
 
 #include <llvm/IR/PatternMatch.h>

@@ -1,4 +1,4 @@
-#include "PointerAnalysis/FrontEnd/CFGSimplifier.h"
+#include "PointerAnalysis/FrontEnd/CFG/CFGSimplifier.h"
 #include "PointerAnalysis/Program/CFG/CFG.h"
 #include "PointerAnalysis/Program/CFG/NodeVisitor.h"
 

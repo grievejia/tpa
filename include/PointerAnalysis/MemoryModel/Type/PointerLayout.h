@@ -54,6 +54,8 @@ public:
 	static const PointerLayout* getLayout(SetType&& list);
 	static const PointerLayout* getLayout(std::initializer_list<size_t>);
 
+	static const PointerLayout* merge(const PointerLayout*, const PointerLayout*);
+
 	friend struct std::hash<PointerLayout>;
 };
 

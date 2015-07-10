@@ -2,7 +2,7 @@
 #include "RunAnalysis.h"
 
 #include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
-#include "PointerAnalysis/FrontEnd/TypeAnalysis.h"
+#include "PointerAnalysis/FrontEnd/Type/TypeAnalysis.h"
 #include "PointerAnalysis/MemoryModel/MemoryManager.h"
 #include "PointerAnalysis/MemoryModel/PointerManager.h"
 #include "PointerAnalysis/Support/Env.h"

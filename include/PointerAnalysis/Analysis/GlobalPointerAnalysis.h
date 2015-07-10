@@ -1,5 +1,6 @@
 #pragma once
 
+#include "PointerAnalysis/FrontEnd/Type/TypeMap.h"
 #include "PointerAnalysis/Support/Env.h"
 #include "PointerAnalysis/Support/Store.h"
 
@@ -13,6 +14,7 @@ namespace llvm
 	class Constant;
 	class ConstantExpr;
 	class DataLayout;
+	class GlobalValue;
 	class GlobalVariable;
 	class Module;
 }
@@ -23,7 +25,6 @@ namespace tpa
 class MemoryManager;
 class MemoryObject;
 class PointerManager;
-class TypeMap;
 
 class GlobalPointerAnalysis
 {
@@ -35,7 +36,7 @@ private:
 	const TypeMap& typeMap;
 	const context::Context* globalCtx;
 
-	const MemoryObject* getGlobalObject(const llvm::GlobalVariable*, const Env&);
+	const MemoryObject* getGlobalObject(const llvm::GlobalValue*, const Env&);
 
 	void initializeSpecialPointerObject(const llvm::Module&, EnvStore&);
 	void createGlobalVariables(const llvm::Module&, Env&);

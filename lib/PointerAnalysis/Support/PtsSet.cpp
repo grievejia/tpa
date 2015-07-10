@@ -39,7 +39,6 @@ PtsSet PtsSet::merge(const PtsSet& rhs)
 	else if (rhs.pSet == emptySet)
 		return *this;
 
-	// We prefer to merge the smaller set into the larger set
 	SetType newSet(*pSet);
 	newSet.merge(*rhs.pSet);
 	return PtsSet(uniquifySet(std::move(newSet)));

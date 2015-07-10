@@ -1,6 +1,6 @@
-#include "PointerAnalysis/FrontEnd/CFGBuilder.h"
+#include "PointerAnalysis/FrontEnd/CFG/CFGBuilder.h"
 #include "PointerAnalysis/FrontEnd/SemiSparseProgramBuilder.h"
-#include "PointerAnalysis/FrontEnd/TypeAnalysis.h"
+#include "PointerAnalysis/FrontEnd/Type/TypeAnalysis.h"
 
 #include <llvm/IR/Module.h>
 

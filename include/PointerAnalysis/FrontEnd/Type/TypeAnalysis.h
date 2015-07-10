@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PointerAnalysis/FrontEnd/TypeMap.h"
+#include "PointerAnalysis/FrontEnd/Type/TypeMap.h"
 
 namespace llvm
 {
