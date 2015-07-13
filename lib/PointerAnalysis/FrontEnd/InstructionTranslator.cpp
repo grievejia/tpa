@@ -3,11 +3,9 @@
 #include "PointerAnalysis/FrontEnd/Type/TypeMap.h"
 #include "PointerAnalysis/Program/CFG/CFG.h"
 
-#include <llvm/IR/PatternMatch.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
-using namespace llvm::PatternMatch;
 
 namespace tpa
 {
@@ -145,46 +143,8 @@ tpa::CFGNode* InstructionTranslator::visitIntToPtrInst(IntToPtrInst& inst)
 {
 	assert(inst.getType()->isPointerTy());
 
-	auto op = inst.getOperand(0)->stripPointerCasts();
-
-	// Pointer copy: Y = inttoptr (ptrtoint X)
-	Value* src = nullptr;
-	if (match(op, m_PtrToInt(m_Value(src))))
-	{
-		auto srcs = SmallPtrSet<const Value*, 1>();
-		srcs.insert(src->stripPointerCasts());
-		return createCopyNode(&inst, srcs);
-	}
-
-	// Pointer arithmetic
-	Value* offsetValue = nullptr;
-	if (match(op, m_Add(m_PtrToInt(m_Value(src)), m_Value(offsetValue))))
-	{
-		ConstantInt* ci = nullptr;
-		auto srcVal = src->stripPointerCasts();
-		auto dstVal = &inst;
-		// Struct pointer arithmetic: Y = inttoptr (ptrtoint (X) + offset)
-		// Constant-size array pointer arithmetic can produce the same pattern
-		if (match(offsetValue, m_ConstantInt(ci)))
-			return cfg.create<tpa::OffsetCFGNode>(dstVal, srcVal, ci->getSExtValue(), false);
-		// Array pointer arithmetic: Y = inttoptr (ptrtoint (X) + somethingelse)
-		else
-		{
-			auto cInt = dataLayout.getPointerSize();
-			if (match(offsetValue, m_Mul(m_Value(), m_ConstantInt(ci))))
-			{
-				auto sExtVal = ci->getSExtValue();
-				if (sExtVal > 0)
-					cInt = sExtVal;
-			}
-			
-			// Create an OffsetNode that is aware that we are doing an array reference
-			return cfg.create<tpa::OffsetCFGNode>(dstVal, srcVal, cInt, true);
-		}
-	}
-
-	// In other cases, we make no effort to track what the rhs is. Assign UniversalPtr to the rhs
-	std::vector<const llvm::Value*> srcs = { UndefValue::get(op->getType()) };
+	// Common cases are handled in FoldIntToPtr prepass. In other cases, we make no effort to track what the rhs is. Assign UniversalPtr to the rhs
+	std::vector<const llvm::Value*> srcs = { UndefValue::get(inst.getType()) };
 	return cfg.create<tpa::CopyCFGNode>(&inst, std::move(srcs));
 }
 

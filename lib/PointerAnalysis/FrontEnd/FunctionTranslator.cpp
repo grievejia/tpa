@@ -5,11 +5,9 @@
 
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Function.h>
-#include <llvm/IR/PatternMatch.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
-using namespace PatternMatch;
 
 namespace tpa
 {
@@ -136,7 +134,10 @@ void FunctionTranslator::drawDefUseEdgeFromValue(const Value* defVal, tpa::CFGNo
 {
 	assert(defVal != nullptr && useNode != nullptr);
 
-	if (isa<GlobalValue>(defVal) || isa<Argument>(defVal))
+	if (!defVal->getType()->isPointerTy())
+		return;
+
+	if (isa<GlobalValue>(defVal) || isa<Argument>(defVal) || isa<UndefValue>(defVal) || isa<ConstantPointerNull>(defVal))
 	{
 		// Nodes that use global values are def roots
 		cfg.getEntryNode()->insertDefUseEdge(useNode);
@@ -155,43 +156,67 @@ void FunctionTranslator::constructDefUseChains()
 {
 	for (auto useNode: cfg)
 	{
-		if (useNode->isEntryNode())
-			continue;
-
-		// For alloc nodes, there should not be anything up on the use-def chain. Draw an edge from starting node to it
-		if (useNode->isAllocNode())
+		switch (useNode->getNodeTag())
 		{
-			cfg.getEntryNode()->insertDefUseEdge(useNode);
-			continue;
-		}
-
-		auto inst = nodeToInst[useNode];
-		assert(inst != nullptr);
-
-		// Pointer arithmetic (inttoptr + ptrtoint) is a special case we need to handle first
-		if (isa<IntToPtrInst>(inst))
-		{
-			auto op = inst->getOperand(0);
-			Value* srcValue = nullptr;
-			bool isMatch = match(op, m_PtrToInt(m_Value(srcValue)));
-			if (!isMatch)
-				isMatch = match(op, m_Add(m_PtrToInt(m_Value(srcValue)), m_Value()));
-
-			if (isMatch)
+			case CFGNodeTag::Entry:
+				break;
+			case CFGNodeTag::Alloc:
+				cfg.getEntryNode()->insertDefUseEdge(useNode);
+				break;
+			case CFGNodeTag::Copy:
 			{
-				drawDefUseEdgeFromValue(srcValue->stripPointerCasts(), useNode);
-				continue;
+				auto copyNode = static_cast<const CopyCFGNode*>(useNode);
+				for (auto src: *copyNode)
+				{
+					auto defVal = src->stripPointerCasts();
+					drawDefUseEdgeFromValue(defVal, useNode);
+				}
+				break;
 			}
-		}
-
-		for (auto const& u: inst->operands())
-		{
-			auto defVal = u->stripPointerCasts();
-
-			if (!defVal->getType()->isPointerTy())
-				continue;
-
-			drawDefUseEdgeFromValue(defVal, useNode);
+			case CFGNodeTag::Offset:
+			{
+				auto offsetNode = static_cast<const OffsetCFGNode*>(useNode);
+				auto defVal = offsetNode->getSrc()->stripPointerCasts();
+				drawDefUseEdgeFromValue(defVal, useNode);
+				break;
+			}
+			case CFGNodeTag::Load:
+			{
+				auto loadNode = static_cast<const LoadCFGNode*>(useNode);
+				auto defVal = loadNode->getSrc()->stripPointerCasts();
+				drawDefUseEdgeFromValue(defVal, useNode);
+				break;
+			}
+			case CFGNodeTag::Store:
+			{
+				auto storeNode = static_cast<const StoreCFGNode*>(useNode);
+				auto defVal = storeNode->getSrc()->stripPointerCasts();
+				drawDefUseEdgeFromValue(defVal, useNode);
+				break;
+			}
+			case CFGNodeTag::Call:
+			{
+				auto callNode = static_cast<const CallCFGNode*>(useNode);
+				auto funPtr = callNode->getFunctionPointer()->stripPointerCasts();
+				drawDefUseEdgeFromValue(funPtr, useNode);
+				for (auto arg: *callNode)
+				{
+					auto defVal = arg->stripPointerCasts();
+					drawDefUseEdgeFromValue(defVal, useNode);
+				}
+				break;
+			}
+			case CFGNodeTag::Ret:
+			{
+				auto retNode = static_cast<const ReturnCFGNode*>(useNode);
+				auto retVal = retNode->getReturnValue();
+				if (retVal != nullptr)
+				{
+					auto defVal = retVal->stripPointerCasts();
+					drawDefUseEdgeFromValue(defVal, useNode);
+				}
+				break;
+			}
 		}
 	}
 }

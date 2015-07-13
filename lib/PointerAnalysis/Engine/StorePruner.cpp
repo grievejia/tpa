@@ -8,6 +8,7 @@
 
 #include <llvm/Support/raw_ostream.h>
 
+using namespace llvm;
 using namespace util::io;
 
 namespace tpa
@@ -22,6 +23,7 @@ StorePruner::ObjectSet StorePruner::getRootSet(const Store& store, const Program
 {
 	ObjectSet ret;
 
+	//errs() << "Prunning " << pp.getCFGNode()->getFunction().getName() << "\n";
 	auto ctx = pp.getContext();
 	auto const& func = pp.getCFGNode()->getFunction();
 	for (auto& argVal: func.args())

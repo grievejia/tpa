@@ -2,7 +2,9 @@
 #include "Transforms/ExpandConstantExpr.h"
 #include "Transforms/ExpandGetElementPtr.h"
 #include "Transforms/ExpandIndirectBr.h"
+#include "Transforms/FoldIntToPtr.h"
 #include "Transforms/GlobalCleanup.h"
+#include "Transforms/LowerGlobalCtor.h"
 #include "Transforms/RunPrepass.h"
 
 #include <llvm/ADT/Triple.h>
@@ -38,6 +40,7 @@ static void runAllPrepasses(Module& module)
 	passes.add(createLowerInvokePass());
 	passes.add(createLowerSwitchPass());
 	passes.add(new ResolveAliases());
+	passes.add(new LowerGlobalCtorPass());
 	passes.add(new ExpandIndirectBr());
 	passes.add(new ExpandByValPass());
 	// Instcombine has some really interesting behaviors that are not desirable for out purpose. Disable it.
@@ -54,12 +57,13 @@ static void runAllPrepasses(Module& module)
 	passes.add(createGVNPass(false));
 	passes.add(createLICMPass());
 	passes.add(createAggressiveDCEPass());
-	passes.add(createLoopDeletionPass());
 	passes.add(createGlobalDCEPass());
 	passes.add(createGlobalOptimizerPass());
 	passes.add(createCFGSimplificationPass());
 	passes.add(createUnifyFunctionExitNodesPass());
 	passes.add(new ExpandConstantExprPass());
+	passes.add(new FoldIntToPtrPass());
+	passes.add(createAggressiveDCEPass());
 	passes.add(new ExpandGetElementPtrPass());
 	passes.add(createInstructionNamerPass());
 

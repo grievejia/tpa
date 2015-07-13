@@ -6,7 +6,9 @@ set (TransformSourceCodes
 	ExpandGetElementPtr.cpp
 	ExpandIndirectBr.cpp
 	ExpandUtils.cpp
+	FoldIntToPtr.cpp
 	GlobalCleanup.cpp
+	LowerGlobalCtor.cpp
 	RunPrepass.cpp
 )
 

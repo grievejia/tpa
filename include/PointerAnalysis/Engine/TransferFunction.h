@@ -81,7 +81,7 @@ private:
 	bool evalAllocNode(const context::Context*, const AllocCFGNode&);
 	bool evalCopyNode(const context::Context*, const CopyCFGNode&);
 	bool evalOffsetNode(const context::Context*, const OffsetCFGNode&);
-	bool evalLoadNode(const context::Context*, const LoadCFGNode&, const Store&);
+	std::pair<bool, bool> evalLoadNode(const context::Context*, const LoadCFGNode&, const Store&);
 	bool evalStoreNode(const context::Context*, const StoreCFGNode&, Store&);
 	void evalCallNode(const context::Context*, const CallCFGNode&, EvalResult&);
 	void evalReturnNode(const context::Context*, const ReturnCFGNode&, EvalResult&);

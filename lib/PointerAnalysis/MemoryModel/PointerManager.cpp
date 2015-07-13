@@ -3,6 +3,7 @@
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/Instructions.h>
 
 using namespace context;
 
@@ -57,6 +58,15 @@ const Pointer* PointerManager::getPointer(const Context* ctx, const llvm::Value*
 {
 	assert(ctx != nullptr && val != nullptr);
 
+	val = val->stripPointerCasts();
+	if (auto phiNode = llvm::dyn_cast<llvm::PHINode>(val))
+	{
+		if (phiNode->getNumOperands() == 1)
+			val = phiNode->getOperand(0)->stripPointerCasts();
+	}
+	else if (llvm::isa<llvm::IntToPtrInst>(val))
+		return uPtr;
+	
 	if (llvm::isa<llvm::ConstantPointerNull>(val))
 		return nPtr;
 	else if (llvm::isa<llvm::UndefValue>(val))

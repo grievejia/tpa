@@ -114,6 +114,7 @@ PtsSet TransferFunction::offsetMemory(const MemoryObject* srcObj, size_t offset,
 	if (isArrayRef && offset != 0)
 	{
 		auto objSize = srcObj->getMemoryBlock()->getTypeLayout()->getSize();
+		//errs() << "obj = " << *srcObj << ", size = " << objSize - srcObj->getOffset() << "\n";
 
 		for (unsigned i = 0, e = objSize - srcObj->getOffset(); i < e; i += offset)
 		{
@@ -195,15 +196,18 @@ PtsSet TransferFunction::loadFromPointer(const Pointer* ptr, const Store& store)
 	return PtsSet::mergeAll(srcSets);
 }
 
-bool TransferFunction::evalLoadNode(const context::Context* ctx, const LoadCFGNode& loadNode, const Store& store)
+std::pair<bool, bool> TransferFunction::evalLoadNode(const context::Context* ctx, const LoadCFGNode& loadNode, const Store& store)
 {
 	auto& ptrManager = globalState.getPointerManager();
 	auto srcPtr = ptrManager.getPointer(ctx, loadNode.getSrc());
-	assert(srcPtr != nullptr && "LoadNode is evaluated before its src operand becomes available");
+	if (srcPtr == nullptr)
+		return std::make_pair(false, false);
+	//assert(srcPtr != nullptr && "LoadNode is evaluated before its src operand becomes available");
 	auto dstPtr = ptrManager.getOrCreatePointer(ctx, loadNode.getDest());
 
 	auto resSet = loadFromPointer(srcPtr, store);
-	return globalState.getEnv().strongUpdate(dstPtr, resSet);
+	auto envChanged = globalState.getEnv().strongUpdate(dstPtr, resSet);
+	return std::make_pair(envChanged, true);
 }
 
 void TransferFunction::strongUpdateStore(const MemoryObject* obj, PtsSet pSet, Store& store)
@@ -357,6 +361,7 @@ bool TransferFunction::updateParameterPtsSets(const FunctionContext& fc, const s
 	return changed;
 }
 
+// Return true if eval succeeded
 bool TransferFunction::evalCallArguments(const context::Context* ctx, const CallCFGNode& callNode, const FunctionContext& fc)
 {
 	auto numParams = countPointerArguments(fc.getFunction());
@@ -376,15 +381,19 @@ void TransferFunction::evalInternalCall(const context::Context* ctx, const CallC
 	assert(tgtCFG != nullptr);
 	auto tgtEntryNode = tgtCFG->getEntryNode();
 
-	if (!evalCallArguments(ctx, callNode, fc) && !callGraphUpdated)
+	if (!evalCallArguments(ctx, callNode, fc))
 		return;
 
 	evalResult.addMemLevelSuccessor(ProgramPoint(fc.getContext(), tgtEntryNode));
+	if (!tgtCFG->doesNotReturn())
+		addMemLevelSuccessors(ProgramPoint(ctx, &callNode), evalResult);
 }
 
 void TransferFunction::evalCallNode(const context::Context* ctx, const CallCFGNode& callNode, EvalResult& evalResult)
 {
 	auto callees = resolveCallTarget(ctx, callNode);
+	if (callees.empty())
+		return;
 
 	assert(checkCallees(callees) && "Indirect call into multiple external function is not supported yet");
 
@@ -470,7 +479,7 @@ void TransferFunction::evalReturnNode(const context::Context* ctx, const ReturnC
 
 EvalResult TransferFunction::eval(const ProgramPoint& pp)
 {
-	//errs() << "Evaluating " << pp << "\n";
+	//errs() << "Evaluating " << pp.getCFGNode()->getFunction().getName() << "::" << pp << "\n";
 	EvalResult evalResult;
 
 	switch (pp.getCFGNode()->getNodeTag())
@@ -515,9 +524,13 @@ EvalResult TransferFunction::eval(const ProgramPoint& pp)
 
 				evalResult.setStore(*localState);
 				auto& store = evalResult.getStore();
-				if (evalLoadNode(pp.getContext(), loadNode, store))
+
+				bool addTop, addMem;
+				std::tie(addTop, addMem) = evalLoadNode(pp.getContext(), loadNode, store);
+				if (addTop)
 					addTopLevelSuccessors(pp, evalResult);
-				addMemLevelSuccessors(pp, evalResult);
+				if (addMem)
+					addMemLevelSuccessors(pp, evalResult);
 			}
 			break;
 		}

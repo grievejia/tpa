@@ -13,12 +13,6 @@ const TypeLayout* TypeLayout::getTypeLayout(size_t s, std::initializer_list<Arra
 const TypeLayout* TypeLayout::getTypeLayout(size_t size, const ArrayLayout* a, const PointerLayout* p)
 {
 	assert(a != nullptr && p != nullptr);
-	assert(
-		std::all_of(a->begin(), a->end(), [size] (auto const& triple)
-		{
-			return triple.end <= size;
-		})
-	);
 
 	auto itr = typeSet.insert(TypeLayout(size, a, p)).first;
 	return &(*itr);
@@ -36,7 +30,7 @@ const TypeLayout* TypeLayout::getNonPointerTypeLayoutWithSize(size_t size)
 
 const TypeLayout* TypeLayout::getByteArrayTypeLayout()
 {
-	return getTypeLayout(std::numeric_limits<size_t>::max(), ArrayLayout::getByteArrayLayout(), PointerLayout::getSinglePointerLayout());
+	return getTypeLayout(1, ArrayLayout::getByteArrayLayout(), PointerLayout::getSinglePointerLayout());
 }
 
 std::pair<size_t, bool> TypeLayout::offsetInto(size_t size) const

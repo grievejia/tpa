@@ -20,9 +20,13 @@ static void dumpPtsSetForValue(const Value* value, const SemiSparsePointerAnalys
 	if (!value->getType()->isPointerTy())
 		return;
 
-	auto ptrs = ptrAnalysis.getPointerManager().getPointersWithValue(value->stripPointerCasts());
-	//errs() << "val = " << *value << "\n";
-	assert(!ptrs.empty() && "cannot find corresponding ptr for value?");
+	auto ptrs = ptrAnalysis.getPointerManager().getPointersWithValue(value);
+	if (ptrs.empty())
+	{
+		//errs() << "val = " << *value << "\n";
+		assert((isa<PHINode>(value) || isa<IntToPtrInst>(value)) && "cannot find corresponding ptr for value?");
+		return;
+	}
 
 	for (auto const& ptr: ptrs)
 	{

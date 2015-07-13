@@ -25,7 +25,7 @@ def call(cmd, timeout):
 	if succ:
 		return (proc.returncode, out, err)
 	else:
-		return None
+		return (None, None, None)
 
 def getPath(pathStr, dir):
 	retPath = Path(pathStr)
@@ -37,7 +37,7 @@ def getPath(pathStr, dir):
 		sys.exit(-1)
 	return retPath
 
-def ptsTest(filename, tooldir, workdir, config, k, runtime, timeout):
+def ptsTest(filename, tooldir, workdir, config, k, runtime, libraries, timeout):
 	filePath = getPath(filename, dir=False)
 	toolPath = getPath(tooldir, dir=True)
 	workPath = getPath(workdir, dir=True)
@@ -58,6 +58,9 @@ def ptsTest(filename, tooldir, workdir, config, k, runtime, timeout):
 	subprocess.call(instCmd)
 
 	compileCmd = ['clang', str(instFilePath), str(runtimePath), '-o', str(instExecPath)]
+	if libraries is not None:
+		for lib in libraries:
+			compileCmd.append('-l' + lib)
 	subprocess.call(compileCmd)
 
 	runCmd = [str(instExecPath)]
@@ -94,8 +97,9 @@ if __name__ == "__main__":
 	optionParser.add_argument('-b', '--tooldir', help='specify the directory that contains TPA tools', default='bin/', type=str)
 	optionParser.add_argument('-c', '--config', help='specify the pointer annotation config file', default='ptr.config', type=str)
 	optionParser.add_argument('-k', '--context', help='specify the context limit', default=0, type=int)
-	optionParser.add_argument('-t', '--timeout', help = 'time limit for the program (in seconds)', type = int, default = 3)
+	optionParser.add_argument('-t', '--timeout', help='time limit for the program (in seconds)', type = int, default = 3)
+	optionParser.add_argument('-l', '--library', help='Additional libraries used during linking', action='append')
 	args = optionParser.parse_args()
 
-	ptsTest(args.filename, args.tooldir, args.workdir, args.config, args.context, args.runtime, args.timeout)
+	ptsTest(args.filename, args.tooldir, args.workdir, args.config, args.context, args.runtime, args.library, args.timeout)
 	sys.exit(0)

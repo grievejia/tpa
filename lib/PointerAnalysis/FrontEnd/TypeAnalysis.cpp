@@ -41,7 +41,11 @@ size_t TypeMapBuilder::getTypeSize(Type* type, const DataLayout& dataLayout)
 	if (isa<FunctionType>(type))
 		return dataLayout.getPointerSize();
 	else
+	{
+		while (auto arrayType = dyn_cast<ArrayType>(type))
+			type = arrayType->getElementType();
 		return dataLayout.getTypeAllocSize(type);
+	}
 }
 
 void TypeMapBuilder::buildTypeMap()
