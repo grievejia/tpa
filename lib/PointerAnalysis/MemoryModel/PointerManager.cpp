@@ -10,6 +10,32 @@ using namespace context;
 namespace tpa
 {
 
+const llvm::Value* canonicalizeValue(const llvm::Value* value)
+{
+	assert(value != nullptr);
+	value = value->stripPointerCasts();
+	if (auto phiNode = llvm::dyn_cast<llvm::PHINode>(value))
+	{
+		const llvm::Value* rhs = nullptr;
+		for (auto& op: phiNode->operands())
+		{
+			if (rhs == nullptr)
+				rhs = op.get();
+			else if (op.get() != rhs)
+			{
+				rhs = nullptr;
+				break;
+			}
+		}
+		if (rhs != nullptr)
+			value = phiNode->getOperand(0)->stripPointerCasts();
+	}
+	else if (llvm::isa<llvm::IntToPtrInst>(value))
+		value = llvm::UndefValue::get(value->getType());
+
+	return value;
+}
+
 PointerManager::PointerManager(): uPtr(nullptr), nPtr(nullptr) {}
 
 const Pointer* PointerManager::buildPointer(const context::Context* ctx, const llvm::Value* val)
@@ -58,14 +84,7 @@ const Pointer* PointerManager::getPointer(const Context* ctx, const llvm::Value*
 {
 	assert(ctx != nullptr && val != nullptr);
 
-	val = val->stripPointerCasts();
-	if (auto phiNode = llvm::dyn_cast<llvm::PHINode>(val))
-	{
-		if (phiNode->getNumOperands() == 1)
-			val = phiNode->getOperand(0)->stripPointerCasts();
-	}
-	else if (llvm::isa<llvm::IntToPtrInst>(val))
-		return uPtr;
+	val = canonicalizeValue(val);
 	
 	if (llvm::isa<llvm::ConstantPointerNull>(val))
 		return nPtr;
@@ -85,6 +104,8 @@ const Pointer* PointerManager::getOrCreatePointer(const Context* ctx, const llvm
 {
 	assert(ctx != nullptr && val != nullptr);
 
+	val = canonicalizeValue(val);
+
 	if (llvm::isa<llvm::ConstantPointerNull>(val))
 		return nPtr;
 	else if (llvm::isa<llvm::UndefValue>(val))
@@ -97,11 +118,22 @@ const Pointer* PointerManager::getOrCreatePointer(const Context* ctx, const llvm
 
 PointerManager::PointerVector PointerManager::getPointersWithValue(const llvm::Value* val) const
 {
-	auto itr = valuePtrMap.find(val);
-	if (itr == valuePtrMap.end())
-		return PointerVector();
+	PointerVector vec;
+
+	val = canonicalizeValue(val);
+
+	if (llvm::isa<llvm::ConstantPointerNull>(val))
+		vec.push_back(nPtr);
+	else if (llvm::isa<llvm::UndefValue>(val))
+		vec.push_back(uPtr);
 	else
-		return PointerVector(itr->second);
+	{
+		auto itr = valuePtrMap.find(val);
+		if (itr != valuePtrMap.end())
+			vec = itr->second;
+	}
+
+	return vec;
 }
 
 }

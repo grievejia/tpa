@@ -78,6 +78,9 @@ void addExternalUses(DefUseFunction& duFunc, const ReachingDefMap<Instruction>& 
 {
 	auto exitInst = duFunc.getExitInst();
 
+	if (exitInst == nullptr)
+		return;
+
 	auto& rdStore = rdMap.getReachingDefStore(exitInst->getInstruction());
 
 	for (auto const& mapping: rdStore)

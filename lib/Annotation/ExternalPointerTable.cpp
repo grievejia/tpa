@@ -184,7 +184,20 @@ ExternalPointerTable ExternalPointerTable::buildTable(const StringRef& fileConte
 		}
 	);
 
-	auto pentry = alt(commentEntry, ignoreEntry, allocEntry, copyEntry);
+	auto exitEntry = rule(
+		seq(
+			token(id),
+			token(str("EXIT"))
+		),
+		[&extTable] (auto const& tuple)
+		{
+			auto entry = PointerEffect::getExitEffect();
+			extTable.table[std::get<0>(tuple)].addEffect(std::move(entry));
+			return true;
+		}
+	);
+
+	auto pentry = alt(commentEntry, ignoreEntry, allocEntry, copyEntry, exitEntry);
 	auto ptable = many(pentry);
 
 	auto parseResult = ptable.parse(fileContent);

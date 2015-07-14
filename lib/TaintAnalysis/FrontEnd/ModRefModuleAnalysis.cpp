@@ -222,7 +222,9 @@ bool updateSummaryForRefEffect(const Instruction* inst, ModRefFunctionSummary& s
 	{
 		bool changed = false;
 		for (auto i = idx, e = cs.arg_size(); i < e; ++i)
+		{
 			changed |= addExternalMemoryRead(cs.getArgument(i)->stripPointerCasts(), summary, caller, ptrAnalysis, refEffect.onReachableMemory());
+		}
 		return changed;
 	}
 }

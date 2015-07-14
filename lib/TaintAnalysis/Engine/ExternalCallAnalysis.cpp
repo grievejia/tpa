@@ -123,7 +123,9 @@ TaintLattice TransferFunction::getTaintValueByTClass(const TaintValue& tv, TClas
 			return globalState.getEnv().lookup(tv);
 		case TClass::DirectMemory:
 		{
-			assert(localState != nullptr);
+			if (localState == nullptr)
+				return TaintLattice::Unknown;
+			//assert(localState != nullptr);
 
 			auto const& ptrAnalysis = globalState.getPointerAnalysis();
 			auto pSet = ptrAnalysis.getPtsSet(tv.getContext(), tv.getValue());
@@ -139,7 +141,9 @@ TaintLattice TransferFunction::getTaintValueByTClass(const TaintValue& tv, TClas
 
 void TransferFunction::evalMemcpy(const TaintValue& srcVal, const TaintValue& dstVal, const ProgramPoint& pp, EvalResult& evalResult)
 {
-	assert(localState != nullptr);
+	if (localState == nullptr)
+		return;
+	//assert(localState != nullptr);
 
 	auto const& ptrAnalysis = globalState.getPointerAnalysis();
 	auto const& memManager = ptrAnalysis.getMemoryManager();
