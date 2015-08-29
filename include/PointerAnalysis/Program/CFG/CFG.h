@@ -4,6 +4,8 @@
 #include "Util/DataStructure/VectorSet.h"
 #include "Util/Iterator/UniquePtrIterator.h"
 
+#include <llvm/ADT/DenseMap.h>
+
 #include <memory>
 #include <vector>
 
@@ -24,6 +26,10 @@ private:
 	// Nodes
 	using NodeList = std::vector<std::unique_ptr<CFGNode>>;
 	NodeList nodes;
+
+	// Value to node mapping
+	using ValueMap = llvm::DenseMap<const llvm::Value*, const CFGNode*>;
+	ValueMap valueMap;
 
 	// Entry and exit
 	EntryCFGNode* entryNode;
@@ -54,6 +60,16 @@ public:
 	}
 
 	void removeNodes(const util::VectorSet<CFGNode*>&);
+	void buildValueMap();
+
+	const CFGNode* getCFGNodeForValue(const llvm::Value* val) const
+	{
+		auto itr = valueMap.find(val);
+		if (itr != valueMap.end())
+			return itr->second;
+		else
+			return nullptr;
+	}
 
 	// Node creation
 	template <typename Node, typename... Args>

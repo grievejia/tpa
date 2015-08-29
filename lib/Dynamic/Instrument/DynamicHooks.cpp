@@ -54,7 +54,7 @@ DynamicHooks::DynamicHooks(Module& module)
 	enterHook = createFunctionWithArgType("HookEnter", { getIntType(module) }, module);
 	exitHook = createFunctionWithArgType("HookExit", { getIntType(module) }, module);
 	globalHook = createFunctionWithArgType("HookGlobal", {}, module);
-	mainHook = createFunctionWithArgType("HookMain", { getIntType(module), getCharPtrPtrType(module) }, module);
+	mainHook = createFunctionWithArgType("HookMain", { getIntType(module), getCharPtrPtrType(module), getIntType(module), getCharPtrPtrType(module) }, module);
 }
 
 bool DynamicHooks::isHook(const llvm::Function* f) const

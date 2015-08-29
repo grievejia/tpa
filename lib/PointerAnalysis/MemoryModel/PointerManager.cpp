@@ -19,16 +19,18 @@ const llvm::Value* canonicalizeValue(const llvm::Value* value)
 		const llvm::Value* rhs = nullptr;
 		for (auto& op: phiNode->operands())
 		{
+			auto val = op.get()->stripPointerCasts();
 			if (rhs == nullptr)
-				rhs = op.get();
-			else if (op.get() != rhs)
+				rhs = val;
+			else if (val != rhs)
 			{
 				rhs = nullptr;
 				break;
 			}
 		}
+
 		if (rhs != nullptr)
-			value = phiNode->getOperand(0)->stripPointerCasts();
+			value = rhs;
 	}
 	else if (llvm::isa<llvm::IntToPtrInst>(value))
 		value = llvm::UndefValue::get(value->getType());

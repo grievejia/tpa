@@ -190,8 +190,10 @@ void FunctionTranslator::constructDefUseChains()
 			case CFGNodeTag::Store:
 			{
 				auto storeNode = static_cast<const StoreCFGNode*>(useNode);
-				auto defVal = storeNode->getSrc()->stripPointerCasts();
-				drawDefUseEdgeFromValue(defVal, useNode);
+				auto srcVal = storeNode->getSrc()->stripPointerCasts();
+				drawDefUseEdgeFromValue(srcVal, useNode);
+				auto dstVal = storeNode->getDest()->stripPointerCasts();
+				drawDefUseEdgeFromValue(dstVal, useNode);
 				break;
 			}
 			case CFGNodeTag::Call:

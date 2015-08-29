@@ -54,6 +54,7 @@ public:
 	const_iterator begin() const { return arrayLayout.begin(); }
 	const_iterator end() const { return arrayLayout.end(); }
 	bool empty() const { return arrayLayout.empty(); }
+	size_t size() const { return arrayLayout.size(); }
 
 	// Default layout: scalar or struct that doesn't contain any array
 	static const ArrayLayout* getDefaultLayout();

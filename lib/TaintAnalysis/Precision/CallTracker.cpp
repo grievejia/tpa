@@ -33,6 +33,8 @@ TaintVector CallTracker::getArgTaintValues(const CallerVector& callers, size_t i
 	{
 		auto arg = getArgAtPos(callsite.getDefUseInstruction()->getInstruction(), idx);
 		auto taint = trackerState.getEnv().lookup(TaintValue(callsite.getContext(), arg));
+		if (taint == TaintLattice::Unknown)
+			errs() << *callsite.getDefUseInstruction()->getInstruction() << "\n";
 		assert(taint != TaintLattice::Unknown);
 		ret.push_back(taint);
 	}
@@ -80,7 +82,6 @@ TaintVector CallTracker::getMemoryTaintValues(const CallerVector& callers, const
 		assert(store != nullptr);
 
 		auto tVal = store->lookup(obj);
-		assert(tVal != TaintLattice::Unknown);
 		retVec.push_back(tVal);
 	}
 	return retVec;

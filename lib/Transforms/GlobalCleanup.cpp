@@ -79,12 +79,18 @@ bool ResolveAliases::runOnModule(Module &M)
 {
 	bool modified = false;
 
+	std::vector<GlobalAlias*> aliasToRemove;
+	aliasToRemove.reserve(M.alias_size());
+
 	for (auto& alias: M.aliases())
 	{
 		alias.replaceAllUsesWith(alias.getAliasee());
-		alias.eraseFromParent();
+		aliasToRemove.push_back(&alias);
 		modified = true;
 	}
+
+	for (auto alias: aliasToRemove)
+		alias->eraseFromParent();
 	return modified;
 }
 

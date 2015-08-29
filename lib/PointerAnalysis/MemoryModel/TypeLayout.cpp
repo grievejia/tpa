@@ -7,7 +7,7 @@ std::unordered_set<TypeLayout> TypeLayout::typeSet;
 
 const TypeLayout* TypeLayout::getTypeLayout(size_t s, std::initializer_list<ArrayTriple> a, std::initializer_list<size_t> p)
 {
-	return TypeLayout::getTypeLayout(s, ArrayLayout::getLayout(std::move(a)), PointerLayout::getLayout(std::move(p)));
+	return getTypeLayout(s, ArrayLayout::getLayout(std::move(a)), PointerLayout::getLayout(std::move(p)));
 }
 
 const TypeLayout* TypeLayout::getTypeLayout(size_t size, const ArrayLayout* a, const PointerLayout* p)
@@ -16,6 +16,23 @@ const TypeLayout* TypeLayout::getTypeLayout(size_t size, const ArrayLayout* a, c
 
 	auto itr = typeSet.insert(TypeLayout(size, a, p)).first;
 	return &(*itr);
+}
+
+const TypeLayout* TypeLayout::getArrayTypeLayout(const TypeLayout* elemLayout, size_t elemCount)
+{
+	assert(elemLayout != nullptr);
+	auto elemArrayLayout = elemLayout->getArrayLayout();
+	auto elemSize = elemLayout->getSize();
+	auto newSize = elemSize * elemCount;
+
+	auto arrayTripleList = ArrayLayout::ArrayTripleList();
+	arrayTripleList.reserve(elemArrayLayout->size() + 1);
+	arrayTripleList.push_back({ 0, newSize, elemSize });
+	for (auto const& triple: *elemArrayLayout)
+		arrayTripleList.push_back(triple);
+	auto newArrayLayout = ArrayLayout::getLayout(std::move(arrayTripleList));
+
+	return getTypeLayout(newSize, newArrayLayout, elemLayout->getPointerLayout());
 }
 
 const TypeLayout* TypeLayout::getPointerTypeLayoutWithSize(size_t size)

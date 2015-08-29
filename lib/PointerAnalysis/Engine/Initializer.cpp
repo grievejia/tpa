@@ -9,9 +9,9 @@
 namespace tpa
 {
 
-WorkList Initializer::runOnInitState(Store&& initStore)
+ForwardWorkList Initializer::runOnInitState(Store&& initStore)
 {
-	WorkList workList;
+	ForwardWorkList workList;
 
 	auto entryCtx = context::Context::getGlobalContext();
 	auto entryCFG = globalState.getSemiSparseProgram().getEntryCFG();
@@ -20,13 +20,22 @@ WorkList Initializer::runOnInitState(Store&& initStore)
 
 	// Set up argv
 	auto& entryFunc = entryCFG->getFunction();
-	if (entryFunc.arg_size() > 0)
+	if (entryFunc.arg_size() > 1)
 	{
 		auto argvValue = ++entryFunc.arg_begin();
 		auto argvPtr = globalState.getPointerManager().getOrCreatePointer(entryCtx, argvValue);
 		auto argvObj = globalState.getMemoryManager().allocateArgv(argvValue);
 		globalState.getEnv().insert(argvPtr, argvObj);
 		initStore.insert(argvObj, argvObj);
+
+		if (entryFunc.arg_size() > 2)
+		{
+			auto envpValue = ++argvValue;
+			auto envpPtr = globalState.getPointerManager().getOrCreatePointer(entryCtx, envpValue);
+			auto envpObj = globalState.getMemoryManager().allocateEnvp(envpValue);
+			globalState.getEnv().insert(envpPtr, envpObj);
+			initStore.insert(envpObj, envpObj);
+		}
 	}
 
 	auto pp = ProgramPoint(entryCtx, entryNode);

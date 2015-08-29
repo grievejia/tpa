@@ -27,17 +27,26 @@ void Initializer::initializeMainArgs(TaintStore& store)
 		// argc is tainted
 		auto argcValue = entryFunc.arg_begin();
 		env.strongUpdate(TaintValue(globalCtx, argcValue), TaintLattice::Tainted);
-	}
 
-	if (entryFunc.arg_size() > 1)
-	{
-		// argv is not tainted
-		auto argvValue = (++entryFunc.arg_begin());
-		env.strongUpdate(TaintValue(globalCtx, argvValue), TaintLattice::Untainted);
+		if (entryFunc.arg_size() > 1)
+		{
+			// argv is not tainted
+			auto argvValue = (++entryFunc.arg_begin());
+			env.strongUpdate(TaintValue(globalCtx, argvValue), TaintLattice::Untainted);
 
-		// *argv and **argv are tainted
-		auto argvObj = ptrAnalysis.getMemoryManager().getArgvObject();
-		store.strongUpdate(argvObj, TaintLattice::Tainted);
+			// *argv and **argv are tainted
+			auto argvObj = ptrAnalysis.getMemoryManager().getArgvObject();
+			store.strongUpdate(argvObj, TaintLattice::Tainted);
+
+			if (entryFunc.arg_size() > 2)
+			{
+				auto envpValue = (++argvValue);
+				env.strongUpdate(TaintValue(globalCtx, envpValue), TaintLattice::Untainted);
+
+				auto envpObj = ptrAnalysis.getMemoryManager().getEnvpObject();
+				store.strongUpdate(envpObj, TaintLattice::Tainted);
+			}
+		}
 	}
 }
 

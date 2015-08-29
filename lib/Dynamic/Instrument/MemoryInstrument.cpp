@@ -262,7 +262,18 @@ void Instrumenter::instrumentMain(Function& mainFunc)
 		Value* argv = ++argItr;
 		auto argvId = getID(argv);
 		auto idArg = ConstantInt::get(getIntType(), argvId);
-		CallInst::Create(hooks.getMainHook(), { idArg, argv }, "", pos);
+
+		Value* envp = ConstantPointerNull::get(cast<PointerType>(getCharPtrType()));
+		Constant* envpArg = ConstantInt::get(getIntType(), 0);
+		++argItr;
+		if (argItr != mainFunc.arg_end())
+		{
+			envp = argItr;
+			auto envpId = getID(envp);
+			envpArg = ConstantInt::get(getIntType(), envpId);
+		}
+
+		CallInst::Create(hooks.getMainHook(), { idArg, argv, envpArg, envp }, "", pos);
 	}
 }
 

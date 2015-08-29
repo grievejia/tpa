@@ -44,6 +44,7 @@ public:
 	static const TypeLayout* getByteArrayTypeLayout();
 	static const TypeLayout* getPointerTypeLayoutWithSize(size_t s);
 	static const TypeLayout* getNonPointerTypeLayoutWithSize(size_t s);
+	static const TypeLayout* getArrayTypeLayout(const TypeLayout*, size_t elemCount);
 	static const TypeLayout* getTypeLayout(size_t s, const ArrayLayout*, const PointerLayout*);
 	static const TypeLayout* getTypeLayout(size_t s, std::initializer_list<ArrayTriple>, std::initializer_list<size_t>);
 

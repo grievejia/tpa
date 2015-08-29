@@ -17,7 +17,7 @@ private:
 public:
 	Initializer(GlobalState& g, Memo& m): globalState(g), memo(m) {}
 
-	WorkList runOnInitState(Store&& initStore);
+	ForwardWorkList runOnInitState(Store&& initStore);
 };
 
 }

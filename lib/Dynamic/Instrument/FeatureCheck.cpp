@@ -23,7 +23,8 @@ void FeatureCheck::checkIndirectLibraryCall(const Function& f)
 		for (auto user: f.users())
 		{
 			ImmutableCallSite cs(user);
-			assert(cs);
+			if (!cs)
+				continue;
 			for (auto i = 0u; i < cs.arg_size(); ++i)
 				if (cs.getArgument(i) == &f)
 					issueWarning(f, "potential indirect external call found!");

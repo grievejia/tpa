@@ -1,6 +1,5 @@
 #pragma once
 
-#include "PointerAnalysis/Engine/StorePruner.h"
 #include "PointerAnalysis/Support/CallGraph.h"
 #include "PointerAnalysis/Support/Env.h"
 #include "PointerAnalysis/Support/FunctionContext.h"
@@ -29,10 +28,8 @@ private:
 
 	Env& env;
 	CallGraph<ProgramPoint, FunctionContext> callGraph;
-
-	StorePruner pruner;
 public:
-	GlobalState(PointerManager& p, MemoryManager& m, const SemiSparseProgram& s, const annotation::ExternalPointerTable& t, Env& e): ptrManager(p), memManager(m), prog(s), extTable(t), env(e), pruner(env, ptrManager, memManager) {}
+	GlobalState(PointerManager& p, MemoryManager& m, const SemiSparseProgram& s, const annotation::ExternalPointerTable& t, Env& e): ptrManager(p), memManager(m), prog(s), extTable(t), env(e) {}
 
 	PointerManager& getPointerManager() { return ptrManager; }
 	const PointerManager& getPointerManager() const { return ptrManager; }
@@ -45,7 +42,7 @@ public:
 	const Env& getEnv() const { return env; }
 
 	decltype(callGraph)& getCallGraph() { return callGraph; }
-	StorePruner& getStorePruner() { return pruner; }
+	const decltype(callGraph)& getCallGraph() const { return callGraph; }
 };
 
 }

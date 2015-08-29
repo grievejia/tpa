@@ -23,7 +23,7 @@ static void dumpPtsSetForValue(const Value* value, const SemiSparsePointerAnalys
 	auto ptrs = ptrAnalysis.getPointerManager().getPointersWithValue(value);
 	if (ptrs.empty())
 	{
-		//errs() << "val = " << *value << "\n";
+		errs() << "val = " << *value << "\n";
 		assert((isa<PHINode>(value) || isa<IntToPtrInst>(value)) && "cannot find corresponding ptr for value?");
 		return;
 	}

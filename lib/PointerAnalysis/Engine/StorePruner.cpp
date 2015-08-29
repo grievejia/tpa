@@ -9,7 +9,6 @@
 #include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
-using namespace util::io;
 
 namespace tpa
 {
@@ -23,14 +22,11 @@ StorePruner::ObjectSet StorePruner::getRootSet(const Store& store, const Program
 {
 	ObjectSet ret;
 
-	//errs() << "Prunning " << pp.getCFGNode()->getFunction().getName() << "\n";
 	auto ctx = pp.getContext();
-	auto const& func = pp.getCFGNode()->getFunction();
-	for (auto& argVal: func.args())
+	auto const& callNode = static_cast<const CallCFGNode&>(*pp.getCFGNode());
+	for (auto argVal: callNode)
 	{
-		if (!argVal.getType()->isPointerTy())
-			continue;
-		auto argPtr = ptrManager.getPointer(ctx, &argVal);
+		auto argPtr = ptrManager.getPointer(ctx, argVal);
 		assert(argPtr != nullptr);
 
 		auto argSet = env.lookup(argPtr);
@@ -80,43 +76,26 @@ void StorePruner::findAllReachableObjects(const Store& store, ObjectSet& reachab
 	}
 }
 
-std::pair<Store, Store> StorePruner::splitStore(const Store& store, const ObjectSet& reachableSet)
+Store StorePruner::filterStore(const Store& store, const ObjectSet& reachableSet)
 {
-	std::pair<Store, Store> ret;
+	Store ret;
 	for (auto const& mapping: store)
 	{
 		if (reachableSet.count(mapping.first))
-			ret.first.strongUpdate(mapping.first, mapping.second);
+			ret.strongUpdate(mapping.first, mapping.second);
 		else
-			ret.second.strongUpdate(mapping.first, mapping.second);
+			ret.strongUpdate(mapping.first, mapping.second);
 	}
 	return ret;
 }
 
 Store StorePruner::pruneStore(const Store& store, const ProgramPoint& pp)
 {
-	assert(pp.getCFGNode()->isEntryNode() && "Prunning can only happen on entry node!");
-
-	Store retStore;
-	Store unreachStore;
+	assert(pp.getCFGNode()->isCallNode() && "Prunning can only happen on call node!");
 	
 	auto reachableSet = getRootSet(store, pp);
 	findAllReachableObjects(store, reachableSet);
-	std::tie(retStore, unreachStore) = splitStore(store, reachableSet);
-
-	auto fc = FunctionContext(pp.getContext(), &pp.getCFGNode()->getFunction());
-	prunedMap[fc].mergeWith(unreachStore);
-
-	return retStore;
-}
-
-const Store* StorePruner::lookupPrunedStore(const FunctionContext& fc)
-{
-	auto itr = prunedMap.find(fc);
-	if (itr == prunedMap.end())
-		return nullptr;
-	else
-		return &itr->second;
+	return filterStore(store, reachableSet);
 }
 
 

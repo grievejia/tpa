@@ -10,17 +10,10 @@
 namespace tpa
 {
 
-class WorkList
+template <typename CFGNodeComparator>
+class IDFAWorkList
 {
 private:
-	struct CFGNodeComparator
-	{
-		bool operator()(const CFGNode* lhs, const CFGNode* rhs) const
-		{
-			return lhs->getPriority() < rhs->getPriority();
-		}
-	};
-
 	using GlobalWorkListType = util::FIFOWorkList<FunctionContext>;
 	using LocalWorkListType = util::PriorityWorkList<const CFGNode*, CFGNodeComparator>;
 	using WorkListType = util::TwoLevelWorkList<GlobalWorkListType, LocalWorkListType>;
@@ -28,7 +21,7 @@ private:
 public:
 	using ElemType = ProgramPoint;
 
-	WorkList() = default;
+	IDFAWorkList() = default;
 
 	void enqueue(const ProgramPoint& p)
 	{
@@ -49,5 +42,24 @@ public:
 
 	bool empty() const { return workList.empty(); }
 };
+
+struct PriorityComparator
+{
+	bool operator()(const CFGNode* lhs, const CFGNode* rhs) const
+	{
+		return lhs->getPriority() < rhs->getPriority();
+	}
+};
+
+struct PriorityReverseComparator
+{
+	bool operator()(const CFGNode* lhs, const CFGNode* rhs) const
+	{
+		return lhs->getPriority() > rhs->getPriority();
+	}
+};
+
+using ForwardWorkList = IDFAWorkList<PriorityComparator>;
+using BackwardWorkList = IDFAWorkList<PriorityReverseComparator>;
 
 }

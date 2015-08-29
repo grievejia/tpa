@@ -24,11 +24,17 @@ private:
 
 	size_t getTypeSize(Type*, const DataLayout&);
 	void insertTypeMap(Type*, size_t, const ArrayLayout*, const PointerLayout*);
+	void insertOpaqueType(Type*);
 public:
 	TypeMapBuilder(const Module& m, TypeMap& t): module(m), typeMap(t) {}
 
 	void buildTypeMap();
 };
+
+void TypeMapBuilder::insertOpaqueType(Type* type)
+{
+	typeMap.insert(type, TypeLayout::getByteArrayTypeLayout());
+}
 
 void TypeMapBuilder::insertTypeMap(Type* type, size_t size, const ArrayLayout* arrayLayout, const PointerLayout* ptrLayout)
 {
@@ -57,6 +63,15 @@ void TypeMapBuilder::buildTypeMap()
 
 	for (auto type: typeSet)
 	{
+		if (auto stType = dyn_cast<StructType>(type))
+		{
+			if (stType->isOpaque())
+			{
+				insertOpaqueType(type);
+				continue;
+			}
+		}
+
 		auto typeSize = getTypeSize(type, typeSet.getDataLayout());
 
 		auto ptrLayout = ptrLayoutMap.lookup(type);

@@ -37,7 +37,7 @@ TaintVector ReturnTracker::getReturnTaintValues(const ReturnVector& retVec)
 			assert(retValue != nullptr);
 
 			auto tVal = trackerState.getEnv().lookup(TaintValue(returnSource.getContext(), retValue));
-			assert(tVal != TaintLattice::Unknown);
+			//assert(tVal != TaintLattice::Unknown);
 			return tVal;
 		}
 	);
@@ -52,7 +52,6 @@ TaintVector ReturnTracker::getReturnTaintValues(const tpa::MemoryObject* obj, co
 			auto store = trackerState.getMemo().lookup(returnSource);
 			assert(store != nullptr);
 			auto tVal = store->lookup(obj);
-			assert(tVal != TaintLattice::Unknown);
 			return tVal;
 		}
 	);

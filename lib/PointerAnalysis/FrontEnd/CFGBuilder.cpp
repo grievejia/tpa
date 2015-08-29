@@ -2,6 +2,7 @@
 #include "PointerAnalysis/FrontEnd/CFG/CFGSimplifier.h"
 #include "PointerAnalysis/FrontEnd/CFG/FunctionTranslator.h"
 #include "PointerAnalysis/FrontEnd/CFG/InstructionTranslator.h"
+#include "PointerAnalysis/Program/CFG/CFG.h"
 
 #include <llvm/IR/DataLayout.h>
 
@@ -21,6 +22,7 @@ void CFGBuilder::buildCFG(const Function& llvmFunc)
 	auto instTranslator = InstructionTranslator(cfg, typeMap, dataLayout);
 	FunctionTranslator(cfg, instTranslator).translateFunction(llvmFunc);
 	CFGSimplifier().simplify(cfg);
+	cfg.buildValueMap();
 }
 
 }

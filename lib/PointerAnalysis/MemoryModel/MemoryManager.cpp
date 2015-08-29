@@ -13,7 +13,7 @@ static bool startWithSummary(const TypeLayout* type)
 	return ret;
 }
 
-MemoryManager::MemoryManager(size_t pSize): ptrSize(pSize), uBlock(AllocSite::getUniversalAllocSite(), TypeLayout::getByteArrayTypeLayout()), nBlock(AllocSite::getNullAllocSite(), TypeLayout::getPointerTypeLayoutWithSize(0)), uObj(nullptr), nObj(nullptr), argvObj(nullptr)
+MemoryManager::MemoryManager(size_t pSize): ptrSize(pSize), uBlock(AllocSite::getUniversalAllocSite(), TypeLayout::getByteArrayTypeLayout()), nBlock(AllocSite::getNullAllocSite(), TypeLayout::getPointerTypeLayoutWithSize(0)), uObj(nullptr), nObj(nullptr), argvObj(nullptr), envpObj(nullptr)
 {
 	uObj = getMemoryObject(&uBlock, 0, true);
 	nObj = getMemoryObject(&nBlock, 0, false);
@@ -71,6 +71,13 @@ const MemoryObject* MemoryManager::allocateArgv(const llvm::Value* ptr)
 	return argvObj;
 }
 
+const MemoryObject* MemoryManager::allocateEnvp(const llvm::Value* ptr)
+{
+	auto memBlock = allocateMemoryBlock(AllocSite::getStackAllocSite(Context::getGlobalContext(), ptr), TypeLayout::getByteArrayTypeLayout());
+	envpObj = getMemoryObject(memBlock, 0, true);
+	return envpObj;
+}
+
 const MemoryObject* MemoryManager::offsetMemory(const MemoryObject* obj, size_t offset) const
 {
 	assert(obj != nullptr);
@@ -96,7 +103,7 @@ const MemoryObject* MemoryManager::offsetMemory(const MemoryBlock* block, size_t
 	// Heap objects are always summary
 	summary = summary || block->isHeapBlock();
 
-	if (offset >= type->getSize())
+	if (adjustedOffset >= type->getSize())
 		return uObj;
 
 	return getMemoryObject(block, adjustedOffset, summary);

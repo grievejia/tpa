@@ -1,25 +1,25 @@
 #pragma once
 
-#include "PointerAnalysis/Engine/StorePruner.h"
+#include "PointerAnalysis/Engine/WorkList.h"
 
 namespace tpa
 {
 
 class EvalResult;
-class GlobalState;
+class EvalSuccessor;
 class Memo;
-class WorkList;
 
 class SemiSparsePropagator
 {
 private:
 	Memo& memo;
-	WorkList& workList;
+	ForwardWorkList& workList;
 
-	void propagateEntryNode(const ProgramPoint&, const Store&);
-	void enqueueIfMemoChange(const ProgramPoint&, const Store&);
+	void propagateTopLevel(const EvalSuccessor&);
+	void propagateMemLevel(const EvalSuccessor&);
+	bool enqueueIfMemoChange(const ProgramPoint&, const Store&);
 public:
-	SemiSparsePropagator(Memo& m, WorkList& w): memo(m), workList(w) {}
+	SemiSparsePropagator(Memo& m, ForwardWorkList& w): memo(m), workList(w) {}
 
 	void propagate(const EvalResult&);
 };

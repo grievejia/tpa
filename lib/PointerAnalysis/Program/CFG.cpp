@@ -1,11 +1,15 @@
 #include "PointerAnalysis/Program/CFG/CFG.h"
+#include "PointerAnalysis/Program/CFG/NodeVisitor.h"
 
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/Function.h>
+
+using namespace llvm;
 
 namespace tpa
 {
 
-const llvm::Function& CFGNode::getFunction() const
+const Function& CFGNode::getFunction() const
 {
 	assert(cfg != nullptr);
 	return cfg->getFunction();
@@ -46,7 +50,7 @@ void CFGNode::removeDefUseEdge(CFGNode* node)
 void CFGNode::detachFromCFG()
 {
 	// Remove edges to predecessors
-	auto preds = llvm::SmallVector<CFGNode*, 8>(pred.begin(), pred.end());
+	auto preds = SmallVector<CFGNode*, 8>(pred.begin(), pred.end());
 	for (auto predNode: preds)
 	{
 		// Ignore self-loop
@@ -67,12 +71,12 @@ void CFGNode::detachFromCFG()
 	}
 
 	// Remove edges to successors
-	auto succs = llvm::SmallVector<CFGNode*, 8>(succ.begin(), succ.end());
+	auto succs = SmallVector<CFGNode*, 8>(succ.begin(), succ.end());
 	for (auto succNode: succs)
 		removeEdge(succNode);
 }
 
-CFG::CFG(const llvm::Function& f): func(f), entryNode(create<EntryCFGNode>()), exitNode(nullptr)
+CFG::CFG(const Function& f): func(f), entryNode(create<EntryCFGNode>()), exitNode(nullptr)
 {
 	entryNode->setCFG(*this);
 }
@@ -95,6 +99,61 @@ void CFG::removeNodes(const util::VectorSet<CFGNode*>& removeSet)
 		}
 	}
 	nodes.swap(newNodeList);
+}
+
+namespace
+{
+
+class ValueMapVisitor: public ConstNodeVisitor<ValueMapVisitor>
+{
+private:
+	using MapType = DenseMap<const Value*, const CFGNode*>;
+	MapType& valueMap;
+public:
+	ValueMapVisitor(MapType& m): valueMap(m) {}
+
+	void visitEntryNode(const EntryCFGNode& entryNode)
+	{
+		auto const& func = entryNode.getFunction();
+		for (auto const& arg: func.args())
+		{
+			valueMap[&arg] = &entryNode;
+		}
+	}
+	void visitAllocNode(const AllocCFGNode& allocNode)
+	{
+		valueMap[allocNode.getDest()] = &allocNode;
+	}
+	void visitCopyNode(const CopyCFGNode& copyNode)
+	{
+		valueMap[copyNode.getDest()] = &copyNode;
+	}
+	void visitOffsetNode(const OffsetCFGNode& offsetNode)
+	{
+		valueMap[offsetNode.getDest()] = &offsetNode;
+	}
+	void visitLoadNode(const LoadCFGNode& loadNode)
+	{
+		valueMap[loadNode.getDest()] = &loadNode;
+	}
+	void visitStoreNode(const StoreCFGNode&) {}
+	void visitCallNode(const CallCFGNode& callNode)
+	{
+		if (auto dst = callNode.getDest())
+			valueMap[dst] = &callNode;
+	}
+	void visitReturnNode(const ReturnCFGNode&) {}
+};
+
+}
+
+void CFG::buildValueMap()
+{
+	valueMap.clear();
+
+	ValueMapVisitor visitor(valueMap);
+	for (auto const& node: nodes)
+		visitor.visit(*node);
 }
 
 }

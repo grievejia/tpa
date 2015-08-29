@@ -45,3 +45,5 @@ llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const tpa::ProgramPoint&);
 
 }
 }
+
+using namespace util::io;

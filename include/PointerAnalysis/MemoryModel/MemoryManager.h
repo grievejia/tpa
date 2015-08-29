@@ -30,6 +30,7 @@ private:
 	const MemoryObject* nObj;
 
 	const MemoryObject* argvObj;
+	const MemoryObject* envpObj;
 
 	const MemoryBlock* allocateMemoryBlock(AllocSite, const TypeLayout*);
 	const MemoryObject* getMemoryObject(const MemoryBlock*, size_t, bool) const;
@@ -48,10 +49,16 @@ public:
 	const MemoryObject* allocateHeapMemory(const context::Context*, const llvm::Value*, const TypeLayout*);
 
 	const MemoryObject* allocateArgv(const llvm::Value*);
+	const MemoryObject* allocateEnvp(const llvm::Value*);
 	const MemoryObject* getArgvObject() const
 	{
 		assert(argvObj != nullptr);
 		return argvObj;
+	}
+	const MemoryObject* getEnvpObject() const
+	{
+		assert(envpObj != nullptr);
+		return envpObj;
 	}
 
 	const MemoryObject* offsetMemory(const MemoryObject*, size_t) const;

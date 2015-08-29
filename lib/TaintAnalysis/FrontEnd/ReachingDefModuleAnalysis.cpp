@@ -120,8 +120,8 @@ public:
 	void visitAllocaInst(AllocaInst& allocInst)
 	{
 		auto pSet = ptrAnalysis.getPtsSet(&allocInst);
-		assert(pSet.size() == 1);
-		store.insertBinding(*pSet.begin(), &allocInst);
+		for (auto obj: pSet)
+			store.insertBinding(obj, &allocInst);
 	}
 
 	void visitStoreInst(StoreInst& storeInst)

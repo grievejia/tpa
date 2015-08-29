@@ -113,10 +113,11 @@ extern void HookAlloc(char ty, unsigned id, void* addr)
 	writeLogRecord(&record);
 }
 
-extern void HookMain(int argvId, char** argv)
+extern void HookMain(int argvId, char** argv, int envpId, char** envp)
 {
-	// 0 means global alloc type
 	HookAlloc(1, argvId, argv);
+	if (envp != NULL && envpId != 0)
+		HookAlloc(1, envpId, envp);
 }
 
 extern void HookPointer(unsigned id, void* addr)

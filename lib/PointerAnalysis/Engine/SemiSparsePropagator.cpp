@@ -5,6 +5,10 @@
 #include "PointerAnalysis/Program/CFG/CFG.h"
 #include "PointerAnalysis/Support/Memo.h"
 
+#include "Util/IO/PointerAnalysis/Printer.h"
+#include <llvm/Support/raw_ostream.h>
+using namespace llvm;
+
 namespace tpa
 {
 
@@ -18,44 +22,44 @@ bool isTopLevelNode(const CFGNode* node)
 
 }
 
-void SemiSparsePropagator::enqueueIfMemoChange(const ProgramPoint& pp, const Store& store)
+bool SemiSparsePropagator::enqueueIfMemoChange(const ProgramPoint& pp, const Store& store)
 {
 	if (memo.update(pp, store))
+	{
 		workList.enqueue(pp);
+		return true;
+	}
+	else
+		return false;
 }
 
-void SemiSparsePropagator::propagateEntryNode(const ProgramPoint& pp, const Store& store)
+void SemiSparsePropagator::propagateTopLevel(const EvalSuccessor& evalSucc)
 {
-	// To prevent premature fixpoint, we need to enqueue the return node here
-	auto const& cfg = pp.getCFGNode()->getCFG();
-	if (!cfg.doesNotReturn())
-	{
-		auto exitNode = cfg.getExitNode();
-		workList.enqueue(ProgramPoint(pp.getContext(), exitNode));
-	}
+	// Top-level successors: no store merging, just enqueue
+	workList.enqueue(evalSucc.getProgramPoint());
+	//errs() << "\tENQ(T) " << evalSucc.getProgramPoint() << "\n";
+}
 
-	enqueueIfMemoChange(pp, store);
+void SemiSparsePropagator::propagateMemLevel(const EvalSuccessor& evalSucc)
+{
+	// Mem-level successors: store merging, enqueue if memo changed
+	auto node = evalSucc.getProgramPoint().getCFGNode();
+	assert(!isTopLevelNode(node));
+	assert(evalSucc.getStore() != nullptr);
+	bool enqueued = enqueueIfMemoChange(evalSucc.getProgramPoint(), *evalSucc.getStore());
+
+	//if (enqueued)
+	//	errs() << "\tENQ(M) " << evalSucc.getProgramPoint() << "\n";
 }
 
 void SemiSparsePropagator::propagate(const EvalResult& evalResult)
 {
-	auto const& store = evalResult.getStore();
 	for (auto const& evalSucc: evalResult)
 	{
 		if (evalSucc.isTopLevel())
-		{
-			workList.enqueue(evalSucc.getProgramPoint());
-			continue;
-		}
-
-		assert(!isTopLevelNode(evalSucc.getProgramPoint().getCFGNode()));
-
-		// We need to do something special for entry and return node
-		auto const& pp = evalSucc.getProgramPoint();
-		if (pp.getCFGNode()->isEntryNode())
-			propagateEntryNode(pp, store);
+			propagateTopLevel(evalSucc);
 		else
-			enqueueIfMemoChange(pp, store);
+			propagateMemLevel(evalSucc);
 	}
 }
 

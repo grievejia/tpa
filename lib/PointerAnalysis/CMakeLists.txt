@@ -2,8 +2,6 @@
 set (PointerAnalysisSourceCodes
 	Analysis/GlobalPointerAnalysis.cpp
 	Analysis/SemiSparsePointerAnalysis.cpp
-	Program/CFG.cpp
-	Program/SemiSparseProgram.cpp
 	Context/AdaptiveContext.cpp
 	Context/Context.cpp
 	Context/KLimitContext.cpp
@@ -12,6 +10,14 @@ set (PointerAnalysisSourceCodes
 	Engine/SemiSparsePropagator.cpp
 	Engine/StorePruner.cpp
 	Engine/TransferFunction.cpp
+	Engine/Transfer/AllocTransfer.cpp
+	Engine/Transfer/CallTransfer.cpp
+	Engine/Transfer/CopyTransfer.cpp
+	Engine/Transfer/EntryTransfer.cpp
+	Engine/Transfer/LoadTransfer.cpp
+	Engine/Transfer/OffsetTransfer.cpp
+	Engine/Transfer/ReturnTransfer.cpp
+	Engine/Transfer/StoreTransfer.cpp
 	FrontEnd/ArrayLayoutAnalysis.cpp
 	FrontEnd/CFGBuilder.cpp
 	FrontEnd/CFGSimplifier.cpp
@@ -33,6 +39,10 @@ set (PointerAnalysisSourceCodes
 	Output/MemoryPrinter.cpp
 	Output/NodePrinter.cpp
 	Output/WriteDotFile.cpp
+	Precision/PrecisionLossTracker.cpp
+	Precision/ValueDependenceTracker.cpp
+	Program/CFG.cpp
+	Program/SemiSparseProgram.cpp
 	Support/PtsSet.cpp
 )
 add_library (PointerAnalysis STATIC ${PointerAnalysisSourceCodes})

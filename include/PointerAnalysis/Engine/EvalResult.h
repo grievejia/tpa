@@ -3,6 +3,7 @@
 #include "PointerAnalysis/Engine/EvalSuccessor.h"
 #include "PointerAnalysis/Support/Store.h"
 
+#include <memory>
 #include <vector>
 
 namespace tpa
@@ -11,7 +12,7 @@ namespace tpa
 class EvalResult
 {
 private:
-	Store store;
+	std::vector<std::unique_ptr<Store>> storeVec;
 
 	using SuccessorList = std::vector<EvalSuccessor>;
 	SuccessorList succs;
@@ -19,29 +20,27 @@ public:
 	using const_iterator = typename SuccessorList::const_iterator;
 
 	EvalResult() = default;
-	EvalResult(const Store* s)
-	{
-		if (s != nullptr)
-			store = *s;
-	}
+
 	EvalResult(const EvalResult&) = delete;
 	EvalResult(EvalResult&&) noexcept = default;
 	EvalResult& operator=(const EvalResult&) = delete;
 	EvalResult& operator=(EvalResult&&) = delete;
 
-	Store& getStore() { return store; }
-	const Store& getStore() const { return store; }
-	void setStore(const Store& s) { store = s; }
-	void setStore(Store&& s) { store = std::move(s); }
-
-	void addTopLevelSuccessor(const ProgramPoint& pp)
+	template <typename ...Args>
+	Store& getNewStore(Args&& ...a)
 	{
-		succs.push_back(EvalSuccessor(pp, true));
+		storeVec.emplace_back(std::make_unique<Store>(std::forward<Args>(a)...));
+		return *storeVec.back();
 	}
 
-	void addMemLevelSuccessor(const ProgramPoint& pp)
+	void addTopLevelProgramPoint(const ProgramPoint& pp)
 	{
-		succs.push_back(EvalSuccessor(pp, false));
+		succs.push_back(EvalSuccessor(pp, nullptr));
+	}
+
+	void addMemLevelProgramPoint(const ProgramPoint& pp, const Store& store)
+	{
+		succs.push_back(EvalSuccessor(pp, &store));
 	}
 
 	const_iterator begin() const { return succs.begin(); }
