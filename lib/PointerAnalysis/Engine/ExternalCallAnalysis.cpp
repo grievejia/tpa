@@ -227,6 +227,7 @@ void TransferFunction::evalExternalCopyDest(const context::Context* ctx, const C
 			case CopyDest::DestType::Value:
 			{
 				envChanged = globalState.getEnv().weakUpdate(dstPtr, srcSet);
+				addMemLevelSuccessors(ProgramPoint(ctx, &callNode), *localState, evalResult);
 				break;
 			}
 			case CopyDest::DestType::DirectMemory:

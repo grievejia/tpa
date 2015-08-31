@@ -24,6 +24,5 @@ llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const context::ProgramPoint
 	return os;
 }
 
-
 }
 }

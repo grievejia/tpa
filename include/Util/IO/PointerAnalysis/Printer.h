@@ -21,6 +21,7 @@ namespace tpa
 
 	class CFGNode;
 	class ProgramPoint;
+	class FunctionContext;
 }
 
 namespace util
@@ -42,6 +43,7 @@ llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const tpa::TypeLayout&);
 
 llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const tpa::CFGNode&);
 llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const tpa::ProgramPoint&);
+llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const tpa::FunctionContext&);
 
 }
 }

@@ -24,7 +24,11 @@ void TransferFunction::weakUpdateStore(PtsSet dstSet, PtsSet srcSet, Store& stor
 			if (universalFlag)
 				store.strongUpdate(updateObj, PtsSet::getSingletonSet(uObj));
 			else
-				store.weakUpdate(updateObj, srcSet);
+			{
+				auto oldSet = store.lookup(updateObj);
+				if (!oldSet.has(uObj))
+					store.weakUpdate(updateObj, srcSet);
+			}
 		}
 	}
 }

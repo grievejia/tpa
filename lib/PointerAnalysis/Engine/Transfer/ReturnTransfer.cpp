@@ -22,7 +22,11 @@ std::pair<bool, bool> TransferFunction::evalReturnValue(const context::Context* 
 		if (auto dstVal = callNode.getDest())
 		{
 			auto ptr = globalState.getPointerManager().getOrCreatePointer(retSite.getContext(), dstVal);
-			return std::make_pair(true, globalState.getEnv().weakUpdate(ptr, PtsSet::getSingletonSet(globalState.getMemoryManager().getNullObject())));
+			auto oldSet = globalState.getEnv().lookup(ptr);
+			if (!oldSet.has(globalState.getMemoryManager().getUniversalObject()))
+				return std::make_pair(true, globalState.getEnv().weakUpdate(ptr, PtsSet::getSingletonSet(globalState.getMemoryManager().getNullObject())));
+			else
+				return std::make_pair(true, false);
 		}
 		else
 			return std::make_pair(true, false);
@@ -40,13 +44,18 @@ std::pair<bool, bool> TransferFunction::evalReturnValue(const context::Context* 
 		return std::make_pair(false, false);
 
 	auto& env = globalState.getEnv();
+	auto uObj = globalState.getMemoryManager().getUniversalObject();
 	auto resSet = env.lookup(retPtr);
 	if (resSet.empty())
 		// Return pointer not ready
 		return std::make_pair(false, false);
 
 	auto dstPtr = ptrManager.getOrCreatePointer(retSite.getContext(), dstVal);
-	return std::make_pair(true, env.weakUpdate(dstPtr, resSet));
+	auto oldSet = env.lookup(dstPtr);
+	if (!oldSet.has(uObj))
+		return std::make_pair(true, env.weakUpdate(dstPtr, resSet));
+	else
+		return std::make_pair(true, false);
 }
 
 void TransferFunction::evalReturn(const context::Context* ctx, const ReturnCFGNode& retNode, const ProgramPoint& retSite, EvalResult& evalResult)

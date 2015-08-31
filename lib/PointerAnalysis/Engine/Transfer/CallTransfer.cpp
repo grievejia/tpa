@@ -6,6 +6,9 @@
 #include "PointerAnalysis/MemoryModel/PointerManager.h"
 #include "PointerAnalysis/Program/SemiSparseProgram.h"
 
+#include "Util/IO/PointerAnalysis/Printer.h"
+#include <llvm/Support/raw_ostream.h>
+
 using namespace llvm;
 
 namespace tpa
@@ -102,6 +105,7 @@ bool TransferFunction::updateParameterPtsSets(const FunctionContext& fc, const s
 
 	auto& ptrManager = globalState.getPointerManager();
 	auto& env = globalState.getEnv();
+	auto uObj = globalState.getMemoryManager().getUniversalObject();
 	auto newCtx = fc.getContext();
 	auto paramItr = fc.getFunction()->arg_begin();
 	for (auto pSet: argSets)
@@ -116,7 +120,15 @@ bool TransferFunction::updateParameterPtsSets(const FunctionContext& fc, const s
 		++paramItr;
 
 		auto paramPtr = ptrManager.getOrCreatePointer(newCtx, paramVal);
-		changed |= env.weakUpdate(paramPtr, pSet);
+
+		if (pSet.has(uObj))
+			changed |= env.strongUpdate(paramPtr, PtsSet::getSingletonSet(uObj));
+		else
+		{
+			auto oldSet = env.lookup(paramPtr);
+			if (!oldSet.has(uObj))
+				changed |= env.weakUpdate(paramPtr, pSet);
+		}
 	}
 
 	return changed;
@@ -147,7 +159,10 @@ void TransferFunction::evalInternalCall(const context::Context* ctx, const CallC
 	if (!isValid)
 		return;
 	if (envChanged || callGraphUpdated)
+	{
+		errs() << "envChanged = " << envChanged << ", cgChanged = " << callGraphUpdated << "\n";
 		evalResult.addTopLevelProgramPoint(ProgramPoint(fc.getContext(), tgtEntryNode));
+	}
 
 	auto prunedStore = StorePruner(globalState.getEnv(), globalState.getPointerManager(), globalState.getMemoryManager()).pruneStore(*localState, ProgramPoint(ctx, &callNode));
 	auto& newStore = evalResult.getNewStore(std::move(prunedStore));
