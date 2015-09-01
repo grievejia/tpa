@@ -5,8 +5,6 @@ using namespace llvm;
 namespace context
 {
 
-std::unordered_set<ProgramPoint> AdaptiveContext::trackedCallsites;
-
 void AdaptiveContext::trackCallSite(const ProgramPoint& pLoc)
 {
 	trackedCallsites.insert(pLoc);

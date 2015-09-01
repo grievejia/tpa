@@ -184,15 +184,15 @@ PtsSet TransferFunction::evalExternalCopySource(const context::Context* ctx, con
 		}
 		case CopySource::SourceType::Universal:
 		{
-			return PtsSet::getSingletonSet(globalState.getMemoryManager().getUniversalObject());
+			return PtsSet::getSingletonSet(MemoryManager::getUniversalObject());
 		}
 		case CopySource::SourceType::Null:
 		{
-			return PtsSet::getSingletonSet(globalState.getMemoryManager().getNullObject());
+			return PtsSet::getSingletonSet(MemoryManager::getNullObject());
 		}
 		case CopySource::SourceType::Static:
 			// TODO: model "static" memory
-			return PtsSet::getSingletonSet(globalState.getMemoryManager().getUniversalObject());
+			return PtsSet::getSingletonSet(MemoryManager::getUniversalObject());
 		case CopySource::SourceType::ReachableMemory:
 		{
 			llvm_unreachable("ReachableMemory src should be handled earlier");

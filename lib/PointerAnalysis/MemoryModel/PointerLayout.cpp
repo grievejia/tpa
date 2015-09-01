@@ -3,10 +3,6 @@
 namespace tpa
 {
 
-std::unordered_set<PointerLayout> PointerLayout::layoutSet;
-const PointerLayout* PointerLayout::emptyLayout = PointerLayout::getLayout(util::VectorSet<size_t>());
-const PointerLayout* PointerLayout::singlePointerLayout = PointerLayout::getLayout({0});
-
 const PointerLayout* PointerLayout::getEmptyLayout()
 {
 	return emptyLayout;

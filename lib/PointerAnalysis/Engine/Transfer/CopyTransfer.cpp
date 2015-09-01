@@ -16,8 +16,6 @@ void TransferFunction::evalCopyNode(const ProgramPoint& pp, EvalResult& evalResu
 
 	auto& ptrManager = globalState.getPointerManager();
 	auto& env = globalState.getEnv();
-	auto uObj = globalState.getMemoryManager().getUniversalObject();
-	bool universalFlag = false;
 	for (auto src: copyNode)
 	{
 		auto srcPtr = ptrManager.getPointer(ctx, src);
@@ -31,17 +29,11 @@ void TransferFunction::evalCopyNode(const ProgramPoint& pp, EvalResult& evalResu
 			// Operand not ready
 			return;
 
-		if (pSet.has(uObj))
-		{
-			universalFlag = true;
-			break;
-		}
-
 		srcPtsSets.emplace_back(pSet);
 	}
 
 	auto dstPtr = ptrManager.getOrCreatePointer(ctx, copyNode.getDest());
-	auto dstSet = universalFlag ? PtsSet::getSingletonSet(uObj) : PtsSet::mergeAll(srcPtsSets);
+	auto dstSet = PtsSet::mergeAll(srcPtsSets);
 	auto envChanged = globalState.getEnv().strongUpdate(dstPtr, dstSet);
 	
 	if (envChanged)

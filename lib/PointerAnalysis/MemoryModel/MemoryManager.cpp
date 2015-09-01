@@ -13,10 +13,8 @@ static bool startWithSummary(const TypeLayout* type)
 	return ret;
 }
 
-MemoryManager::MemoryManager(size_t pSize): ptrSize(pSize), uBlock(AllocSite::getUniversalAllocSite(), TypeLayout::getByteArrayTypeLayout()), nBlock(AllocSite::getNullAllocSite(), TypeLayout::getPointerTypeLayoutWithSize(0)), uObj(nullptr), nObj(nullptr), argvObj(nullptr), envpObj(nullptr)
+MemoryManager::MemoryManager(size_t pSize): ptrSize(pSize), argvObj(nullptr), envpObj(nullptr)
 {
-	uObj = getMemoryObject(&uBlock, 0, true);
-	nObj = getMemoryObject(&nBlock, 0, false);
 }
 
 const MemoryObject* MemoryManager::getMemoryObject(const MemoryBlock* memBlock, size_t offset, bool summary) const
@@ -93,7 +91,7 @@ const MemoryObject* MemoryManager::offsetMemory(const MemoryBlock* block, size_t
 	assert(block != nullptr);
 
 	if (block == &uBlock || block == &nBlock)
-		return uObj;
+		return &uObj;
 
 	auto type = block->getTypeLayout();
 
@@ -104,7 +102,7 @@ const MemoryObject* MemoryManager::offsetMemory(const MemoryBlock* block, size_t
 	summary = summary || block->isHeapBlock();
 
 	if (adjustedOffset >= type->getSize())
-		return uObj;
+		return &uObj;
 
 	return getMemoryObject(block, adjustedOffset, summary);
 }
@@ -115,20 +113,23 @@ std::vector<const MemoryObject*> MemoryManager::getReachablePointerObjects(const
 	if (includeSelf)
 		ret.push_back(obj);
 
-	auto memBlock = obj->getMemoryBlock();
-	auto ptrLayout = memBlock->getTypeLayout()->getPointerLayout();
-	auto itr = ptrLayout->lower_bound(obj->getOffset());
-	if (itr != ptrLayout->end() && *itr == obj->getOffset())
-		++itr;
-	std::transform(
-		itr,
-		ptrLayout->end(),
-		std::back_inserter(ret),
-		[this, memBlock] (size_t offset)
-		{
-			return offsetMemory(memBlock, offset);
-		}
-	);
+	if (!obj->isSpecialObject())
+	{
+		auto memBlock = obj->getMemoryBlock();
+		auto ptrLayout = memBlock->getTypeLayout()->getPointerLayout();
+		auto itr = ptrLayout->lower_bound(obj->getOffset());
+		if (itr != ptrLayout->end() && *itr == obj->getOffset())
+			++itr;
+		std::transform(
+			itr,
+			ptrLayout->end(),
+			std::back_inserter(ret),
+			[this, memBlock] (size_t offset)
+			{
+				return offsetMemory(memBlock, offset);
+			}
+		);
+	}
 
 	return ret;
 }
@@ -137,14 +138,21 @@ std::vector<const MemoryObject*> MemoryManager::getReachableMemoryObjects(const 
 {
 	auto ret = std::vector<const MemoryObject*>();
 
-	auto itr = objSet.find(*obj);
-	assert(itr != objSet.end());
-
-	auto block = obj->getMemoryBlock();
-	while (itr != objSet.end() && itr->getMemoryBlock() == block)
+	if (obj->isSpecialObject())
 	{
-		ret.push_back(&*itr);
-		++itr;
+		ret.push_back(obj);
+	}
+	else
+	{
+		auto itr = objSet.find(*obj);
+		assert(itr != objSet.end());
+
+		auto block = obj->getMemoryBlock();
+		while (itr != objSet.end() && itr->getMemoryBlock() == block)
+		{
+			ret.push_back(&*itr);
+			++itr;
+		}
 	}
 
 	return ret;

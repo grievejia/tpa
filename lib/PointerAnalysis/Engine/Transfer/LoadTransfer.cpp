@@ -17,23 +17,19 @@ PtsSet TransferFunction::loadFromPointer(const Pointer* ptr, const Store& store)
 	std::vector<PtsSet> srcSets;
 	srcSets.reserve(srcSet.size());
 
-	auto uObj = globalState.getMemoryManager().getUniversalObject();
-	bool universalFlag = false;
+	auto uObj = MemoryManager::getUniversalObject();
 	for (auto obj: srcSet)
 	{
 		auto objSet = store.lookup(obj);
 		if (!objSet.empty())
 		{
-			if (objSet.has(uObj))
-			{
-				universalFlag = true;
-				break;
-			}
 			srcSets.emplace_back(objSet);
+			if (objSet.has(uObj))
+				break;
 		}
 	}
 
-	return universalFlag ? PtsSet::getSingletonSet(uObj) : PtsSet::mergeAll(srcSets);
+	return PtsSet::mergeAll(srcSets);
 }
 
 void TransferFunction::evalLoadNode(const ProgramPoint& pp, EvalResult& evalResult)

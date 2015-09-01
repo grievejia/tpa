@@ -3,8 +3,6 @@
 namespace tpa
 {
 
-std::unordered_set<TypeLayout> TypeLayout::typeSet;
-
 const TypeLayout* TypeLayout::getTypeLayout(size_t s, std::initializer_list<ArrayTriple> a, std::initializer_list<size_t> p)
 {
 	return getTypeLayout(s, ArrayLayout::getLayout(std::move(a)), PointerLayout::getLayout(std::move(p)));

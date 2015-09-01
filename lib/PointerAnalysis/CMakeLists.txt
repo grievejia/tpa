@@ -44,6 +44,7 @@ set (PointerAnalysisSourceCodes
 	Program/CFG.cpp
 	Program/SemiSparseProgram.cpp
 	Support/PtsSet.cpp
+	StaticFields.cpp
 )
 add_library (PointerAnalysis STATIC ${PointerAnalysisSourceCodes})
 

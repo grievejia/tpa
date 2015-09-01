@@ -79,7 +79,7 @@ void GlobalPointerAnalysis::initializeGlobalValues(const llvm::Module& module, E
 		{
 			// If gVar doesn't have an initializer, since we are assuming a whole-program analysis, the value must be external (e.g. struct FILE* stdin)
 			// To be conservative, assume that those "external" globals can points to anything
-			envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(memManager.getUniversalObject()));
+			envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(MemoryManager::getUniversalObject()));
 		}
 	}
 }
@@ -136,7 +136,7 @@ void GlobalPointerAnalysis::processGlobalScalarInitializer(const MemoryObject* g
 	if (initializer->isNullValue())
 		envStore.second.insert(gObj, memManager.getNullObject());
 	else if (isa<UndefValue>(initializer))
-		envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(memManager.getUniversalObject()));
+		envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(MemoryManager::getUniversalObject()));
 	else if (isa<GlobalVariable>(initializer) || isa<Function>(initializer))
 	{
 		auto gv = cast<GlobalValue>(initializer);
@@ -152,7 +152,7 @@ void GlobalPointerAnalysis::processGlobalScalarInitializer(const MemoryObject* g
 				// Offset calculation
 				auto baseOffsetPair = processConstantGEP(ce, dataLayout);
 				if (baseOffsetPair.first == nullptr)
-					envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(memManager.getUniversalObject()));
+					envStore.second.strongUpdate(gObj, PtsSet::getSingletonSet(MemoryManager::getUniversalObject()));
 				else
 				{
 					auto tgtObj = getGlobalObject(baseOffsetPair.first, envStore.first);
@@ -164,7 +164,7 @@ void GlobalPointerAnalysis::processGlobalScalarInitializer(const MemoryObject* g
 			case Instruction::IntToPtr:
 			{
 				// By default, clang won't generate global pointer arithmetic as ptrtoint+inttoptr, so we will do the simplest thing here
-				envStore.second.insert(gObj, memManager.getUniversalObject());
+				envStore.second.insert(gObj, MemoryManager::getUniversalObject());
 
 				break;
 			}
@@ -253,7 +253,7 @@ void GlobalPointerAnalysis::processGlobalInitializer(const MemoryObject* gObj, c
 void GlobalPointerAnalysis::initializeSpecialPointerObject(const Module& module, EnvStore& envStore)
 {
 	auto uPtr = ptrManager.setUniversalPointer(UndefValue::get(Type::getInt8PtrTy(module.getContext())));
-	auto uLoc = memManager.getUniversalObject();
+	auto uLoc = MemoryManager::getUniversalObject();
 	envStore.first.insert(uPtr, uLoc);
 	envStore.second.insert(uLoc, uLoc);
 	auto nPtr = ptrManager.setNullPointer(ConstantPointerNull::get(Type::getInt8PtrTy(module.getContext())));

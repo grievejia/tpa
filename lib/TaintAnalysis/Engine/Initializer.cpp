@@ -64,7 +64,7 @@ void Initializer::initializeGlobalVariables(TaintStore& store)
 				store.strongUpdate(obj, TaintLattice::Untainted);
 		}
 	}
-	store.strongUpdate(ptrAnalysis.getMemoryManager().getUniversalObject(), TaintLattice::Either);
+	store.strongUpdate(tpa::MemoryManager::getUniversalObject(), TaintLattice::Either);
 }
 
 WorkList Initializer::runOnInitState(TaintStore&& initStore)

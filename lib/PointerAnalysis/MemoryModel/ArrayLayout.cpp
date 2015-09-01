@@ -3,9 +3,6 @@
 namespace tpa
 {
 
-std::unordered_set<ArrayLayout> ArrayLayout::layoutSet;
-const ArrayLayout* ArrayLayout::defaultLayout = ArrayLayout::getLayout(std::vector<ArrayTriple>());
-
 static bool validateTripleList(const ArrayLayout::ArrayTripleList& list)
 {
 	for (auto const& triple: list)

@@ -101,7 +101,7 @@ void ImprecisionTracker::runOnWorkList(BackwardWorkList& workList)
 
 bool ImprecisionTracker::morePrecise(const PtsSet& lhs, const PtsSet& rhs)
 {
-	auto uObj = globalState.getMemoryManager().getUniversalObject();
+	auto uObj = MemoryManager::getUniversalObject();
 	if (rhs.has(uObj))
 		return !lhs.has(uObj);
 

@@ -1,3 +1,4 @@
+#include "PointerAnalysis/MemoryModel/MemoryManager.h"
 #include "PointerAnalysis/Support/PtsSet.h"
 
 namespace tpa
@@ -8,6 +9,9 @@ const PtsSet::SetType* PtsSet::emptySet = &*(existingSet.insert(PtsSet::SetType(
 
 const PtsSet::SetType* PtsSet::uniquifySet(SetType&& set)
 {
+	if (set.count(MemoryManager::getUniversalObject()))
+		set = { MemoryManager::getUniversalObject() };
+
 	auto itr = existingSet.find(set);
 	if (itr == existingSet.end())
 	{

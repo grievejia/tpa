@@ -23,11 +23,11 @@ private:
 	mutable std::set<MemoryObject> objSet;
 
 	// uBlock is the memory block representing the location that may points to anywhere. It is of the type byte array
-	MemoryBlock uBlock;
+	static const MemoryBlock uBlock;
 	// nBlock is the memory block representing the location that must be null pointer. Its size is set to zero
-	MemoryBlock nBlock;
-	const MemoryObject* uObj;
-	const MemoryObject* nObj;
+	static const MemoryBlock nBlock;
+	static const MemoryObject uObj;
+	static const MemoryObject nObj;
 
 	const MemoryObject* argvObj;
 	const MemoryObject* envpObj;
@@ -39,8 +39,8 @@ private:
 public:
 	MemoryManager(size_t pSize = 8u);
 
-	const MemoryObject* getUniversalObject() const { return uObj; }
-	const MemoryObject* getNullObject() const { return nObj; }
+	static const MemoryObject* getUniversalObject() { return &uObj; }
+	static const MemoryObject* getNullObject() { return &nObj; }
 	size_t getPointerSize() const { return ptrSize; }
 
 	const MemoryObject* allocateGlobalMemory(const llvm::GlobalVariable*, const TypeLayout*);

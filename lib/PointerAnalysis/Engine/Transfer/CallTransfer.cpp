@@ -30,7 +30,7 @@ std::vector<const llvm::Function*> TransferFunction::findFunctionInPtsSet(PtsSet
 	auto callees = std::vector<const llvm::Function*>();
 
 	// Two cases here
-	if (pSet.has(globalState.getMemoryManager().getUniversalObject()))
+	if (pSet.has(MemoryManager::getUniversalObject()))
 	{
 		// If funSet contains unknown location, then we can't really derive callees based on the points-to set
 		// Instead, guess callees based on the number of arguments
@@ -105,7 +105,6 @@ bool TransferFunction::updateParameterPtsSets(const FunctionContext& fc, const s
 
 	auto& ptrManager = globalState.getPointerManager();
 	auto& env = globalState.getEnv();
-	auto uObj = globalState.getMemoryManager().getUniversalObject();
 	auto newCtx = fc.getContext();
 	auto paramItr = fc.getFunction()->arg_begin();
 	for (auto pSet: argSets)
@@ -120,15 +119,7 @@ bool TransferFunction::updateParameterPtsSets(const FunctionContext& fc, const s
 		++paramItr;
 
 		auto paramPtr = ptrManager.getOrCreatePointer(newCtx, paramVal);
-
-		if (pSet.has(uObj))
-			changed |= env.strongUpdate(paramPtr, PtsSet::getSingletonSet(uObj));
-		else
-		{
-			auto oldSet = env.lookup(paramPtr);
-			if (!oldSet.has(uObj))
-				changed |= env.weakUpdate(paramPtr, pSet);
-		}
+		changed |= env.weakUpdate(paramPtr, pSet);
 	}
 
 	return changed;
@@ -160,7 +151,6 @@ void TransferFunction::evalInternalCall(const context::Context* ctx, const CallC
 		return;
 	if (envChanged || callGraphUpdated)
 	{
-		errs() << "envChanged = " << envChanged << ", cgChanged = " << callGraphUpdated << "\n";
 		evalResult.addTopLevelProgramPoint(ProgramPoint(fc.getContext(), tgtEntryNode));
 	}
 

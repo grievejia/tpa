@@ -6,8 +6,6 @@ using namespace llvm;
 namespace context
 {
 
-std::unordered_set<Context> Context::ctxSet;
-
 const Context* Context::pushContext(const ProgramPoint& pp)
 {
 	return pushContext(pp.getContext(), pp.getInstruction());

@@ -27,7 +27,7 @@ protected:
 
 	void getCallees(const llvm::ImmutableCallSite& cs, PtsSet pSet, std::vector<const llvm::Function*>& funcs) const
 	{
-		if (pSet.has(memManager.getUniversalObject()))
+		if (pSet.has(MemoryManager::getUniversalObject()))
 		{
 			auto module = cs.getInstruction()->getParent()->getParent()->getParent();
 			for (auto const& f: *module)

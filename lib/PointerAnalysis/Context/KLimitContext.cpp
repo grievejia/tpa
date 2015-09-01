@@ -6,8 +6,6 @@ using namespace llvm;
 namespace context
 {
 
-unsigned KLimitContext::defaultLimit = 0u;
-
 const Context* KLimitContext::pushContext(const ProgramPoint& pp)
 {
 	return pushContext(pp.getContext(), pp.getInstruction());

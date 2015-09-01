@@ -15,21 +15,10 @@ void TransferFunction::strongUpdateStore(const MemoryObject* obj, PtsSet pSet, S
 
 void TransferFunction::weakUpdateStore(PtsSet dstSet, PtsSet srcSet, Store& store)
 {
-	auto uObj = globalState.getMemoryManager().getUniversalObject();
-	bool universalFlag = srcSet.has(uObj);
 	for (auto updateObj: dstSet)
 	{
 		if (!updateObj->isSpecialObject())
-		{
-			if (universalFlag)
-				store.strongUpdate(updateObj, PtsSet::getSingletonSet(uObj));
-			else
-			{
-				auto oldSet = store.lookup(updateObj);
-				if (!oldSet.has(uObj))
-					store.weakUpdate(updateObj, srcSet);
-			}
-		}
+			store.weakUpdate(updateObj, srcSet);
 	}
 }
 

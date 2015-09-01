@@ -182,7 +182,7 @@ template <typename T>
 bool checkPointerAnalysis(const tpa::PointerAnalysis<T>& ptrAnalysis, const tpa::Pointer* ptr, const tpa::AllocSite& allocSite)
 {
 	auto pSet = ptrAnalysis.getPtsSet(ptr);
-	if (pSet.has(ptrAnalysis.getMemoryManager().getUniversalObject()))
+	if (pSet.has(tpa::MemoryManager::getUniversalObject()))
 		return true;
 
 	for (auto obj: pSet)

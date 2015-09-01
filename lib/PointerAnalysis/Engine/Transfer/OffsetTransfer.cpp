@@ -41,9 +41,6 @@ bool TransferFunction::copyWithOffset(const Pointer* dst, const Pointer* src, si
 	assert(dst != nullptr && src != nullptr);
 
 	auto& env = globalState.getEnv();
-	auto& memManager = globalState.getMemoryManager();
-	auto uObj = memManager.getUniversalObject();
-
 	auto srcSet = env.lookup(src);
 	if (srcSet.empty())
 		return false;
@@ -51,16 +48,15 @@ bool TransferFunction::copyWithOffset(const Pointer* dst, const Pointer* src, si
 	std::vector<PtsSet> srcPtsSets;
 	srcPtsSets.reserve(srcSet.size());
 
-	bool universalFlag = false;
 	for (auto srcObj: srcSet)
 	{
 		// For unknown object, we need to return an unknown to the user. For null object, skip it for now
 		// TODO: report this to the user
 		if (srcObj->isNullObject())
 			continue;
-		else if (srcObj == uObj)
+		else if (srcObj->isUniversalObject())
 		{
-			universalFlag = true;
+			srcPtsSets.emplace_back(PtsSet::getSingletonSet(MemoryManager::getUniversalObject()));
 			break;
 		}
 
@@ -68,11 +64,11 @@ bool TransferFunction::copyWithOffset(const Pointer* dst, const Pointer* src, si
 		srcPtsSets.emplace_back(pSet);
 	}
 
-	PtsSet resSet = universalFlag ? PtsSet::getSingletonSet(uObj) : PtsSet::mergeAll(srcPtsSets);
+	PtsSet resSet = PtsSet::mergeAll(srcPtsSets);
 
 	// For now let's assume that if srcSet contains only null loc, the result should be a universal loc
 	if (resSet.empty())
-		resSet = PtsSet::getSingletonSet(uObj);
+		resSet = PtsSet::getSingletonSet(MemoryManager::getUniversalObject());
 
 	return env.strongUpdate(dst, resSet);
 }
