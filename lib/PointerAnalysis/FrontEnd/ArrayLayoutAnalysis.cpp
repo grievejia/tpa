@@ -79,6 +79,9 @@ const ArrayLayout* ArrayLayoutMapBuilder::processArrayType(ArrayType* arrayType)
 {
 	auto elemType = arrayType->getElementType();
 	auto numElems = arrayType->getNumElements();
+	// Array with 0 element is nasty. Treat it as an array with 1 element
+	if (numElems == 0)
+		numElems = 1;
 	auto elemSize = typeSet.getDataLayout().getTypeAllocSize(elemType);
 
 	auto arraySize = numElems * elemSize;

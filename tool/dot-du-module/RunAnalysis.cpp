@@ -19,7 +19,7 @@ void runAnalysisOnModule(const Module& module, const CommandLineOptions& opts)
 	SemiSparseProgramBuilder ssBuilder;
 	auto ssProg = ssBuilder.runOnModule(module);
 
-	context::KLimitContext::setLimit(0);
+	context::KLimitContext::setLimit(opts.getContextSensitivity());
 	SemiSparsePointerAnalysis ptrAnalysis;
 	ptrAnalysis.loadExternalPointerTable(opts.getPtrConfigFileName().data());
 	ptrAnalysis.runOnProgram(ssProg);

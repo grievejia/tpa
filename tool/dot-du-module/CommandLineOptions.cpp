@@ -3,7 +3,7 @@
 
 using namespace util;
 
-CommandLineOptions::CommandLineOptions(int argc, char** argv): outputDirName("dot/"), ptrConfigFileName("ptr.config"), modRefConfigFileName("modref.config"), dryRunFlag(false), noPrepassFlag(false)
+CommandLineOptions::CommandLineOptions(int argc, char** argv): outputDirName("dot/"), ptrConfigFileName("ptr.config"), modRefConfigFileName("modref.config"), dryRunFlag(false), noPrepassFlag(false), k(0)
 {
 	TypedCommandLineParser cmdParser("Pointer CFG to .dot drawer");
 	cmdParser.addStringPositionalFlag("inputFile", "Input LLVM bitcode file name", inputFileName);
@@ -12,6 +12,7 @@ CommandLineOptions::CommandLineOptions(int argc, char** argv): outputDirName("do
 	cmdParser.addStringOptionalFlag("modref-config", "Annotation file for external library mod/ref analysis (default = <current dir>/modref.config)", modRefConfigFileName);
 	cmdParser.addBooleanOptionalFlag("no-prepass", "Do no run IR cannonicalization before the analysis", noPrepassFlag);
 	cmdParser.addBooleanOptionalFlag("dry-run", "Do no dump .dot file. Just run the front end", dryRunFlag);
+	cmdParser.addUIntOptionalFlag("k", "Context sensitivity of the underlying pointer analysis", k);
 
 	cmdParser.parseCommandLineOptions(argc, argv);
 }

@@ -69,7 +69,7 @@ void TransferFunction::evalReturnNode(const ProgramPoint& pp, EvalResult& evalRe
 	if (retNode.getFunction().getName() == "main")
 	{
 		// Return from main. Do nothing
-		errs() << "Reached program end\n";
+		//errs() << "Reached program end\n";
 		return;
 	}
 

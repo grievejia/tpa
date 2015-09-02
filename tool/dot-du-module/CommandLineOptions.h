@@ -13,6 +13,7 @@ private:
 
 	bool dryRunFlag;
 	bool noPrepassFlag;
+	unsigned k;
 public:
 	CommandLineOptions(int argc, char** argv);
 
@@ -24,4 +25,5 @@ public:
 
 	bool isDryRun() const { return dryRunFlag; }
 	bool isPrepassDisabled() const { return noPrepassFlag; }
+	unsigned getContextSensitivity() const { return k; }
 };
