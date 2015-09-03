@@ -10,26 +10,28 @@ PtsSet TransferFunction::loadFromPointer(const Pointer* ptr, const Store& store)
 {
 	assert(ptr != nullptr);
 
-	auto srcSet = globalState.getEnv().lookup(ptr);
-	if (srcSet.empty())
-		return srcSet;
-
-	std::vector<PtsSet> srcSets;
-	srcSets.reserve(srcSet.size());
-
 	auto uObj = MemoryManager::getUniversalObject();
-	for (auto obj: srcSet)
+	auto srcSet = globalState.getEnv().lookup(ptr);
+	if (!srcSet.empty())
 	{
-		auto objSet = store.lookup(obj);
-		if (!objSet.empty())
+		std::vector<PtsSet> srcSets;
+		srcSets.reserve(srcSet.size());
+		
+		for (auto obj: srcSet)
 		{
-			srcSets.emplace_back(objSet);
-			if (objSet.has(uObj))
-				break;
+			auto objSet = store.lookup(obj);
+			if (!objSet.empty())
+			{
+				srcSets.emplace_back(objSet);
+				if (objSet.has(uObj))
+					break;
+			}
 		}
+
+		return PtsSet::mergeAll(srcSets);
 	}
 
-	return PtsSet::mergeAll(srcSets);
+	return PtsSet::getSingletonSet(uObj);
 }
 
 void TransferFunction::evalLoadNode(const ProgramPoint& pp, EvalResult& evalResult)
