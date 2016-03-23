@@ -1,15 +1,14 @@
 #include "TableChecker.h"
-#include "Client/Taintness/SourceSink/Table/ExternalTaintTable.h"
-#include "PointerAnalysis/External/ModRef/ExternalModRefTable.h"
-#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
+#include "Annotation/ModRef/ExternalModRefTable.h"
+#include "Annotation/Pointer/ExternalPointerTable.h"
+#include "Annotation/Taint/ExternalTaintTable.h"
 
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
 
+using namespace annotation;
 using namespace llvm;
-using namespace tpa;
-using namespace client::taint;
 
 static cl::opt<bool> OutputPlainText("plain", cl::desc("Output all missing function name without additional texts and fancy colors"));
 
@@ -30,7 +29,7 @@ static void printWarning(const StringRef& msg, const StringRef& funName)
 template <typename T>
 TableChecker<T>::TableChecker(const StringRef& fileName)
 {
-	table = T::loadFromFile(fileName);
+	table = T::loadFromFile(fileName.data());
 }
 
 template <typename T>

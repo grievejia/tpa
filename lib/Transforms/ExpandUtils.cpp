@@ -14,6 +14,9 @@
 
 using namespace llvm;
 
+namespace transform
+{
+
 Instruction *phiSafeInsertPt(Use* use)
 {
 	Instruction* insertPt = cast<Instruction>(use->getUser());
@@ -65,4 +68,6 @@ Instruction* copyDebug(Instruction* newInst, Instruction* original)
 {
 	newInst->setDebugLoc(original->getDebugLoc());
 	return newInst;
+}
+
 }

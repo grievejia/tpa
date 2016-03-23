@@ -24,12 +24,15 @@
 
 #include "ExpandIndirectBr.h"
 
-#include "llvm/ADT/DenseSet.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/Module.h"
+#include <llvm/ADT/DenseSet.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 
 using namespace llvm;
+
+namespace transform
+{
 
 static bool convertFunction(Function* func)
 {
@@ -139,3 +142,5 @@ bool ExpandIndirectBr::runOnModule(Module &M)
 
 char ExpandIndirectBr::ID = 0;
 static RegisterPass<ExpandIndirectBr> X("expand-indirectbr", "Expand out indirectbr and blockaddress (computed gotos)", false, false);
+
+}

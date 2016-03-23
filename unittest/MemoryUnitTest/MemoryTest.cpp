@@ -1,4 +1,4 @@
-#include "MemoryModel/Memory/MemoryManager.h"
+#include "PointerAnalysis/MemoryModel/Memory/MemoryManager.h"
 #include "Utils/ParseLLVMAssembly.h"
 
 #include "gtest/gtest.h"

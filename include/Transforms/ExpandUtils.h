@@ -1,8 +1,10 @@
-#ifndef TPA_EXPAND_UTILS_H
-#define TPA_EXPAND_UTILS_H
+#pragma once
 
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
+
+namespace transform
+{
 
 llvm::Instruction* phiSafeInsertPt(llvm::Use* use);
 void phiSafeReplaceUses(llvm::Use* use, llvm::Value* newVal);
@@ -18,4 +20,4 @@ static void copyLoadOrStoreAttrs(InstType* dest, InstType* src)
 	dest->setSynchScope(src->getSynchScope());
 }
 
-#endif
+}

@@ -46,6 +46,9 @@
 
 using namespace llvm;
 
+namespace transform
+{
+
 // removeAttribute() currently does not work on Attribute::Alignment
 // (it fails with an assertion error), so we have to take a more
 // convoluted route to removing this attribute by recreating the
@@ -172,3 +175,5 @@ bool ExpandByValPass::runOnModule(Module& M)
 
 char ExpandByValPass::ID = 0;
 static RegisterPass<ExpandByValPass> X("expand-byval", "Expand out by-value passing of structs", false, false);
+
+}

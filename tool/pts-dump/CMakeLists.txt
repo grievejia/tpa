@@ -1,9 +1,10 @@
-include_directories (${tpa_SOURCE_DIR}/tool/pts-dump)
+include_directories (${PROJECT_SOURCE_DIR}/tool/pts-dump)
 
-set (ptsdumpSourceCode
+set (ptsDumpSourceCode
 	pts-dump.cpp
-	PtsDumpPass.cpp
+	CommandLineOptions.cpp
+	RunAnalysis.cpp
 )
 
-add_executable (pts-dump ${ptsdumpSourceCode})
-target_link_libraries (pts-dump TPAStatic TransformStatic LLVMIRReader LLVMAsmParser LLVMTransformUtils LLVMipo LLVMCore)
+add_executable (pts-dump ${ptsDumpSourceCode})
+target_link_libraries (pts-dump Util Transforms PointerAnalysis)

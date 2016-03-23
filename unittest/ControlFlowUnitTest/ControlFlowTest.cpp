@@ -1,5 +1,5 @@
 #include "PointerAnalysis/ControlFlow/PointerProgramBuilder.h"
-#include "PointerAnalysis/External/Pointer/ExternalPointerTable.h"
+#include "Annotation/Pointer/ExternalPointerTable.h"
 #include "Utils/ParseLLVMAssembly.h"
 
 #include "gtest/gtest.h"

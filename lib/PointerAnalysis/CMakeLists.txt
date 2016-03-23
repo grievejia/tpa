@@ -1,31 +1,51 @@
 
 set (PointerAnalysisSourceCodes
-	Analysis/AliasAnalysis.cpp
 	Analysis/GlobalPointerAnalysis.cpp
-	Analysis/ModRefAnalysis.cpp
-	Analysis/ModRefModuleAnalysis.cpp
-	Analysis/PointerAnalysis.cpp
-	Analysis/ReachingDefAnalysis.cpp
-	Analysis/ReachingDefModuleAnalysis.cpp
-	ControlFlow/PointerCFG.cpp
-	ControlFlow/PointerProgramBuilder.cpp
-	ControlFlow/SemiSparseProgramBuilder.cpp
-	ControlFlow/StaticCallGraph.cpp
-	ControlFlow/WriteDotFile.cpp
-	DataFlow/DefUseGraph.cpp
-	DataFlow/DefUseModule.cpp
-	DataFlow/DefUseModuleBuilder.cpp
-	DataFlow/DefUseProgramBuilder.cpp
-	DataFlow/ModRefSummary.cpp
-	DataFlow/WriteDotFile.cpp
-	External/ExternalPointerTable.cpp
-	External/ExternalPointerTablePrinter.cpp
-	External/ExternalModRefTable.cpp
-	External/ExternalModRefTablePrinter.cpp
+	Analysis/SemiSparsePointerAnalysis.cpp
+	Context/AdaptiveContext.cpp
+	Context/Context.cpp
+	Context/KLimitContext.cpp
+	Engine/ExternalCallAnalysis.cpp
+	Engine/Initializer.cpp
+	Engine/SemiSparsePropagator.cpp
+	Engine/StorePruner.cpp
+	Engine/TransferFunction.cpp
+	Engine/Transfer/AllocTransfer.cpp
+	Engine/Transfer/CallTransfer.cpp
+	Engine/Transfer/CopyTransfer.cpp
+	Engine/Transfer/EntryTransfer.cpp
+	Engine/Transfer/LoadTransfer.cpp
+	Engine/Transfer/OffsetTransfer.cpp
+	Engine/Transfer/ReturnTransfer.cpp
+	Engine/Transfer/StoreTransfer.cpp
+	FrontEnd/ArrayLayoutAnalysis.cpp
+	FrontEnd/CFGBuilder.cpp
+	FrontEnd/CFGSimplifier.cpp
+	FrontEnd/FunctionTranslator.cpp
+	FrontEnd/InstructionTranslator.cpp
+	FrontEnd/PointerLayoutAnalysis.cpp
+	FrontEnd/PriorityAssigner.cpp
+	FrontEnd/SemiSparseProgramBuilder.cpp
+	FrontEnd/StructCastAnalysis.cpp
+	FrontEnd/TypeAnalysis.cpp
+	FrontEnd/TypeCollector.cpp
+	MemoryModel/ArrayLayout.cpp
+	MemoryModel/MemoryManager.cpp
+	MemoryModel/PointerLayout.cpp
+	MemoryModel/PointerManager.cpp
+	MemoryModel/TypeLayout.cpp
+	Output/CFGNodePrinter.cpp
+	Output/ContextPrinter.cpp
+	Output/MemoryPrinter.cpp
+	Output/NodePrinter.cpp
+	Output/WriteDotFile.cpp
+	Precision/PrecisionLossTracker.cpp
+	Precision/ValueDependenceTracker.cpp
+	Program/CFG.cpp
+	Program/SemiSparseProgram.cpp
+	Support/PtsSet.cpp
+	StaticFields.cpp
 )
-add_library (PointerAnalysisObj OBJECT ${PointerAnalysisSourceCodes})
-add_library (PointerAnalysis SHARED $<TARGET_OBJECTS:PointerAnalysisObj>)
-add_library (PointerAnalysisStatic STATIC $<TARGET_OBJECTS:PointerAnalysisObj>)
+add_library (PointerAnalysis STATIC ${PointerAnalysisSourceCodes})
 
-target_link_libraries (PointerAnalysis MemoryModel)
-target_link_libraries (PointerAnalysisStatic MemoryModelStatic LLVMAnalysis)
+target_link_libraries (PointerAnalysis Annotation LLVMSupport LLVMCore)

@@ -1,6 +1,6 @@
-#include "MemoryModel/PtsSet/Env.h"
-#include "MemoryModel/Memory/MemoryManager.h"
-#include "MemoryModel/Pointer/PointerManager.h"
+#include "PointerAnalysis/MemoryModel/PtsSet/Env.h"
+#include "PointerAnalysis/MemoryModel/Memory/MemoryManager.h"
+#include "PointerAnalysis/MemoryModel/Pointer/PointerManager.h"
 #include "PointerAnalysis/Analysis/GlobalPointerAnalysis.h"
 #include "Utils/ParseLLVMAssembly.h"
 

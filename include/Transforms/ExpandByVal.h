@@ -1,7 +1,9 @@
-#ifndef TPA_EXPAND_BYVAL_H
-#define TPA_EXPAND_BYVAL_H
+#pragma once
 
 #include "llvm/Pass.h"
+
+namespace transform
+{
 
 class ExpandByValPass: public llvm::ModulePass
 {
@@ -12,4 +14,4 @@ public:
 	bool runOnModule(llvm::Module &M) override;
 };
 
-#endif
+}

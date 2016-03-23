@@ -1,15 +1,11 @@
 #include "TableChecker.h"
-#include "Utils/ParseLLVMAssembly.h"
+#include "Util/IO/ReadIR.h"
 
-#include <llvm/AsmParser/Parser.h>
-#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/SourceMgr.h>
 
 using namespace llvm;
-using namespace tpa;
 
 static cl::opt<std::string> BitcodeFileName(cl::Positional, cl::desc("<bitcode file>"), cl::Required);
 static cl::opt<std::string> PtrTableFileName("ptr", cl::desc("Pointer effect annotation filename"));
@@ -19,17 +15,6 @@ static cl::opt<std::string> TaintTableFileName("taint", cl::desc("Taintness anno
 void printVersion()
 {
 	outs() << "table-check for TPA, version 0.1\n"; 
-}
-
-std::unique_ptr<Module> parseBitcodeFile(const llvm::StringRef& fileName)
-{
-	SMDiagnostic error;
-	auto module = parseAssemblyFile(fileName, error, llvm::getGlobalContext());
-
-	if (!module)
-		llvm::report_fatal_error(error.getMessage());
-
-	return std::move(module);
 }
 
 int main(int argc, char** argv)
@@ -44,7 +29,7 @@ int main(int argc, char** argv)
 		std::exit(-1);
 	}
 
-	auto module = parseBitcodeFile(BitcodeFileName);
+	auto module = util::io::readModuleFromFile(BitcodeFileName.data());
 
 	if (!PtrTableFileName.empty())
 	{
